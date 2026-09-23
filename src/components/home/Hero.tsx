@@ -143,7 +143,21 @@ interface TeeItemProps {
   cutout: { src: string; width: number; height: number };
   name: string;
   slug: string;
+  mobile: boolean;
 }
+
+// Horizontal offsets for the "up next" preview and the fully-faded far slot.
+// Desktop tees are small relative to viewport width, so vw spacing works.
+// On mobile the tee is ~32vh wide (42vh tall), which on a tall phone is most
+// of the screen width — vw offsets would stack neighbors on top of the
+// centered tee. Offsets in vh scale with the tee itself: 28vh clears the
+// full-size tee's half-width (~16vh) plus a half-scale neighbor (~8vh) with
+// a visible gap, and that gap holds through the whole transition since both
+// position and scale interpolate linearly.
+const SLOT_OFFSETS = {
+  desktop: { near: "32vw", far: "70vw" },
+  mobile: { near: "28vh", far: "64vh" },
+};
 
 /**
  * Position/opacity/scale are derived directly from scroll position (not from
@@ -162,13 +176,15 @@ interface TeeItemProps {
  * The first item is exempt: it's the one thing that should already be
  * fully visible before the user has scrolled at all.
  */
-function TeeItem({ p, index, isFirst, isLast, gate, cutout, name, slug }: TeeItemProps) {
+function TeeItem({ p, index, isFirst, isLast, gate, cutout, name, slug, mobile }: TeeItemProps) {
+  const { near, far } = SLOT_OFFSETS[mobile ? "mobile" : "desktop"];
+  const zero = mobile ? "0vh" : "0vw";
   const points = isLast
     ? [index - 1.4, index - 1, index]
     : [index - 1.4, index - 1, index, index + 1, index + 1.4];
   const xOutput = isLast
-    ? ["70vw", "32vw", "0vw"]
-    : ["70vw", "32vw", "0vw", "-32vw", "-70vw"];
+    ? [far, near, zero]
+    : [far, near, zero, `-${near}`, `-${far}`];
   const scaleOutput = isLast ? [0.3, 0.5, 1] : [0.3, 0.5, 1, 0.5, 0.3];
   const opacityOutput = isLast ? [0, 0.65, 1] : [0, 0.65, 1, 0.65, 0];
 
@@ -210,9 +226,10 @@ interface TeeStageProps {
   p: MotionValue<number>;
   zoom: MotionValue<number>;
   gate: MotionValue<number>;
+  mobile: boolean;
 }
 
-function TeeStage({ p, zoom, gate }: TeeStageProps) {
+function TeeStage({ p, zoom, gate, mobile }: TeeStageProps) {
   return (
     <motion.div
       className="pointer-events-none absolute inset-0 flex items-center justify-center overflow-hidden pb-16"
@@ -233,10 +250,24 @@ function TeeStage({ p, zoom, gate }: TeeStageProps) {
           cutout={product.cutout}
           name={product.name}
           slug={product.slug}
+          mobile={mobile}
         />
       ))}
     </motion.div>
   );
+}
+
+// Matches Tailwind's `md` breakpoint, where the tee switches to its desktop size.
+function useIsMobile() {
+  const [mobile, setMobile] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 767px)");
+    const update = () => setMobile(mq.matches);
+    update();
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
+  }, []);
+  return mobile;
 }
 
 function StaticHero() {
@@ -272,6 +303,7 @@ export function Hero() {
   const shouldReduceMotion = useReducedMotion();
   const wrapperRef = useRef<HTMLDivElement>(null);
   const [activeIndex, setActiveIndex] = useState(0);
+  const isMobile = useIsMobile();
 
   const { scrollYProgress } = useScroll({
     target: wrapperRef,
@@ -403,7 +435,9 @@ export function Hero() {
       style={{ height: `${TOTAL_VH}vh` }}
     >
       <div className="sticky top-0 h-[100svh] w-full overflow-hidden">
-        <TeeStage p={p} zoom={teeZoom} gate={previewGate} />
+        {/* Keyed so the per-tee transforms rebuild with the right offsets
+            when crossing the mobile breakpoint. */}
+        <TeeStage key={isMobile ? "m" : "d"} p={p} zoom={teeZoom} gate={previewGate} mobile={isMobile} />
 
         <HeroCopy index={activeIndex} opacity={chromeOpacity} y={chromeY} />
 
