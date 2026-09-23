@@ -57,8 +57,12 @@ interface HeroCopyProps {
 
 function HeroCopy({ index, opacity, y }: HeroCopyProps) {
   const active = heroProducts[index];
+  // The copy layer sits above the tee stage and spans the full hero, so it
+  // must let clicks fall through to the tees (each links to its product).
+  // Only the CTA takes clicks, and only while it's actually visible.
+  const ctaPointerEvents = useTransform(opacity, (o) => (o > 0.05 ? "auto" : "none"));
   return (
-    <div className="relative z-10 mx-auto flex h-full w-full max-w-content flex-col justify-end px-5 pb-14 md:px-10 md:pb-20">
+    <div className="pointer-events-none relative z-10 mx-auto flex h-full w-full max-w-content flex-col justify-end px-5 pb-14 md:px-10 md:pb-20">
       <motion.div style={{ opacity, y }}>
         <motion.span
           initial={{ opacity: 0, y: 12 }}
@@ -92,7 +96,7 @@ function HeroCopy({ index, opacity, y }: HeroCopyProps) {
       </motion.div>
 
       <div className="mt-10 flex flex-wrap items-end justify-between gap-8">
-        <motion.div style={{ opacity, y }}>
+        <motion.div style={{ opacity, y, pointerEvents: ctaPointerEvents }}>
           <motion.div
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
@@ -443,7 +447,7 @@ export function Hero() {
 
         <motion.div
           style={{ opacity: chromeOpacity }}
-          className="absolute right-5 top-1/2 z-10 hidden -translate-y-1/2 flex-col gap-3 md:right-10 md:flex"
+          className="pointer-events-none absolute right-5 top-1/2 z-10 hidden -translate-y-1/2 flex-col gap-3 md:right-10 md:flex"
           aria-hidden
         >
           {heroProducts.map((product, i) => (
@@ -459,7 +463,7 @@ export function Hero() {
 
         <motion.div
           style={{ opacity: chromeOpacity }}
-          className="absolute bottom-6 left-1/2 z-10 flex -translate-x-1/2 flex-col items-center gap-2 text-[10px] uppercase tracking-widest2 text-bone/60"
+          className="pointer-events-none absolute bottom-6 left-1/2 z-10 flex -translate-x-1/2 flex-col items-center gap-2 text-[10px] uppercase tracking-widest2 text-bone/60"
           aria-hidden
         >
           Scroll
