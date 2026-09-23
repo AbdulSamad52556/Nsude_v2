@@ -4,16 +4,26 @@ import { AnimatePresence, motion } from "framer-motion";
 import { Search, X, ArrowUpRight } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useUI } from "@/context/UIContext";
-import { products } from "@/lib/products";
 import { formatPrice } from "@/lib/utils";
 
 const popularSearches = ["Core Tee", "Oversized", "Heavyweight", "Black", "Archive"];
 
+interface SearchResult {
+  id: string;
+  name: string;
+  slug: string;
+  price: number;
+  fit: string;
+  image: string | null;
+}
+
 export function SearchOverlay() {
   const { isSearchOpen, closeSearch } = useUI();
   const [query, setQuery] = useState("");
+  const [results, setResults] = useState<SearchResult[]>([]);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -33,17 +43,34 @@ export function SearchOverlay() {
     if (!isSearchOpen) setQuery("");
   }, [isSearchOpen]);
 
-  const results = useMemo(() => {
-    if (!query.trim()) return [];
-    const q = query.toLowerCase();
-    return products
-      .filter(
-        (p) =>
-          p.name.toLowerCase().includes(q) ||
-          p.fit.toLowerCase().includes(q) ||
-          p.colors.some((c) => c.name.toLowerCase().includes(q))
-      )
-      .slice(0, 6);
+  // Debounced server search; an in-flight request is aborted when the query
+  // changes so a slow earlier response can't overwrite newer results.
+  useEffect(() => {
+    const q = query.trim();
+    if (!q) {
+      setResults([]);
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
+    const controller = new AbortController();
+    const timer = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/search?q=${encodeURIComponent(q)}`, {
+          signal: controller.signal,
+        });
+        const data = (await res.json()) as { results: SearchResult[] };
+        setResults(data.results);
+      } catch (err) {
+        if ((err as Error).name !== "AbortError") setResults([]);
+      } finally {
+        if (!controller.signal.aborted) setLoading(false);
+      }
+    }, 200);
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
+    };
   }, [query]);
 
   return (
@@ -109,8 +136,8 @@ export function SearchOverlay() {
 
             {query.trim() && (
               <div className="mt-10">
-                <p className="mb-4 text-xs uppercase tracking-widest2 text-ash">
-                  {results.length} result{results.length === 1 ? "" : "s"}
+                <p className="mb-4 text-xs uppercase tracking-widest2 text-ash" aria-live="polite">
+                  {loading ? "Searching…" : `${results.length} result${results.length === 1 ? "" : "s"}`}
                 </p>
                 <ul className="flex flex-col">
                   {results.map((product, i) => (
@@ -126,13 +153,15 @@ export function SearchOverlay() {
                         className="group flex items-center gap-5 border-b border-graphite/10 py-4"
                       >
                         <div className="relative h-20 w-16 shrink-0 overflow-hidden bg-bone">
-                          <Image
-                            src={product.images[0].src}
-                            alt=""
-                            fill
-                            sizes="64px"
-                            className="object-cover"
-                          />
+                          {product.image && (
+                            <Image
+                              src={product.image}
+                              alt=""
+                              fill
+                              sizes="64px"
+                              className="object-cover"
+                            />
+                          )}
                         </div>
                         <div className="flex flex-1 items-center justify-between">
                           <div>
@@ -157,7 +186,7 @@ export function SearchOverlay() {
                       </Link>
                     </motion.li>
                   ))}
-                  {results.length === 0 && (
+                  {!loading && results.length === 0 && (
                     <p className="py-8 text-sm text-graphite">
                       Nothing found for &ldquo;{query}&rdquo;. Try another search.
                     </p>

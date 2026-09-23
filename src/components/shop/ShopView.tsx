@@ -3,8 +3,7 @@
 import { useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { ChevronDown, X } from "lucide-react";
-import { products } from "@/lib/products";
-import { Size } from "@/lib/types";
+import { Product, Size } from "@/lib/types";
 import { ProductGrid } from "@/components/product/ProductGrid";
 import { cx } from "@/lib/utils";
 
@@ -20,7 +19,6 @@ const sortOptions: { key: SortKey; label: string }[] = [
 
 const categories = ["All", "T-Shirts", "Long Sleeve"] as const;
 const allSizes: Size[] = ["S", "M", "L", "XL", "XXL"];
-const allColors = Array.from(new Set(products.flatMap((p) => p.colors.map((c) => c.name))));
 
 const priceBands: { key: PriceBand; label: string }[] = [
   { key: "all", label: "All Prices" },
@@ -69,7 +67,11 @@ function FilterMenu({
   );
 }
 
-export function ShopView() {
+export function ShopView({ products }: { products: Product[] }) {
+  const allColors = useMemo(
+    () => Array.from(new Set(products.flatMap((p) => p.colors.map((c) => c.name)))),
+    [products]
+  );
   const searchParams = useSearchParams();
   const initialSort = (searchParams.get("sort") as SortKey) || "featured";
 
@@ -104,7 +106,7 @@ export function ShopView() {
     }
 
     return list;
-  }, [category, size, color, priceBand, sort]);
+  }, [products, category, size, color, priceBand, sort]);
 
   const hasActiveFilters = category !== "All" || size || color || priceBand !== "all";
 

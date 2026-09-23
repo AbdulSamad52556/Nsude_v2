@@ -1,0 +1,84 @@
+// NSUDE data model. MongoDB via Prisma 6 (Prisma's MongoDB connector).
+// Run `npm run db:push` after changing this file to sync indexes, and
+// `npm run db:generate` to refresh the typed client.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+/// An image stored in Cloudinary. `publicId` is Cloudinary's id, used to
+/// delete the asset when it's removed; it's empty for external URLs
+/// (e.g. the seeded Unsplash placeholders).
+type Image {
+  src      String
+  alt      String  @default("")
+  publicId String?
+  width    Int?
+  height   Int?
+}
+
+type ColorOption {
+  name String
+  hex  String
+}
+
+type SizeValues {
+  S   String @default("")
+  M   String @default("")
+  L   String @default("")
+  XL  String @default("")
+  XXL String @default("")
+}
+
+type Measurement {
+  label  String
+  values SizeValues
+}
+
+model Product {
+  id               String        @id @default(auto()) @map("_id") @db.ObjectId
+  name             String
+  slug             String        @unique
+  /// Price in whole rupees (INR).
+  price            Int
+  compareAtPrice   Int?
+  description      String
+  story            String        @default("")
+  images           Image[]
+  colors           ColorOption[]
+  /// Subset of S, M, L, XL, XXL.
+  sizes            String[]
+  unavailableSizes String[]
+  /// "T-Shirts" | "Long Sleeve"
+  category         String
+  material         String        @default("")
+  /// "Slim" | "Regular" | "Relaxed" | "Oversized" | "Boxy"
+  fit              String
+  weight           String        @default("")
+  stock            Int           @default(0)
+  featured         Boolean       @default(false)
+  newArrival       Boolean       @default(false)
+  measurements     Measurement[]
+  heroSlides       HeroSlide[]
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+}
+
+/// One t-shirt in the home hero carousel: a transparent cutout image that
+/// links to a product. Shown in ascending `position` order.
+model HeroSlide {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  position  Int
+  image     Image
+  productId String   @db.ObjectId
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([position])
+}

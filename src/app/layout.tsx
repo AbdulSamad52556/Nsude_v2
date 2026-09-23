@@ -3,12 +3,6 @@ import { Inter, Fraunces } from "next/font/google";
 import "./globals.css";
 import { CartProvider } from "@/context/CartContext";
 import { UIProvider } from "@/context/UIContext";
-import { Navbar } from "@/components/layout/Navbar";
-import { Footer } from "@/components/layout/Footer";
-import { Preloader } from "@/components/layout/Preloader";
-import { CustomCursor } from "@/components/layout/CustomCursor";
-import { CartDrawer } from "@/components/cart/CartDrawer";
-import { SearchOverlay } from "@/components/search/SearchOverlay";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -70,18 +64,10 @@ export default function RootLayout({
         >
           Skip to content
         </a>
+        {/* Storefront chrome lives in (shop)/layout; the admin panel has
+            its own layout under /admin. */}
         <UIProvider>
-          <CartProvider>
-            <CustomCursor />
-            <Preloader />
-            <Navbar />
-            <div className="relative mx-auto max-w-[1440px] overflow-x-clip bg-paper">
-              <main id="main-content">{children}</main>
-              <Footer />
-            </div>
-            <CartDrawer />
-            <SearchOverlay />
-          </CartProvider>
+          <CartProvider>{children}</CartProvider>
         </UIProvider>
       </body>
     </html>
