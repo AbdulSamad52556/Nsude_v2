@@ -3,11 +3,13 @@
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import Image from "next/image";
 import { useEffect, useState } from "react";
+import { useUI } from "@/context/UIContext";
 
 export function Preloader() {
   const [visible, setVisible] = useState(false);
   const [mounted, setMounted] = useState(false);
   const shouldReduceMotion = useReducedMotion();
+  const { markIntroReady } = useUI();
 
   useEffect(() => {
     setMounted(true);
@@ -18,12 +20,15 @@ export function Preloader() {
       () => {
         setVisible(false);
         document.body.style.overflow = "";
+        // Start page entrance animations as the preloader begins to fade,
+        // so they play in view instead of behind it.
+        markIntroReady();
       },
       shouldReduceMotion ? 200 : 2600
     );
 
     return () => clearTimeout(timer);
-  }, [shouldReduceMotion]);
+  }, [shouldReduceMotion, markIntroReady]);
 
   if (!mounted) return null;
 
