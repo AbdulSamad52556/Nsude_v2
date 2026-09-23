@@ -16,8 +16,9 @@ import {
 } from "framer-motion";
 import { ArrowRight } from "lucide-react";
 import { products } from "@/lib/products";
-import { formatPrice, cx } from "@/lib/utils";
+import { formatPrice } from "@/lib/utils";
 import { MagneticButton } from "@/components/ui/MagneticButton";
+import { useUI } from "@/context/UIContext";
 
 const ease = [0.16, 1, 0.3, 1] as const;
 
@@ -58,8 +59,41 @@ interface HeroCopyProps {
   y: MotionValue<number>;
 }
 
+const HEADLINE_LINES = ["Essentials,", "Redefined."];
+const HEADLINE_DESCRIPTION =
+  "Premium men's T-shirts in heavyweight cotton — considered fits, made to be worn for years, not seasons.";
+
+// Headline entrance: each line's letters rise out of a clipping mask one
+// after another, tilting upright as they land. Line two follows shortly
+// after line one; the description, CTA and product label then fade up.
+const lineVariants = {
+  hidden: {},
+  shown: (line: number) => ({
+    transition: { staggerChildren: 0.035, delayChildren: line * 0.22 },
+  }),
+};
+const charVariants = {
+  hidden: { y: "115%", rotate: 10, opacity: 0 },
+  shown: { y: "0%", rotate: 0, opacity: 1, transition: { duration: 0.9, ease } },
+};
+const fadeUpVariants = {
+  hidden: { opacity: 0, y: 16 },
+  shown: (delay: number) => ({
+    opacity: 1,
+    y: 0,
+    transition: { delay, duration: 0.8, ease },
+  }),
+};
+
 function HeroCopy({ index, opacity, y }: HeroCopyProps) {
   const active = heroProducts[index];
+  const { introReady } = useUI();
+  const shouldReduceMotion = useReducedMotion();
+  // Entrance animations wait for the preloader to lift (on a client-side
+  // visit to home it already has, so they play straight away). Under
+  // reduced motion everything simply renders in place.
+  const initial = shouldReduceMotion ? false : "hidden";
+  const play = shouldReduceMotion || introReady ? "shown" : "hidden";
   // The copy layer sits above the tee stage and spans the full hero, so it
   // must let clicks fall through to the tees (each links to its product).
   // Only the CTA takes clicks, and only while it's actually visible.
@@ -67,54 +101,65 @@ function HeroCopy({ index, opacity, y }: HeroCopyProps) {
   return (
     <div className="pointer-events-none relative z-10 mx-auto flex h-full w-full max-w-content flex-col justify-end px-5 pb-14 md:px-10 md:pb-20">
       <motion.div style={{ opacity, y }}>
-        <motion.span
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.7, duration: 0.7, ease }}
-          className="mb-5 block text-xs uppercase tracking-widest2 text-bone/80"
+        <h1 aria-label={HEADLINE_LINES.join(" ")}>
+          {HEADLINE_LINES.map((line, li) => (
+            // Slight bottom padding (pulled back with negative margin) so the
+            // mask doesn't shave the comma/period while the letters settle.
+            <span key={line} aria-hidden className="-mb-[0.08em] block overflow-hidden pb-[0.08em]">
+              <motion.span
+                custom={li}
+                variants={lineVariants}
+                initial={initial}
+                animate={play}
+                // nowrap: each letter is its own inline-block, and the browser
+                // may otherwise break between any two of them (e.g. before ",").
+                // Below md the size tracks viewport width so "ESSENTIALS," always
+                // fits (display-xl's 56px floor overflows phones ≤375px wide).
+                className="block whitespace-nowrap text-[min(13.5vw,4.5rem)] font-medium uppercase leading-[0.92] tracking-[-0.03em] text-bone md:text-display-xl"
+              >
+                {Array.from(line).map((char, ci) => (
+                  <motion.span
+                    key={ci}
+                    variants={charVariants}
+                    className="inline-block origin-bottom-left"
+                  >
+                    {char === " " ? " " : char}
+                  </motion.span>
+                ))}
+              </motion.span>
+            </span>
+          ))}
+        </h1>
+        <motion.p
+          custom={0.75}
+          variants={fadeUpVariants}
+          initial={initial}
+          animate={play}
+          className="mt-4 max-w-[34ch] text-[13px] leading-relaxed text-bone/70 md:mt-6 md:max-w-md md:text-base"
         >
-          NSUDE / 0{index + 1}
-        </motion.span>
-
-        <h1 className="overflow-hidden">
-          <motion.span
-            initial={{ y: "110%" }}
-            animate={{ y: "0%" }}
-            transition={{ delay: 0.85, duration: 1, ease }}
-            className="block text-display-xl font-medium uppercase text-bone"
-          >
-            Essentials,
-          </motion.span>
-        </h1>
-        <h1 className="overflow-hidden">
-          <motion.span
-            initial={{ y: "110%" }}
-            animate={{ y: "0%" }}
-            transition={{ delay: 0.98, duration: 1, ease }}
-            className="block text-display-xl font-medium uppercase text-bone"
-          >
-            Redefined.
-          </motion.span>
-        </h1>
+          {HEADLINE_DESCRIPTION}
+        </motion.p>
       </motion.div>
 
-      <div className="mt-10 flex flex-wrap items-end justify-between gap-8">
+      <div className="mt-8 flex flex-wrap items-end justify-between gap-8 md:mt-10">
         <motion.div style={{ opacity, y, pointerEvents: ctaPointerEvents }}>
           <motion.div
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 1.4, duration: 0.7, ease }}
+            custom={1}
+            variants={fadeUpVariants}
+            initial={initial}
+            animate={play}
           >
             <MagneticButton>
               <Link
                 href="/shop"
-                className="group inline-flex items-center gap-3 border-b border-bone pb-1 text-sm uppercase tracking-widest2 text-bone"
+                // Smaller on mobile so the CTA, the centered scroll hint and
+                // the product name all fit on one bottom row.
+                className="group inline-flex items-center gap-2 border-b border-bone pb-1 text-[11px] uppercase tracking-[0.2em] text-bone md:gap-3 md:text-sm md:tracking-widest2"
               >
                 Shop T-Shirts
                 <ArrowRight
-                  size={16}
                   strokeWidth={1.5}
-                  className="transition-transform duration-300 group-hover:translate-x-1"
+                  className="h-3.5 w-3.5 transition-transform duration-300 group-hover:translate-x-1 md:h-4 md:w-4"
                 />
               </Link>
             </MagneticButton>
@@ -123,19 +168,21 @@ function HeroCopy({ index, opacity, y }: HeroCopyProps) {
 
         {/* Name/price stays visible and keeps updating throughout scroll,
             unlike the rest of the hero copy which hides once cycling starts. */}
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={active.id}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            transition={{ duration: 0.4, ease }}
-            className="text-right"
-          >
-            <p className="text-sm uppercase tracking-wide text-bone">{active.name}</p>
-            <p className="mt-1 text-xs text-bone/70">{formatPrice(active.price)}</p>
-          </motion.div>
-        </AnimatePresence>
+        <motion.div custom={1.1} variants={fadeUpVariants} initial={initial} animate={play}>
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={active.id}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.4, ease }}
+              className="text-right"
+            >
+              <p className="text-[11px] uppercase tracking-wide text-bone md:text-sm">{active.name}</p>
+              <p className="mt-1 text-[10px] text-bone/70 md:text-xs">{formatPrice(active.price)}</p>
+            </motion.div>
+          </AnimatePresence>
+        </motion.div>
       </div>
     </div>
   );
@@ -546,28 +593,14 @@ export function Hero() {
 
         <motion.div
           style={{ opacity: chromeOpacity }}
-          className="pointer-events-none absolute right-5 top-1/2 z-10 hidden -translate-y-1/2 flex-col gap-3 md:right-10 md:flex"
-          aria-hidden
-        >
-          {heroProducts.map((product, i) => (
-            <span
-              key={product.id}
-              className={cx(
-                "h-6 w-px transition-colors duration-500",
-                i === activeIndex ? "bg-bone" : "bg-bone/25"
-              )}
-            />
-          ))}
-        </motion.div>
-
-        <motion.div
-          style={{ opacity: chromeOpacity }}
-          className="pointer-events-none absolute bottom-6 left-1/2 z-10 flex -translate-x-1/2 flex-col items-center gap-2 text-[10px] uppercase tracking-widest2 text-bone/60"
+          // On mobile it's smaller and sits lower, below the CTA / product
+          // name row, so the three can't collide even on 320px screens.
+          className="pointer-events-none absolute bottom-3 left-1/2 z-10 flex -translate-x-1/2 flex-col items-center gap-1.5 text-[8px] md:bottom-6 uppercase tracking-[0.2em] text-bone/60 md:gap-2 md:text-[10px] md:tracking-widest2"
           aria-hidden
         >
           Scroll
           <motion.span
-            className="h-8 w-px bg-bone/40"
+            className="h-4 w-px bg-bone/40 md:h-8"
             animate={{ scaleY: [0.4, 1, 0.4] }}
             transition={{ duration: 1.8, repeat: Infinity, ease: "easeInOut" }}
           />
