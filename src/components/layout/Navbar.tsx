@@ -57,7 +57,10 @@ export function Navbar() {
     if (mobileOpen) setHidden(false);
   }, [mobileOpen]);
 
-  const tone = scrolled ? "text-ink" : "text-bone";
+  // Only the home page has a dark hero to sit over, so only it gets the
+  // transparent header; every other page is solid light with dark content.
+  const solid = pathname !== "/" || scrolled;
+  const tone = solid ? "text-ink" : "text-bone";
 
   return (
     <>
@@ -66,9 +69,10 @@ export function Navbar() {
         transition={{ duration: shouldReduceMotion ? 0 : 0.4, ease: [0.16, 1, 0.3, 1] }}
         className={cx(
           "fixed inset-x-0 top-0 z-50 mx-auto w-full max-w-[1440px] transition-[padding,background-color,border-color] duration-500 ease-editorial",
-          scrolled
-            ? "border-b border-graphite/10 bg-paper/90 py-3 backdrop-blur-md"
-            : "border-b border-transparent bg-transparent py-6"
+          solid
+            ? "border-b border-graphite/10 bg-paper/90 backdrop-blur-md"
+            : "border-b border-transparent bg-transparent",
+          scrolled ? "py-3" : "py-6"
         )}
       >
         <nav
@@ -77,7 +81,7 @@ export function Navbar() {
         >
           <Link href="/" aria-label="NSUDE, home" data-cursor="">
             <Image
-              src={scrolled ? "/brand/nsude-logo-dark.png" : "/brand/nsude-logo-light.png"}
+              src={solid ? "/brand/nsude-logo-dark.png" : "/brand/nsude-logo-light.png"}
               alt="NSUDE"
               width={482}
               height={172}
@@ -100,7 +104,7 @@ export function Navbar() {
                   <span
                     className={cx(
                       "absolute -bottom-1 left-0 h-px w-0 transition-all duration-300 ease-editorial group-hover:w-full",
-                      scrolled ? "bg-ink" : "bg-bone"
+                      solid ? "bg-ink" : "bg-bone"
                     )}
                   />
                 </Link>

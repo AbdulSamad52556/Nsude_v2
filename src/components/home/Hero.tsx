@@ -45,6 +45,9 @@ const TOTAL_VH = INTRO_VH + CYCLE_VH;
 const INTRO_END = INTRO_VH / TOTAL_VH;
 // How long scrolling must be idle before the carousel snaps to a tee.
 const SNAP_IDLE_MS = 120;
+// Touch scrolls end in momentum, and iOS Safari can report it in sparse,
+// uneven scroll events — so wait longer after touch input before snapping.
+const TOUCH_SNAP_IDLE_MS = 260;
 // Fraction of a tee's scroll distance that counts as intent to move on —
 // small enough that a single mouse-wheel notch advances to the next tee.
 const SNAP_INTENT = 0.04;
@@ -57,8 +60,12 @@ interface HeroCopyProps {
 
 function HeroCopy({ index, opacity, y }: HeroCopyProps) {
   const active = heroProducts[index];
+  // The copy layer sits above the tee stage and spans the full hero, so it
+  // must let clicks fall through to the tees (each links to its product).
+  // Only the CTA takes clicks, and only while it's actually visible.
+  const ctaPointerEvents = useTransform(opacity, (o) => (o > 0.05 ? "auto" : "none"));
   return (
-    <div className="relative z-10 mx-auto flex h-full w-full max-w-content flex-col justify-end px-5 pb-14 md:px-10 md:pb-20">
+    <div className="pointer-events-none relative z-10 mx-auto flex h-full w-full max-w-content flex-col justify-end px-5 pb-14 md:px-10 md:pb-20">
       <motion.div style={{ opacity, y }}>
         <motion.span
           initial={{ opacity: 0, y: 12 }}
@@ -92,7 +99,7 @@ function HeroCopy({ index, opacity, y }: HeroCopyProps) {
       </motion.div>
 
       <div className="mt-10 flex flex-wrap items-end justify-between gap-8">
-        <motion.div style={{ opacity, y }}>
+        <motion.div style={{ opacity, y, pointerEvents: ctaPointerEvents }}>
           <motion.div
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
@@ -202,7 +209,10 @@ function TeeItem({ p, index, isFirst, isLast, gate, cutout, name, slug, mobile }
   const pointerEvents = useTransform(opacity, (o) => (o > 0.05 ? "auto" : "none"));
 
   return (
-    <motion.div className="absolute" style={{ x, opacity, scale, pointerEvents }}>
+    // will-change keeps each tee on its own GPU layer, rasterized once, so
+    // Safari scales the cached bitmap instead of re-painting the image and
+    // its drop-shadow filter on every scroll frame.
+    <motion.div className="absolute will-change-transform" style={{ x, opacity, scale, pointerEvents }}>
       <motion.div
         animate={{ y: [0, -16, 0] }}
         transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
@@ -232,7 +242,7 @@ interface TeeStageProps {
 function TeeStage({ p, zoom, gate, mobile }: TeeStageProps) {
   return (
     <motion.div
-      className="pointer-events-none absolute inset-0 flex items-center justify-center overflow-hidden pb-16"
+      className="pointer-events-none absolute inset-0 flex items-center justify-center overflow-hidden pb-16 will-change-transform"
       style={{ scale: zoom }}
     >
       <div
@@ -397,26 +407,55 @@ export function Hero() {
       window.scrollTo({ top: top + targetProgress * range, behavior: "smooth" });
     }
 
-    function onScroll() {
+    // A quiet gap in scroll events doesn't prove the page has stopped: iOS
+    // momentum can go quiet mid-glide, and a smooth scrollTo then cancels
+    // the momentum and fights it (the "hang"). So confirm the position is
+    // unchanged across two frames before snapping; if it's still moving,
+    // wait for the next idle window instead.
+    function settleThenSnap() {
+      const y = window.scrollY;
+      settleFrame = requestAnimationFrame(() => {
+        settleFrame = requestAnimationFrame(() => {
+          if (window.scrollY !== y) schedule();
+          else snap();
+        });
+      });
+    }
+
+    let lastInputTouch = false;
+    let settleFrame = 0;
+    function schedule() {
       clearTimeout(idleTimer);
-      idleTimer = setTimeout(snap, SNAP_IDLE_MS);
+      cancelAnimationFrame(settleFrame);
+      idleTimer = setTimeout(settleThenSnap, lastInputTouch ? TOUCH_SNAP_IDLE_MS : SNAP_IDLE_MS);
+    }
+    function onScroll() {
+      schedule();
+    }
+    function onWheel() {
+      lastInputTouch = false;
     }
     function onTouchStart() {
       touching = true;
+      lastInputTouch = true;
       clearTimeout(idleTimer);
+      cancelAnimationFrame(settleFrame);
     }
     function onTouchEnd() {
       touching = false;
-      onScroll();
+      schedule();
     }
 
     window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("wheel", onWheel, { passive: true });
     window.addEventListener("touchstart", onTouchStart, { passive: true });
     window.addEventListener("touchend", onTouchEnd, { passive: true });
     window.addEventListener("touchcancel", onTouchEnd, { passive: true });
     return () => {
       clearTimeout(idleTimer);
+      cancelAnimationFrame(settleFrame);
       window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("wheel", onWheel);
       window.removeEventListener("touchstart", onTouchStart);
       window.removeEventListener("touchend", onTouchEnd);
       window.removeEventListener("touchcancel", onTouchEnd);
@@ -443,7 +482,7 @@ export function Hero() {
 
         <motion.div
           style={{ opacity: chromeOpacity }}
-          className="absolute right-5 top-1/2 z-10 hidden -translate-y-1/2 flex-col gap-3 md:right-10 md:flex"
+          className="pointer-events-none absolute right-5 top-1/2 z-10 hidden -translate-y-1/2 flex-col gap-3 md:right-10 md:flex"
           aria-hidden
         >
           {heroProducts.map((product, i) => (
@@ -459,7 +498,7 @@ export function Hero() {
 
         <motion.div
           style={{ opacity: chromeOpacity }}
-          className="absolute bottom-6 left-1/2 z-10 flex -translate-x-1/2 flex-col items-center gap-2 text-[10px] uppercase tracking-widest2 text-bone/60"
+          className="pointer-events-none absolute bottom-6 left-1/2 z-10 flex -translate-x-1/2 flex-col items-center gap-2 text-[10px] uppercase tracking-widest2 text-bone/60"
           aria-hidden
         >
           Scroll
