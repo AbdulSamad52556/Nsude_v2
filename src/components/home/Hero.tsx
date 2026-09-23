@@ -224,7 +224,9 @@ function TeeItem({ p, index, isFirst, isLast, gate, cutout, name, slug, mobile }
             width={cutout.width}
             height={cutout.height}
             priority
-            className="h-[42vh] w-auto object-contain drop-shadow-2xl md:h-[58vh]"
+            // No drop-shadow below md: on the ink background it's barely
+            // visible, and animating five filtered images is expensive on iOS.
+            className="h-[42vh] w-auto object-contain md:h-[58vh] md:drop-shadow-2xl"
           />
         </Link>
       </motion.div>
@@ -245,9 +247,16 @@ function TeeStage({ p, zoom, gate, mobile }: TeeStageProps) {
       className="pointer-events-none absolute inset-0 flex items-center justify-center overflow-hidden pb-16 will-change-transform"
       style={{ scale: zoom }}
     >
+      {/* Soft glow behind the tees. Drawn with a radial gradient rather than
+          a blur() filter: a 110px blur inside this zooming stage was one of
+          the costliest things to repaint on iOS WebKit during fast scrolls. */}
       <div
         aria-hidden
-        className="absolute h-[46vh] w-[46vh] rounded-full bg-graphite/40 blur-[110px] md:h-[54vh] md:w-[54vh]"
+        className="absolute h-[calc(46vh+220px)] w-[calc(46vh+220px)] md:h-[calc(54vh+220px)] md:w-[calc(54vh+220px)]"
+        style={{
+          background:
+            "radial-gradient(closest-side, rgba(58,58,56,0.4), rgba(58,58,56,0.28) 45%, rgba(58,58,56,0) 100%)",
+        }}
       />
       {heroProducts.map((product, i) => (
         <TeeItem
@@ -362,17 +371,27 @@ export function Hero() {
     const last = heroProducts.length - 1;
     let idleTimer: ReturnType<typeof setTimeout> | undefined;
     let touching = false;
+    // Carousel position (in tees) the next snap measures direction from.
+    // Normally the tee we last rested on; if a glide is interrupted, the
+    // exact spot it was interrupted at.
     let anchor = 0;
 
-    function snap() {
+    function measure() {
       const el = wrapperRef.current;
-      if (!el || touching) return;
-
+      if (!el) return null;
       const top = el.getBoundingClientRect().top + window.scrollY;
       const range = el.offsetHeight - window.innerHeight;
-      if (range <= 0) return;
-
+      if (range <= 0) return null;
       const progress = (window.scrollY - top) / range;
+      const raw = ((progress - INTRO_END) / (1 - INTRO_END)) * heroProducts.length;
+      return { top, range, progress, raw };
+    }
+
+    function snap() {
+      if (touching) return;
+      const m = measure();
+      if (!m) return;
+      const { top, range, progress, raw } = m;
       // Intro phase and the space past the section scroll freely.
       if (progress <= INTRO_END) {
         anchor = 0;
@@ -383,7 +402,6 @@ export function Hero() {
         return;
       }
 
-      const raw = ((progress - INTRO_END) / (1 - INTRO_END)) * heroProducts.length;
       // The last tee holds centered until the section ends — nothing to snap to.
       if (raw >= last) {
         anchor = last;
@@ -396,15 +414,56 @@ export function Hero() {
         return;
       }
 
+      // A deliberate move goes on in its direction; anything smaller settles
+      // on the nearest tee (which, from a resting anchor, is the anchor).
       const delta = raw - anchor;
-      let target = anchor;
+      let target = nearest;
       if (delta > SNAP_INTENT) target = Math.ceil(raw);
       else if (delta < -SNAP_INTENT) target = Math.floor(raw);
       target = Math.min(last, Math.max(0, target));
 
       anchor = target;
       const targetProgress = INTRO_END + (target / heroProducts.length) * (1 - INTRO_END);
-      window.scrollTo({ top: top + targetProgress * range, behavior: "smooth" });
+      glideTo(top + targetProgress * range);
+    }
+
+    // Our own glide instead of scrollTo({ behavior: "smooth" }): on iOS
+    // WebKit a native smooth scroll can keep running under a new touch and
+    // fight the finger. This one is cancelled the instant the user touches
+    // or wheels. Scroll-behavior is forced to auto while it runs, since the
+    // global `scroll-behavior: smooth` would otherwise smooth every step.
+    let glideFrame = 0;
+    let gliding = false;
+    function glideTo(targetY: number) {
+      stopGlide();
+      const startY = window.scrollY;
+      const distance = targetY - startY;
+      const duration = 450;
+      const html = document.documentElement;
+      html.style.scrollBehavior = "auto";
+      gliding = true;
+      let start = 0;
+      const step = (now: number) => {
+        if (!start) start = now;
+        const t = Math.min(1, (now - start) / duration);
+        const eased = 1 - Math.pow(1 - t, 3);
+        window.scrollTo(0, startY + distance * eased);
+        if (t < 1) glideFrame = requestAnimationFrame(step);
+        else stopGlide();
+      };
+      glideFrame = requestAnimationFrame(step);
+    }
+    function stopGlide() {
+      cancelAnimationFrame(glideFrame);
+      if (gliding) document.documentElement.style.scrollBehavior = "";
+      gliding = false;
+    }
+    // User input landed mid-glide: measure the next move from right here.
+    function interruptGlide() {
+      if (!gliding) return;
+      stopGlide();
+      const m = measure();
+      if (m) anchor = m.raw;
     }
 
     // A quiet gap in scroll events doesn't prove the page has stopped: iOS
@@ -430,14 +489,18 @@ export function Hero() {
       idleTimer = setTimeout(settleThenSnap, lastInputTouch ? TOUCH_SNAP_IDLE_MS : SNAP_IDLE_MS);
     }
     function onScroll() {
+      // Our own glide's scroll events shouldn't re-arm the snap mid-glide.
+      if (gliding) return;
       schedule();
     }
     function onWheel() {
       lastInputTouch = false;
+      interruptGlide();
     }
     function onTouchStart() {
       touching = true;
       lastInputTouch = true;
+      interruptGlide();
       clearTimeout(idleTimer);
       cancelAnimationFrame(settleFrame);
     }
@@ -454,6 +517,7 @@ export function Hero() {
     return () => {
       clearTimeout(idleTimer);
       cancelAnimationFrame(settleFrame);
+      stopGlide();
       window.removeEventListener("scroll", onScroll);
       window.removeEventListener("wheel", onWheel);
       window.removeEventListener("touchstart", onTouchStart);
