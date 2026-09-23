@@ -62,10 +62,10 @@ export function Navbar() {
   return (
     <>
       <motion.header
-        animate={{ y: hidden ? "-100%" : "0%", x: "-50%" }}
+        animate={{ y: hidden ? "-100%" : "0%" }}
         transition={{ duration: shouldReduceMotion ? 0 : 0.4, ease: [0.16, 1, 0.3, 1] }}
         className={cx(
-          "fixed left-1/2 top-0 z-50 w-full max-w-[1440px] transition-[padding,background-color,border-color] duration-500 ease-editorial",
+          "fixed inset-x-0 top-0 z-50 mx-auto w-full max-w-[1440px] transition-[padding,background-color,border-color] duration-500 ease-editorial",
           scrolled
             ? "border-b border-graphite/10 bg-paper/90 py-3 backdrop-blur-md"
             : "border-b border-transparent bg-transparent py-6"

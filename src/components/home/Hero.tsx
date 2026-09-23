@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   motion,
   AnimatePresence,
@@ -37,11 +37,17 @@ const heroProducts = heroSlugs
   .map((product, i) => ({ ...product, cutout: heroCutouts[i] }));
 
 // Scroll budget: an initial "clear the stage" phase (fade out copy, zoom the
-// shirt in) followed by one full screen-height per t-shirt in the carousel.
+// shirt in) followed by PER_TEE_VH of scroll per t-shirt in the carousel.
 const INTRO_VH = 130;
-const CYCLE_VH = heroProducts.length * 100;
+const PER_TEE_VH = 100;
+const CYCLE_VH = heroProducts.length * PER_TEE_VH;
 const TOTAL_VH = INTRO_VH + CYCLE_VH;
 const INTRO_END = INTRO_VH / TOTAL_VH;
+// How long scrolling must be idle before the carousel snaps to a tee.
+const SNAP_IDLE_MS = 120;
+// Fraction of a tee's scroll distance that counts as intent to move on —
+// small enough that a single mouse-wheel notch advances to the next tee.
+const SNAP_INTENT = 0.04;
 
 interface HeroCopyProps {
   index: number;
@@ -301,6 +307,89 @@ export function Hero() {
     const idx = Math.min(heroProducts.length - 1, Math.max(0, Math.round(v)));
     setActiveIndex((prev) => (prev === idx ? prev : idx));
   });
+
+  // "Gravity" snap: once scrolling settles inside the carousel phase, glide
+  // to a tee so the stage never rests between two shirts. The snap follows
+  // scroll direction relative to the tee we last rested on (`anchor`), so
+  // even a single wheel notch pulls the next tee in instead of springing
+  // back. Reads the raw scroll position (not the spring) so the target is
+  // exact. Skipped while a finger is on the screen so it never fights a drag.
+  useEffect(() => {
+    if (shouldReduceMotion) return;
+
+    const last = heroProducts.length - 1;
+    let idleTimer: ReturnType<typeof setTimeout> | undefined;
+    let touching = false;
+    let anchor = 0;
+
+    function snap() {
+      const el = wrapperRef.current;
+      if (!el || touching) return;
+
+      const top = el.getBoundingClientRect().top + window.scrollY;
+      const range = el.offsetHeight - window.innerHeight;
+      if (range <= 0) return;
+
+      const progress = (window.scrollY - top) / range;
+      // Intro phase and the space past the section scroll freely.
+      if (progress <= INTRO_END) {
+        anchor = 0;
+        return;
+      }
+      if (progress >= 1) {
+        anchor = last;
+        return;
+      }
+
+      const raw = ((progress - INTRO_END) / (1 - INTRO_END)) * heroProducts.length;
+      // The last tee holds centered until the section ends — nothing to snap to.
+      if (raw >= last) {
+        anchor = last;
+        return;
+      }
+
+      const nearest = Math.round(raw);
+      if (Math.abs(raw - nearest) < 0.01) {
+        anchor = nearest;
+        return;
+      }
+
+      const delta = raw - anchor;
+      let target = anchor;
+      if (delta > SNAP_INTENT) target = Math.ceil(raw);
+      else if (delta < -SNAP_INTENT) target = Math.floor(raw);
+      target = Math.min(last, Math.max(0, target));
+
+      anchor = target;
+      const targetProgress = INTRO_END + (target / heroProducts.length) * (1 - INTRO_END);
+      window.scrollTo({ top: top + targetProgress * range, behavior: "smooth" });
+    }
+
+    function onScroll() {
+      clearTimeout(idleTimer);
+      idleTimer = setTimeout(snap, SNAP_IDLE_MS);
+    }
+    function onTouchStart() {
+      touching = true;
+      clearTimeout(idleTimer);
+    }
+    function onTouchEnd() {
+      touching = false;
+      onScroll();
+    }
+
+    window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("touchstart", onTouchStart, { passive: true });
+    window.addEventListener("touchend", onTouchEnd, { passive: true });
+    window.addEventListener("touchcancel", onTouchEnd, { passive: true });
+    return () => {
+      clearTimeout(idleTimer);
+      window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("touchstart", onTouchStart);
+      window.removeEventListener("touchend", onTouchEnd);
+      window.removeEventListener("touchcancel", onTouchEnd);
+    };
+  }, [shouldReduceMotion]);
 
   if (shouldReduceMotion) {
     return <StaticHero />;
