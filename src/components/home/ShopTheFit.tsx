@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { ArrowUpRight } from "lucide-react";
-import { products } from "@/lib/products";
+import type { Product } from "@/lib/types";
 import { campaignImages } from "@/lib/images";
 import { formatPrice } from "@/lib/utils";
 import { SectionHeading } from "@/components/ui/SectionHeading";
@@ -31,7 +31,7 @@ const fits = [
   },
 ] as const;
 
-export function ShopTheFit() {
+export function ShopTheFit({ products }: { products: Product[] }) {
   const [active, setActive] = useState<(typeof fits)[number]["key"]>("Regular");
   const current = fits.find((f) => f.key === active)!;
   const matches = products.filter((p) => p.fit === active).slice(0, 3);

@@ -1,7 +1,21 @@
-import { Product, Size } from "./types";
-import { productImagePool, campaignImages } from "./images";
+// Initial catalog, imported into MongoDB by `npm run db:seed`. After
+// seeding, products are managed from /admin — edits here have no effect on
+// an already-seeded database. The `id` values are ignored (MongoDB assigns
+// its own).
+import { Product, Size } from "../src/lib/types";
+import { productImagePool, campaignImages } from "../src/lib/images";
 
 const SIZES: Size[] = ["S", "M", "L", "XL", "XXL"];
+
+/** The original hero carousel: transparent cutouts in public/tshirts, each
+    linked to a product by slug. The seed uploads these to Cloudinary. */
+export const heroSeed = [
+  { slug: "core-tee", file: "public/tshirts/tee-1.png" },
+  { slug: "heavy-tee", file: "public/tshirts/tee-2.png" },
+  { slug: "signature-tee", file: "public/tshirts/tee-3.png" },
+  { slug: "oversized-tee", file: "public/tshirts/tee-4.png" },
+  { slug: "archive-tee", file: "public/tshirts/tee-5.png" },
+];
 
 function measurements(base: {
   shoulder: number;
@@ -366,19 +380,3 @@ export const products: Product[] = [
     measurements: measurements({ shoulder: 19.5, chest: 43.5, length: 28.5 }),
   },
 ];
-
-export function getProductBySlug(slug: string) {
-  return products.find((p) => p.slug === slug);
-}
-
-export function getFeaturedProducts() {
-  return products.filter((p) => p.featured);
-}
-
-export function getNewArrivals() {
-  return products.filter((p) => p.newArrival);
-}
-
-export function getRelatedProducts(slug: string, count = 4) {
-  return products.filter((p) => p.slug !== slug).slice(0, count);
-}

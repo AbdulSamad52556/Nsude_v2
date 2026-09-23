@@ -15,35 +15,18 @@ import {
   MotionValue,
 } from "framer-motion";
 import { ArrowRight } from "lucide-react";
-import { products } from "@/lib/products";
+import type { HeroSlide } from "@/lib/types";
 import { formatPrice } from "@/lib/utils";
 import { MagneticButton } from "@/components/ui/MagneticButton";
 import { useUI } from "@/context/UIContext";
 
 const ease = [0.16, 1, 0.3, 1] as const;
 
-const heroSlugs = ["core-tee", "heavy-tee", "signature-tee", "oversized-tee", "archive-tee"];
-
-const heroCutouts = [
-  { src: "/tshirts/tee-1.png", width: 433, height: 576 },
-  { src: "/tshirts/tee-2.png", width: 433, height: 576 },
-  { src: "/tshirts/tee-3.png", width: 433, height: 576 },
-  { src: "/tshirts/tee-4.png", width: 433, height: 576 },
-  { src: "/tshirts/tee-5.png", width: 433, height: 577 },
-];
-
-const heroProducts = heroSlugs
-  .map((slug) => products.find((p) => p.slug === slug))
-  .filter((p): p is (typeof products)[number] => Boolean(p))
-  .map((product, i) => ({ ...product, cutout: heroCutouts[i] }));
-
 // Scroll budget: an initial "clear the stage" phase (fade out copy, zoom the
 // shirt in) followed by PER_TEE_VH of scroll per t-shirt in the carousel.
+// The slides themselves come from the database (managed at /admin/hero).
 const INTRO_VH = 130;
 const PER_TEE_VH = 100;
-const CYCLE_VH = heroProducts.length * PER_TEE_VH;
-const TOTAL_VH = INTRO_VH + CYCLE_VH;
-const INTRO_END = INTRO_VH / TOTAL_VH;
 // How long scrolling must be idle before the carousel snaps to a tee.
 const SNAP_IDLE_MS = 120;
 // Touch scrolls end in momentum, and iOS Safari can report it in sparse,
@@ -54,7 +37,8 @@ const TOUCH_SNAP_IDLE_MS = 260;
 const SNAP_INTENT = 0.04;
 
 interface HeroCopyProps {
-  index: number;
+  /** Product of the tee currently centered, or null if there are no slides. */
+  active: HeroSlide["product"] | null;
   opacity: MotionValue<number>;
   y: MotionValue<number>;
 }
@@ -85,8 +69,7 @@ const fadeUpVariants = {
   }),
 };
 
-function HeroCopy({ index, opacity, y }: HeroCopyProps) {
-  const active = heroProducts[index];
+function HeroCopy({ active, opacity, y }: HeroCopyProps) {
   const { introReady } = useUI();
   const shouldReduceMotion = useReducedMotion();
   // Entrance animations wait for the preloader to lift (on a client-side
@@ -168,6 +151,7 @@ function HeroCopy({ index, opacity, y }: HeroCopyProps) {
 
         {/* Name/price stays visible and keeps updating throughout scroll,
             unlike the rest of the hero copy which hides once cycling starts. */}
+        {active && (
         <motion.div custom={1.1} variants={fadeUpVariants} initial={initial} animate={play}>
           <AnimatePresence mode="wait">
             <motion.div
@@ -183,6 +167,7 @@ function HeroCopy({ index, opacity, y }: HeroCopyProps) {
             </motion.div>
           </AnimatePresence>
         </motion.div>
+        )}
       </div>
     </div>
   );
@@ -286,9 +271,10 @@ interface TeeStageProps {
   zoom: MotionValue<number>;
   gate: MotionValue<number>;
   mobile: boolean;
+  slides: HeroSlide[];
 }
 
-function TeeStage({ p, zoom, gate, mobile }: TeeStageProps) {
+function TeeStage({ p, zoom, gate, mobile, slides }: TeeStageProps) {
   return (
     <motion.div
       className="pointer-events-none absolute inset-0 flex items-center justify-center overflow-hidden pb-16 will-change-transform"
@@ -305,17 +291,17 @@ function TeeStage({ p, zoom, gate, mobile }: TeeStageProps) {
             "radial-gradient(closest-side, rgba(58,58,56,0.4), rgba(58,58,56,0.28) 45%, rgba(58,58,56,0) 100%)",
         }}
       />
-      {heroProducts.map((product, i) => (
+      {slides.map((slide, i) => (
         <TeeItem
-          key={product.id}
+          key={slide.id}
           p={p}
           index={i}
           isFirst={i === 0}
-          isLast={i === heroProducts.length - 1}
+          isLast={i === slides.length - 1}
           gate={gate}
-          cutout={product.cutout}
-          name={product.name}
-          slug={product.slug}
+          cutout={slide.image}
+          name={slide.product.name}
+          slug={slide.product.slug}
           mobile={mobile}
         />
       ))}
@@ -336,36 +322,43 @@ function useIsMobile() {
   return mobile;
 }
 
-function StaticHero() {
-  const first = heroProducts[0];
+/** Single-screen hero: used under reduced motion, and when no slides are
+    configured yet (then it's just the copy on the dark stage). */
+function StaticHero({ slides }: { slides: HeroSlide[] }) {
+  const first = slides[0];
   const fullOpacity = useMotionValue(1);
   const noOffset = useMotionValue(0);
 
   return (
     <section id="home-hero" className="relative flex h-[100svh] min-h-[560px] w-full items-end overflow-hidden bg-ink">
-      <div className="absolute inset-0 flex items-center justify-center pb-16">
-        <Link
-          href={`/product/${first.slug}`}
-          aria-label={`View ${first.name}`}
-          data-cursor="View"
-          className="block"
-        >
-          <Image
-            src={first.cutout.src}
-            alt={`${first.name} product shot`}
-            width={first.cutout.width}
-            height={first.cutout.height}
-            priority
-            className="h-[42vh] w-auto object-contain drop-shadow-2xl md:h-[58vh]"
-          />
-        </Link>
-      </div>
-      <HeroCopy index={0} opacity={fullOpacity} y={noOffset} />
+      {first && (
+        <div className="absolute inset-0 flex items-center justify-center pb-16">
+          <Link
+            href={`/product/${first.product.slug}`}
+            aria-label={`View ${first.product.name}`}
+            data-cursor="View"
+            className="block"
+          >
+            <Image
+              src={first.image.src}
+              alt={`${first.product.name} product shot`}
+              width={first.image.width}
+              height={first.image.height}
+              priority
+              className="h-[42vh] w-auto object-contain drop-shadow-2xl md:h-[58vh]"
+            />
+          </Link>
+        </div>
+      )}
+      <HeroCopy active={first?.product ?? null} opacity={fullOpacity} y={noOffset} />
     </section>
   );
 }
 
-export function Hero() {
+export function Hero({ slides }: { slides: HeroSlide[] }) {
+  const count = slides.length;
+  const TOTAL_VH = INTRO_VH + count * PER_TEE_VH;
+  const INTRO_END = INTRO_VH / TOTAL_VH;
   const shouldReduceMotion = useReducedMotion();
   const wrapperRef = useRef<HTMLDivElement>(null);
   const [activeIndex, setActiveIndex] = useState(0);
@@ -388,11 +381,11 @@ export function Hero() {
 
   // Phase 1 (0 -> INTRO_END): fade out headline/CTA/labels and zoom the
   // shirt in. Phase 2 (INTRO_END -> 1): the rotation carousel through all
-  // five tees. `p` stays clamped at 0 until the intro finishes.
+  // tees. `p` stays clamped at 0 until the intro finishes.
   const chromeOpacity = useTransform(smoothScrollYProgress, [0, INTRO_END], [1, 0]);
   const chromeY = useTransform(smoothScrollYProgress, [0, INTRO_END], [0, -18]);
   const teeZoom = useTransform(smoothScrollYProgress, [0, INTRO_END], [1, 1.35]);
-  const p = useTransform(smoothScrollYProgress, [INTRO_END, 1], [0, heroProducts.length]);
+  const p = useTransform(smoothScrollYProgress, [INTRO_END, 1], [0, count]);
   // Sharp on/off switch for neighbor previews: 0 for the entire intro phase
   // (where scroll position is pinned), 1 the instant real cycling begins.
   const previewGate = useTransform(
@@ -402,7 +395,7 @@ export function Hero() {
   );
 
   useMotionValueEvent(p, "change", (v) => {
-    const idx = Math.min(heroProducts.length - 1, Math.max(0, Math.round(v)));
+    const idx = Math.min(count - 1, Math.max(0, Math.round(v)));
     setActiveIndex((prev) => (prev === idx ? prev : idx));
   });
 
@@ -415,7 +408,7 @@ export function Hero() {
   useEffect(() => {
     if (shouldReduceMotion) return;
 
-    const last = heroProducts.length - 1;
+    const last = count - 1;
     let idleTimer: ReturnType<typeof setTimeout> | undefined;
     let touching = false;
     // Carousel position (in tees) the next snap measures direction from.
@@ -430,7 +423,7 @@ export function Hero() {
       const range = el.offsetHeight - window.innerHeight;
       if (range <= 0) return null;
       const progress = (window.scrollY - top) / range;
-      const raw = ((progress - INTRO_END) / (1 - INTRO_END)) * heroProducts.length;
+      const raw = ((progress - INTRO_END) / (1 - INTRO_END)) * count;
       return { top, range, progress, raw };
     }
 
@@ -470,7 +463,7 @@ export function Hero() {
       target = Math.min(last, Math.max(0, target));
 
       anchor = target;
-      const targetProgress = INTRO_END + (target / heroProducts.length) * (1 - INTRO_END);
+      const targetProgress = INTRO_END + (target / count) * (1 - INTRO_END);
       glideTo(top + targetProgress * range);
     }
 
@@ -571,10 +564,11 @@ export function Hero() {
       window.removeEventListener("touchend", onTouchEnd);
       window.removeEventListener("touchcancel", onTouchEnd);
     };
-  }, [shouldReduceMotion]);
+  }, [shouldReduceMotion, count, INTRO_END]);
 
-  if (shouldReduceMotion) {
-    return <StaticHero />;
+  // No carousel without slides (none configured yet in /admin/hero).
+  if (shouldReduceMotion || count === 0) {
+    return <StaticHero slides={slides} />;
   }
 
   return (
@@ -587,9 +581,9 @@ export function Hero() {
       <div className="sticky top-0 h-[100svh] w-full overflow-hidden">
         {/* Keyed so the per-tee transforms rebuild with the right offsets
             when crossing the mobile breakpoint. */}
-        <TeeStage key={isMobile ? "m" : "d"} p={p} zoom={teeZoom} gate={previewGate} mobile={isMobile} />
+        <TeeStage key={isMobile ? "m" : "d"} p={p} zoom={teeZoom} gate={previewGate} mobile={isMobile} slides={slides} />
 
-        <HeroCopy index={activeIndex} opacity={chromeOpacity} y={chromeY} />
+        <HeroCopy active={slides[activeIndex]?.product ?? null} opacity={chromeOpacity} y={chromeY} />
 
         <motion.div
           style={{ opacity: chromeOpacity }}

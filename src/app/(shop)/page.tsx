@@ -5,16 +5,23 @@ import { CollectionCampaign } from "@/components/home/CollectionCampaign";
 import { ShopTheFit } from "@/components/home/ShopTheFit";
 import { Philosophy } from "@/components/home/Philosophy";
 import { Marquee } from "@/components/ui/Marquee";
+import { getFeaturedProducts, getHeroSlides, getProducts } from "@/lib/server/products";
 
-export default function HomePage() {
+export default async function HomePage() {
+  const [slides, featured, products] = await Promise.all([
+    getHeroSlides(),
+    getFeaturedProducts(),
+    getProducts(),
+  ]);
+
   return (
     <>
-      <Hero />
+      <Hero slides={slides} />
       <Marquee text="Premium Cotton — Considered Fit — Made to Keep —" />
       <BrandStatement />
-      <FeaturedCollection />
+      <FeaturedCollection products={featured} />
       <CollectionCampaign />
-      <ShopTheFit />
+      <ShopTheFit products={products} />
       <Philosophy />
     </>
   );

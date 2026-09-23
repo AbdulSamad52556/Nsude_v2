@@ -1,9 +1,9 @@
 import type { MetadataRoute } from "next";
-import { products } from "@/lib/products";
+import { getProducts } from "@/lib/server/products";
 
 const siteUrl = "https://nsude.example.com";
 
-export default function sitemap(): MetadataRoute.Sitemap {
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const staticRoutes = [
     "",
     "/shop",
@@ -20,7 +20,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     lastModified: new Date(),
   }));
 
-  const productRoutes = products.map((p) => ({
+  const productRoutes = (await getProducts()).map((p) => ({
     url: `${siteUrl}/product/${p.slug}`,
     lastModified: new Date(),
   }));

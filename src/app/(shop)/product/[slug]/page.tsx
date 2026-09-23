@@ -1,21 +1,25 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getProductBySlug, getRelatedProducts, products } from "@/lib/products";
+import { getProductBySlug, getProducts, getRelatedProducts } from "@/lib/server/products";
 import { ProductGallery } from "@/components/product/ProductGallery";
 import { ProductInfo } from "@/components/product/ProductInfo";
 import { ProductGrid } from "@/components/product/ProductGrid";
 import { SectionHeading } from "@/components/ui/SectionHeading";
 
-export function generateStaticParams() {
+// Pre-render every product at build; products added later in /admin render
+// on first visit and are cached after that.
+export async function generateStaticParams() {
+  const products = await getProducts();
   return products.map((p) => ({ slug: p.slug }));
 }
 
-export function generateMetadata({
+export async function generateMetadata({
   params,
 }: {
   params: { slug: string };
-}): Metadata {
-  const product = getProductBySlug(params.slug);
+}): Promise<Metadata> {
+  const product = await getProductBySlug(params.slug);
   if (!product) return {};
 
   return {
@@ -24,16 +28,16 @@ export function generateMetadata({
     openGraph: {
       title: `${product.name} — NSUDE`,
       description: product.description,
-      images: [{ url: product.images[0].src }],
+      images: product.images[0] ? [{ url: product.images[0].src }] : [],
     },
   };
 }
 
-export default function ProductPage({ params }: { params: { slug: string } }) {
-  const product = getProductBySlug(params.slug);
+export default async function ProductPage({ params }: { params: { slug: string } }) {
+  const product = await getProductBySlug(params.slug);
   if (!product) notFound();
 
-  const related = getRelatedProducts(product.slug, 3);
+  const related = await getRelatedProducts(product, 3);
 
   const jsonLd = {
     "@context": "https://schema.org",
@@ -58,9 +62,9 @@ export default function ProductPage({ params }: { params: { slug: string } }) {
       />
 
       <nav aria-label="Breadcrumb" className="mx-auto mb-8 max-w-content text-xs uppercase tracking-wide text-ash">
-        <a href="/shop" className="hover:text-ink">
+        <Link href="/shop" className="hover:text-ink">
           Shop
-        </a>
+        </Link>
         <span className="mx-2">/</span>
         <span className="text-ink">{product.name}</span>
       </nav>
@@ -72,10 +76,12 @@ export default function ProductPage({ params }: { params: { slug: string } }) {
         </div>
       </div>
 
-      <div className="mx-auto mt-28 max-w-content md:mt-36">
-        <SectionHeading title="You May Also Like" className="mb-12" />
-        <ProductGrid products={related} />
-      </div>
+      {related.length > 0 && (
+        <div className="mx-auto mt-28 max-w-content md:mt-36">
+          <SectionHeading title="You May Also Like" className="mb-12" />
+          <ProductGrid products={related} />
+        </div>
+      )}
     </div>
   );
 }

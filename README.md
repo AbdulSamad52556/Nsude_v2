@@ -5,11 +5,24 @@ A production-quality ecommerce frontend for NSUDE, a premium men's T-shirt label
 ## Getting Started
 
 ```bash
-npm install
+cp .env.example .env   # then fill in MongoDB, Cloudinary and admin values
+npm install            # also generates the Prisma client
+npm run db:push        # create indexes in MongoDB
+npm run db:seed        # import the starter catalog + hero slides (safe to re-run)
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000).
+Open [http://localhost:3000](http://localhost:3000). The admin panel is at [/admin](http://localhost:3000/admin); sign in with `ADMIN_EMAIL` / `ADMIN_PASSWORD` from `.env`.
+
+## Backend
+
+The backend runs inside this Next.js app:
+
+- **Database** — MongoDB Atlas via Prisma 6 (`prisma/schema.prisma`): `Product` and `HeroSlide`.
+- **Images** — Cloudinary, uploaded through `/api/admin/upload` into `nsude/products` and `nsude/hero`. Images removed from a product or slide are deleted from Cloudinary on save.
+- **Admin auth** — a single superadmin from `.env`, signed JWT in an httpOnly cookie. `src/middleware.ts` guards `/admin/*` and `/api/admin/*`.
+- **Admin API** — `src/app/api/admin/*`: products (list, create, update, delete), hero (get, replace), upload, login, logout. Inputs are validated with the zod schemas in `src/lib/validation.ts`.
+- **Storefront reads** — `src/lib/server/products.ts`. Pages are statically cached and re-rendered after any admin save (`revalidatePath`).
 
 ```bash
 npm run build   # production build
@@ -17,18 +30,11 @@ npm run start   # serve the production build
 npm run lint    # eslint
 ```
 
-## Replacing Placeholder Photography
+## Products & Photography
 
-All imagery is centralized in two files so it can be swapped without touching component code:
+Products and the home hero carousel are managed in `/admin` and stored in MongoDB. The seeded products use Unsplash placeholder photos; replace them by uploading real photos in each product's edit page. `prisma/seed-data.ts` only holds the starter catalog used by `npm run db:seed`.
 
-- `src/lib/images.ts` — campaign/editorial imagery (hero, collection campaign, about page, fit imagery).
-- `src/lib/products.ts` — per-product photography, referenced via `productImagePool` in `src/lib/images.ts`.
-
-Replace the Unsplash URLs with your own asset paths (e.g. `/images/...` served from `public/`, or a CDN/DAM URL) — no other code changes are required as long as the image dimensions are reasonably similar.
-
-## Product Data
-
-Products live entirely in `src/lib/products.ts`, typed by `src/lib/types.ts`. Each product has id, slug, price (INR), description, images, colors, sizes, category, material, fit, stock, `featured`/`newArrival` flags, and measurements — structured so it can be swapped for a real backend/CMS (Shopify, Sanity, a custom API) by replacing the data-access functions (`getProductBySlug`, `getFeaturedProducts`, etc.) with real fetches, while keeping the same shape.
+Campaign/editorial imagery (collection campaign, about page, fit imagery) is still static, in `src/lib/images.ts`.
 
 ## Cart & Checkout
 
@@ -37,9 +43,15 @@ Cart state lives in `src/context/CartContext.tsx`, persisted to `localStorage`. 
 ## Project Structure
 
 ```
+prisma/           Schema, seed script, starter catalog
 src/
-  app/            Routes (App Router)
+  app/
+    (shop)/       Storefront routes (share the shop header/footer layout)
+    admin/        Admin panel (login, dashboard, products, hero)
+    api/          Admin API + public search
+  middleware.ts   Guards /admin and /api/admin
   components/
+    admin/        Admin shell, product form, hero editor
     layout/       Navbar, MobileMenu, Footer, Preloader, CustomCursor
     home/         Homepage sections
     product/      Gallery, info, selectors, cards
@@ -48,7 +60,8 @@ src/
     shop/         Shop page filtering/sorting
     ui/           Reveal, AnimatedText, MagneticButton, SectionHeading, Newsletter, Marquee
   context/        Cart + UI (search overlay) React context
-  lib/            Types, product data, image registry, utils
+  lib/            Types, validation, image registry, utils
+    server/       DB client, Cloudinary, auth, data access (server-only)
 ```
 
 ## Notes
