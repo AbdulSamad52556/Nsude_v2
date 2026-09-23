@@ -45,6 +45,9 @@ const TOTAL_VH = INTRO_VH + CYCLE_VH;
 const INTRO_END = INTRO_VH / TOTAL_VH;
 // How long scrolling must be idle before the carousel snaps to a tee.
 const SNAP_IDLE_MS = 120;
+// Touch scrolls end in momentum, and iOS Safari can report it in sparse,
+// uneven scroll events — so wait longer after touch input before snapping.
+const TOUCH_SNAP_IDLE_MS = 260;
 // Fraction of a tee's scroll distance that counts as intent to move on —
 // small enough that a single mouse-wheel notch advances to the next tee.
 const SNAP_INTENT = 0.04;
@@ -206,7 +209,10 @@ function TeeItem({ p, index, isFirst, isLast, gate, cutout, name, slug, mobile }
   const pointerEvents = useTransform(opacity, (o) => (o > 0.05 ? "auto" : "none"));
 
   return (
-    <motion.div className="absolute" style={{ x, opacity, scale, pointerEvents }}>
+    // will-change keeps each tee on its own GPU layer, rasterized once, so
+    // Safari scales the cached bitmap instead of re-painting the image and
+    // its drop-shadow filter on every scroll frame.
+    <motion.div className="absolute will-change-transform" style={{ x, opacity, scale, pointerEvents }}>
       <motion.div
         animate={{ y: [0, -16, 0] }}
         transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
@@ -236,7 +242,7 @@ interface TeeStageProps {
 function TeeStage({ p, zoom, gate, mobile }: TeeStageProps) {
   return (
     <motion.div
-      className="pointer-events-none absolute inset-0 flex items-center justify-center overflow-hidden pb-16"
+      className="pointer-events-none absolute inset-0 flex items-center justify-center overflow-hidden pb-16 will-change-transform"
       style={{ scale: zoom }}
     >
       <div
@@ -401,26 +407,55 @@ export function Hero() {
       window.scrollTo({ top: top + targetProgress * range, behavior: "smooth" });
     }
 
-    function onScroll() {
+    // A quiet gap in scroll events doesn't prove the page has stopped: iOS
+    // momentum can go quiet mid-glide, and a smooth scrollTo then cancels
+    // the momentum and fights it (the "hang"). So confirm the position is
+    // unchanged across two frames before snapping; if it's still moving,
+    // wait for the next idle window instead.
+    function settleThenSnap() {
+      const y = window.scrollY;
+      settleFrame = requestAnimationFrame(() => {
+        settleFrame = requestAnimationFrame(() => {
+          if (window.scrollY !== y) schedule();
+          else snap();
+        });
+      });
+    }
+
+    let lastInputTouch = false;
+    let settleFrame = 0;
+    function schedule() {
       clearTimeout(idleTimer);
-      idleTimer = setTimeout(snap, SNAP_IDLE_MS);
+      cancelAnimationFrame(settleFrame);
+      idleTimer = setTimeout(settleThenSnap, lastInputTouch ? TOUCH_SNAP_IDLE_MS : SNAP_IDLE_MS);
+    }
+    function onScroll() {
+      schedule();
+    }
+    function onWheel() {
+      lastInputTouch = false;
     }
     function onTouchStart() {
       touching = true;
+      lastInputTouch = true;
       clearTimeout(idleTimer);
+      cancelAnimationFrame(settleFrame);
     }
     function onTouchEnd() {
       touching = false;
-      onScroll();
+      schedule();
     }
 
     window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("wheel", onWheel, { passive: true });
     window.addEventListener("touchstart", onTouchStart, { passive: true });
     window.addEventListener("touchend", onTouchEnd, { passive: true });
     window.addEventListener("touchcancel", onTouchEnd, { passive: true });
     return () => {
       clearTimeout(idleTimer);
+      cancelAnimationFrame(settleFrame);
       window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("wheel", onWheel);
       window.removeEventListener("touchstart", onTouchStart);
       window.removeEventListener("touchend", onTouchEnd);
       window.removeEventListener("touchcancel", onTouchEnd);
