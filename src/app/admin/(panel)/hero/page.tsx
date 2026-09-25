@@ -1,18 +1,23 @@
 import { db } from "@/lib/server/db";
-import { getHeroSlides } from "@/lib/server/products";
+import { getHeroSlides, toProduct } from "@/lib/server/products";
+import { priceRange } from "@/lib/types";
+import { formatPriceRange } from "@/lib/utils";
 import { AdminPageHeader } from "@/components/admin/AdminShell";
 import { HeroEditor } from "@/components/admin/HeroEditor";
 
 export const metadata = { title: "Hero Carousel" };
 
 export default async function AdminHeroPage() {
-  const [slides, products] = await Promise.all([
+  const [slides, rows] = await Promise.all([
     getHeroSlides(),
-    db.product.findMany({
-      select: { id: true, name: true, price: true },
-      orderBy: { name: "asc" },
-    }),
+    db.product.findMany({ orderBy: { name: "asc" } }),
   ]);
+  // A slide links to the product's default color, so show that color's price.
+  const products = rows.map(toProduct).map((p) => ({
+    id: p.id,
+    name: p.name,
+    priceLabel: formatPriceRange(priceRange(p, p.variants.slice(0, 1))),
+  }));
 
   return (
     <div>

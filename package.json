@@ -10,7 +10,9 @@
     "postinstall": "prisma generate",
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
-    "db:seed": "tsx --env-file=.env prisma/seed.ts"
+    "db:seed": "tsx --env-file=.env prisma/seed.ts",
+    "db:migrate-variants": "tsx --env-file=.env prisma/migrate-variants.ts",
+    "db:migrate-codes": "tsx --env-file=.env prisma/migrate-codes.ts && prisma db push --skip-generate"
   },
   "dependencies": {
     "@prisma/client": "^6.19.3",

@@ -3,13 +3,15 @@ import Image from "next/image";
 import { Pencil, Plus } from "lucide-react";
 import { db } from "@/lib/server/db";
 import { formatPrice } from "@/lib/utils";
+import { priceRange, totalStock } from "@/lib/types";
+import { toProduct } from "@/lib/server/products";
 import { AdminPageHeader } from "@/components/admin/AdminShell";
 import { DeleteProductButton } from "@/components/admin/DeleteProductButton";
 
 export const metadata = { title: "Products" };
 
 export default async function AdminProductsPage() {
-  const products = await db.product.findMany({ orderBy: { createdAt: "desc" } });
+  const products = (await db.product.findMany({ orderBy: { createdAt: "desc" } })).map(toProduct);
 
   return (
     <div>
@@ -37,6 +39,7 @@ export default async function AdminProductsPage() {
               <tr>
                 <th className="p-3 font-normal">Product</th>
                 <th className="p-3 font-normal">Price</th>
+                <th className="p-3 font-normal">Colors</th>
                 <th className="p-3 font-normal">Stock</th>
                 <th className="p-3 font-normal">Fit</th>
                 <th className="p-3 font-normal">Flags</th>
@@ -49,18 +52,43 @@ export default async function AdminProductsPage() {
                   <td className="p-3">
                     <Link href={`/admin/products/${p.id}`} className="flex items-center gap-3">
                       <div className="relative h-14 w-11 shrink-0 overflow-hidden bg-bone">
-                        {p.images[0] && (
-                          <Image src={p.images[0].src} alt="" fill sizes="44px" className="object-cover" />
+                        {p.variants[0]?.images[0] && (
+                          <Image src={p.variants[0].images[0].src} alt="" fill sizes="44px" className="object-cover" />
                         )}
                       </div>
                       <div>
                         <p className="uppercase tracking-wide">{p.name}</p>
-                        <p className="text-xs text-ash">/{p.slug}</p>
+                        <p className="font-mono text-xs text-ash">{p.variants.map((v) => v.code).join(" · ")}</p>
                       </div>
                     </Link>
                   </td>
-                  <td className="p-3">{formatPrice(p.price)}</td>
-                  <td className={p.stock < 15 ? "p-3 text-rust" : "p-3"}>{p.stock}</td>
+                  <td className="p-3">
+                    {(() => {
+                      // Full range across every color and size.
+                      const r = priceRange(p, p.variants);
+                      return r.min === r.max ? formatPrice(r.min) : `${formatPrice(r.min)} – ${formatPrice(r.max)}`;
+                    })()}
+                  </td>
+                  <td className="p-3">
+                    <div className="flex items-center gap-1" title={p.variants.map((v) => `${v.name}: ${v.stock}`).join("\n")}>
+                      {p.variants.map((v) => (
+                        <span
+                          key={v.code}
+                          className="h-3.5 w-3.5 rounded-full border border-graphite/20"
+                          style={{ backgroundColor: v.hex }}
+                        />
+                      ))}
+                    </div>
+                  </td>
+                  <td className="p-3">
+                    {/* Total across colors; flag any color that's running low. */}
+                    {totalStock(p)}
+                    {p.variants.some((v) => v.stock < 15) && (
+                      <span className="ml-2 text-xs text-rust">
+                        {p.variants.filter((v) => v.stock < 15).length} low
+                      </span>
+                    )}
+                  </td>
                   <td className="p-3 text-graphite">{p.fit}</td>
                   <td className="p-3">
                     <div className="flex flex-wrap gap-1">

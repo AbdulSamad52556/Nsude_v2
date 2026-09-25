@@ -2,8 +2,19 @@
 // seeding, products are managed from /admin — edits here have no effect on
 // an already-seeded database. The `id` values are ignored (MongoDB assigns
 // its own).
-import { Product, Size } from "../src/lib/types";
+import { Product, ProductImage, Size } from "../src/lib/types";
 import { productImagePool, campaignImages } from "../src/lib/images";
+
+/** Starter-catalog shape: one shared image set, color list and stock per
+    product. The seed script turns each color into its own variant. */
+type SeedProduct = Omit<Product, "variants"> & {
+  /** Seed-only key used to link hero slides to products; not stored. */
+  slug: string;
+  images: ProductImage[];
+  colors: { name: string; hex: string }[];
+  stock: number;
+  unavailableSizes?: Size[];
+};
 
 const SIZES: Size[] = ["S", "M", "L", "XL", "XXL"];
 
@@ -36,7 +47,7 @@ function measurements(base: {
   ];
 }
 
-export const products: Product[] = [
+export const products: SeedProduct[] = [
   {
     id: "p1",
     name: "NSUDE CORE TEE",

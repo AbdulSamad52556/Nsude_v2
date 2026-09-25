@@ -10,5 +10,5 @@ export default async function AdminPanelLayout({ children }: { children: React.R
   const session = await getAdminSession();
   if (!session) redirect("/admin/login");
 
-  return <AdminShell email={session.email}>{children}</AdminShell>;
+  return <AdminShell>{children}</AdminShell>;
 }

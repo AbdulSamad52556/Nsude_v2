@@ -1,23 +1,43 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowRight } from "lucide-react";
-import { Product, Size } from "@/lib/types";
-import { formatPrice, cx } from "@/lib/utils";
+import { ColorVariant, Product, Size, priceFor, priceRange } from "@/lib/types";
+import { formatPrice, formatPriceRange, cx } from "@/lib/utils";
 import { useCart } from "@/context/CartContext";
 import { ColorSelector } from "./ColorSelector";
 import { SizeSelector } from "./SizeSelector";
 import { QuantitySelector } from "./QuantitySelector";
 import { AccordionItem } from "./Accordion";
 
-export function ProductInfo({ product }: { product: Product }) {
-  const [color, setColor] = useState(product.colors[0].name);
+interface ProductInfoProps {
+  product: Product;
+  /** The selected colorway; stock and sold-out sizes come from it. */
+  variant: ColorVariant;
+  onColorChange: (code: string) => void;
+}
+
+export function ProductInfo({ product, variant, onColorChange }: ProductInfoProps) {
   const [size, setSize] = useState<Size | null>(null);
   const [quantity, setQuantity] = useState(1);
   const [error, setError] = useState(false);
   const { addItem } = useCart();
   const router = useRouter();
+
+  const soldOut = variant.stock === 0;
+  // Price depends on color and size: exact once a size is picked, else the
+  // color's range ("From ₹…") if its sizes are priced differently.
+  const range = priceRange(product, [variant]);
+  const priceText = size ? formatPrice(priceFor(product, variant, size)) : formatPriceRange(range);
+  const sizesVaryInPrice = range.min !== range.max;
+  // A sold-out color has no sizes to pick; otherwise use its own list.
+  const unavailableSizes = soldOut ? product.sizes : variant.unavailableSizes;
+
+  // Switching to a color where the chosen size is sold out clears the pick.
+  useEffect(() => {
+    setSize((current) => (current && unavailableSizes.includes(current) ? null : current));
+  }, [unavailableSizes]);
 
   function validateSize() {
     if (!size) {
@@ -28,13 +48,13 @@ export function ProductInfo({ product }: { product: Product }) {
   }
 
   function handleAddToBag() {
-    if (!validateSize() || !size) return;
-    addItem(product, size, color, quantity);
+    if (soldOut || !validateSize() || !size) return;
+    addItem(product, variant, size, quantity);
   }
 
   function handleBuyNow() {
-    if (!validateSize() || !size) return;
-    addItem(product, size, color, quantity);
+    if (soldOut || !validateSize() || !size) return;
+    addItem(product, variant, size, quantity);
     router.push("/checkout");
   }
 
@@ -49,19 +69,25 @@ export function ProductInfo({ product }: { product: Product }) {
         <h1 className="text-display-md font-medium uppercase tracking-tighter text-ink">
           {product.name}
         </h1>
-        <p className="mt-2 text-lg text-ink">{formatPrice(product.price)}</p>
+        <p className="mt-2 text-lg text-ink" aria-live="polite">{priceText}</p>
       </div>
 
       <p className="max-w-md text-sm leading-relaxed text-graphite">
         {product.description}
       </p>
 
-      <ColorSelector colors={product.colors} selected={color} onChange={setColor} />
+      <ColorSelector variants={product.variants} selected={variant.code} onChange={onColorChange} />
 
       <div>
         <SizeSelector
           sizes={product.sizes}
-          unavailableSizes={product.unavailableSizes}
+          unavailableSizes={unavailableSizes}
+          // Show each size's price only when this color's sizes differ.
+          prices={
+            sizesVaryInPrice
+              ? Object.fromEntries(product.sizes.map((s) => [s, formatPrice(priceFor(product, variant, s))]))
+              : undefined
+          }
           selected={size}
           onChange={(s) => {
             setSize(s);
@@ -84,26 +110,35 @@ export function ProductInfo({ product }: { product: Product }) {
         <button
           type="button"
           onClick={handleAddToBag}
-          className="group flex h-14 w-full items-center justify-center gap-2 bg-ink text-sm uppercase tracking-widest2 text-bone transition-colors duration-300 hover:bg-graphite"
+          disabled={soldOut}
+          className="group flex h-14 w-full items-center justify-center gap-2 bg-ink text-sm uppercase tracking-widest2 text-bone transition-colors duration-300 hover:bg-graphite disabled:cursor-not-allowed disabled:bg-graphite/40"
         >
-          Add to Bag
-          <ArrowRight
-            size={16}
-            strokeWidth={1.5}
-            className="transition-transform duration-300 group-hover:translate-x-1"
-          />
+          {soldOut ? `${variant.name} — Sold Out` : "Add to Bag"}
+          {!soldOut && (
+            <ArrowRight
+              size={16}
+              strokeWidth={1.5}
+              className="transition-transform duration-300 group-hover:translate-x-1"
+            />
+          )}
         </button>
-        <button
-          type="button"
-          onClick={handleBuyNow}
-          className="flex h-14 w-full items-center justify-center border border-ink text-sm uppercase tracking-widest2 text-ink transition-colors duration-300 hover:bg-ink hover:text-bone"
-        >
-          Buy Now
-        </button>
+        {!soldOut && (
+          <button
+            type="button"
+            onClick={handleBuyNow}
+            className="flex h-14 w-full items-center justify-center border border-ink text-sm uppercase tracking-widest2 text-ink transition-colors duration-300 hover:bg-ink hover:text-bone"
+          >
+            Buy Now
+          </button>
+        )}
       </div>
 
-      <div className={cx(product.stock < 15 && "text-rust", "text-xs uppercase tracking-widest2 text-ash")}>
-        {product.stock < 15 ? `Only ${product.stock} left in stock` : "In stock, ready to ship"}
+      <div className={cx("text-xs uppercase tracking-widest2", variant.stock < 15 ? "text-rust" : "text-ash")}>
+        {soldOut
+          ? "Sold out in this color — try another"
+          : variant.stock < 15
+            ? `Only ${variant.stock} left in ${variant.name}`
+            : "In stock, ready to ship"}
       </div>
 
       <div>

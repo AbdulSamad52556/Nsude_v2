@@ -40,6 +40,21 @@ export function uploadImage(buffer: Buffer, folder: UploadFolder): Promise<Uploa
   });
 }
 
+/** Import an image from a public URL. Cloudinary fetches it (not our
+    server), so a pasted URL can't be used to probe our internal network. */
+export async function uploadImageFromUrl(url: string, folder: UploadFolder): Promise<UploadedImage> {
+  const result = await cloudinary.uploader.upload(url, {
+    folder: UPLOAD_FOLDERS[folder],
+    resource_type: "image",
+  });
+  return {
+    src: result.secure_url,
+    publicId: result.public_id,
+    width: result.width,
+    height: result.height,
+  };
+}
+
 /** Best-effort delete: a failed cleanup shouldn't fail the admin's save. */
 export async function deleteImages(publicIds: Array<string | null | undefined>) {
   const ids = publicIds.filter((id): id is string => Boolean(id));

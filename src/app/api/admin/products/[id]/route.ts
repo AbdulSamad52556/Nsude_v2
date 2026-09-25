@@ -1,10 +1,11 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { Prisma } from "@prisma/client";
 import { db } from "@/lib/server/db";
 import { requireAdmin } from "@/lib/server/auth";
 import { deleteImages } from "@/lib/server/cloudinary";
-import { toProduct } from "@/lib/server/products";
+import { assignVariantCodes, productImageIds, toProduct } from "@/lib/server/products";
 import { isObjectId, revalidateStorefront } from "@/lib/server/revalidate";
-import { fieldErrors, productInputSchema } from "@/lib/validation";
+import { fieldErrors, productInputSchema, withDerivedPrice } from "@/lib/validation";
 
 type Params = { params: { id: string } };
 
@@ -35,21 +36,27 @@ export async function PUT(request: NextRequest, { params }: Params) {
     );
   }
 
-  if (parsed.data.slug !== existing.slug) {
-    const taken = await db.product.findUnique({ where: { slug: parsed.data.slug } });
-    if (taken) {
-      return NextResponse.json(
-        { error: "Slug already in use", fields: { slug: "Another product already uses this slug" } },
-        { status: 409 }
-      );
+  const input = withDerivedPrice(parsed.data);
+
+  // Existing colors keep their product codes; new colors get fresh ones.
+  // (Retry on the rare race where another save took a new code first.)
+  const ownCodes = new Set(existing.variants.map((v) => v.code));
+  let updated;
+  for (let attempt = 0; ; attempt++) {
+    try {
+      const variants = await assignVariantCodes(input.variants, ownCodes);
+      updated = await db.product.update({ where: { id: params.id }, data: { ...input, variants } });
+      break;
+    } catch (err) {
+      const duplicateCode = err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002";
+      if (!duplicateCode || attempt >= 2) throw err;
     }
   }
 
-  const updated = await db.product.update({ where: { id: params.id }, data: parsed.data });
-
-  // Remove Cloudinary assets for images the admin took off this product.
-  const kept = new Set(parsed.data.images.map((i) => i.publicId).filter(Boolean));
-  await deleteImages(existing.images.map((i) => i.publicId).filter((id) => id && !kept.has(id)));
+  // Remove Cloudinary assets for photos the admin took off any color
+  // (including every photo of a color that was deleted).
+  const kept = new Set(productImageIds(parsed.data));
+  await deleteImages(productImageIds(existing).filter((id) => !kept.has(id)));
 
   revalidateStorefront();
   return NextResponse.json({ product: toProduct(updated) });
@@ -69,7 +76,7 @@ export async function DELETE(_request: NextRequest, { params }: Params) {
   // Hero slides pointing at this product are deleted with it (cascade).
   await db.product.delete({ where: { id: params.id } });
   await deleteImages([
-    ...existing.images.map((i) => i.publicId),
+    ...productImageIds(existing),
     ...existing.heroSlides.map((s) => s.image.publicId),
   ]);
 

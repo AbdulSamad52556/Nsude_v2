@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { ChevronDown, X } from "lucide-react";
-import { Product, Size } from "@/lib/types";
+import { Product, ProductListing, Size, priceRange } from "@/lib/types";
 import { ProductGrid } from "@/components/product/ProductGrid";
 import { cx } from "@/lib/utils";
 
@@ -68,9 +68,14 @@ function FilterMenu({
 }
 
 export function ShopView({ products }: { products: Product[] }) {
-  const allColors = useMemo(
-    () => Array.from(new Set(products.flatMap((p) => p.colors.map((c) => c.name)))),
+  // One card per colorway: "Core Tee · Black", "Core Tee · Grey", …
+  const listings = useMemo<ProductListing[]>(
+    () => products.flatMap((product) => product.variants.map((variant) => ({ product, variant }))),
     [products]
+  );
+  const allColors = useMemo(
+    () => Array.from(new Set(listings.map((l) => l.variant.name))),
+    [listings]
   );
   const searchParams = useSearchParams();
   const initialSort = (searchParams.get("sort") as SortKey) || "featured";
@@ -82,31 +87,40 @@ export function ShopView({ products }: { products: Product[] }) {
   const [sort, setSort] = useState<SortKey>(initialSort);
 
   const filtered = useMemo(() => {
-    let list = [...products];
+    let list = [...listings];
 
-    if (category !== "All") list = list.filter((p) => p.category === category);
-    if (size) list = list.filter((p) => p.sizes.includes(size) && !p.unavailableSizes?.includes(size));
-    if (color) list = list.filter((p) => p.colors.some((c) => c.name === color));
-    if (priceBand === "under-1700") list = list.filter((p) => p.price < 1700);
-    if (priceBand === "1700-2000") list = list.filter((p) => p.price >= 1700 && p.price <= 2000);
-    if (priceBand === "above-2000") list = list.filter((p) => p.price > 2000);
+    if (category !== "All") list = list.filter(({ product }) => product.category === category);
+    // A size counts only if this colorway has it in stock.
+    if (size) {
+      list = list.filter(
+        ({ product, variant }) =>
+          product.sizes.includes(size) && !variant.unavailableSizes.includes(size) && variant.stock > 0
+      );
+    }
+    if (color) list = list.filter(({ variant }) => variant.name === color);
+    // Price filters and sorts use each colorway's starting ("From") price.
+    const from = (l: ProductListing) => priceRange(l.product, [l.variant]).min;
+    if (priceBand === "under-1700") list = list.filter((l) => from(l) < 1700);
+    if (priceBand === "1700-2000") list = list.filter((l) => from(l) >= 1700 && from(l) <= 2000);
+    if (priceBand === "above-2000") list = list.filter((l) => from(l) > 2000);
 
+    // Sorts are stable, so a product's colorways stay together in order.
     switch (sort) {
       case "newest":
-        list.sort((a, b) => Number(b.newArrival) - Number(a.newArrival));
+        list.sort((a, b) => Number(b.product.newArrival) - Number(a.product.newArrival));
         break;
       case "price-asc":
-        list.sort((a, b) => a.price - b.price);
+        list.sort((a, b) => from(a) - from(b));
         break;
       case "price-desc":
-        list.sort((a, b) => b.price - a.price);
+        list.sort((a, b) => from(b) - from(a));
         break;
       default:
-        list.sort((a, b) => Number(b.featured) - Number(a.featured));
+        list.sort((a, b) => Number(b.product.featured) - Number(a.product.featured));
     }
 
     return list;
-  }, [products, category, size, color, priceBand, sort]);
+  }, [listings, category, size, color, priceBand, sort]);
 
   const hasActiveFilters = category !== "All" || size || color || priceBand !== "all";
 
@@ -239,7 +253,7 @@ export function ShopView({ products }: { products: Product[] }) {
         </FilterMenu>
       </div>
 
-      <ProductGrid products={filtered} />
+      <ProductGrid listings={filtered} />
     </div>
   );
 }

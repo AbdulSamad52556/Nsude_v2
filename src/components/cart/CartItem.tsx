@@ -11,7 +11,7 @@ export function CartItem({ line }: { line: CartLine }) {
   return (
     <li className="flex gap-4 border-b border-graphite/10 py-6">
       <div className="relative h-28 w-24 shrink-0 overflow-hidden bg-bone">
-        <Image src={line.image} alt={line.name} fill sizes="96px" className="object-cover" />
+        {line.image && <Image src={line.image} alt={line.name} fill sizes="96px" className="object-cover" />}
       </div>
 
       <div className="flex flex-1 flex-col justify-between">

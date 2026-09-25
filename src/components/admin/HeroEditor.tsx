@@ -5,13 +5,14 @@ import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 import { ArrowDown, ArrowUp, Check, ImagePlus, Loader2, Plus, Trash2 } from "lucide-react";
 import type { HeroSlide } from "@/lib/types";
-import { formatPrice } from "@/lib/utils";
 import { ApiError, apiFetch, uploadImage } from "./api";
+import { Select } from "./Select";
 
 interface ProductOption {
   id: string;
   name: string;
-  price: number;
+  /** Price shown on the hero for this product (its default color). */
+  priceLabel: string;
 }
 
 interface DraftSlide {
@@ -162,11 +163,10 @@ export function HeroEditor({
                 <label htmlFor={`product-${slide.key}`} className="mb-2 block text-[11px] uppercase tracking-widest2 text-ash">
                   Links to product
                 </label>
-                <select
+                <Select
                   id={`product-${slide.key}`}
                   value={slide.productId}
                   onChange={(e) => update(slide.key, { productId: e.target.value })}
-                  className="h-11 w-full border border-graphite/20 bg-transparent px-3 text-sm focus:border-ink focus:outline-none"
                 >
                   <option value="">Select a product…</option>
                   {products.map((p) => (
@@ -174,10 +174,10 @@ export function HeroEditor({
                       {p.name}
                     </option>
                   ))}
-                </select>
+                </Select>
                 {product && (
                   <p className="mt-2 text-xs text-ash">
-                    Shown as &ldquo;{product.name}&rdquo; · {formatPrice(product.price)}
+                    Shown as &ldquo;{product.name}&rdquo; · {product.priceLabel}
                   </p>
                 )}
               </div>

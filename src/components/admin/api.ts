@@ -40,3 +40,12 @@ export async function uploadImage(file: File, folder: "products" | "hero") {
   if (!res.ok) throw new ApiError(data.error ?? "Upload failed", res.status);
   return data.image as UploadedImage;
 }
+
+/** Import a remote image by URL; it's copied into Cloudinary. */
+export async function uploadImageFromUrl(url: string, folder: "products" | "hero") {
+  const data = await apiFetch<{ image: UploadedImage }>("/api/admin/upload", {
+    method: "POST",
+    body: JSON.stringify({ url, folder }),
+  });
+  return data.image;
+}
