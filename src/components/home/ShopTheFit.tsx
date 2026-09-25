@@ -5,9 +5,9 @@ import Link from "next/link";
 import { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { ArrowUpRight } from "lucide-react";
-import type { Product } from "@/lib/types";
+import { priceRange, productHref, type Product } from "@/lib/types";
 import { campaignImages } from "@/lib/images";
-import { formatPrice } from "@/lib/utils";
+import { formatPriceRange } from "@/lib/utils";
 import { SectionHeading } from "@/components/ui/SectionHeading";
 
 const fits = [
@@ -110,21 +110,26 @@ export function ShopTheFit({ products }: { products: Product[] }) {
             </AnimatePresence>
 
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-              {matches.map((product) => (
+              {matches.map((product) => {
+                const variant = product.variants[0];
+                const image = variant?.images[0];
+                return (
                 <Link
                   key={product.id}
-                  href={`/product/${product.slug}`}
+                  href={productHref(variant)}
                   data-cursor="View"
                   className="group flex flex-col gap-3"
                 >
                   <div className="relative aspect-[4/5] overflow-hidden bg-bone">
-                    <Image
-                      src={product.images[0].src}
-                      alt={product.images[0].alt}
-                      fill
-                      sizes="200px"
-                      className="object-cover transition-transform duration-700 ease-editorial group-hover:scale-[1.04]"
-                    />
+                    {image && (
+                      <Image
+                        src={image.src}
+                        alt={image.alt || product.name}
+                        fill
+                        sizes="200px"
+                        className="object-cover transition-transform duration-700 ease-editorial group-hover:scale-[1.04]"
+                      />
+                    )}
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-xs uppercase tracking-wide text-ink">
@@ -136,9 +141,10 @@ export function ShopTheFit({ products }: { products: Product[] }) {
                       className="text-ash transition-transform duration-300 group-hover:translate-x-0.5 group-hover:-translate-y-0.5"
                     />
                   </div>
-                  <span className="text-xs text-ash">{formatPrice(product.price)}</span>
+                  <span className="text-xs text-ash">{formatPriceRange(priceRange(product, variant ? [variant] : []))}</span>
                 </Link>
-              ))}
+                );
+              })}
             </div>
           </div>
         </div>

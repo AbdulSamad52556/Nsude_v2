@@ -7,6 +7,8 @@ import { cx } from "@/lib/utils";
 interface SizeSelectorProps {
   sizes: Size[];
   unavailableSizes?: Size[];
+  /** Formatted price per size, shown under each size when prices differ. */
+  prices?: Partial<Record<Size, string>>;
   selected: Size | null;
   onChange: (size: Size) => void;
 }
@@ -14,6 +16,7 @@ interface SizeSelectorProps {
 export function SizeSelector({
   sizes,
   unavailableSizes = [],
+  prices,
   selected,
   onChange,
 }: SizeSelectorProps) {
@@ -45,7 +48,8 @@ export function SizeSelector({
               onClick={() => onChange(size)}
               aria-pressed={isSelected}
               className={cx(
-                "relative flex h-12 items-center justify-center border text-sm uppercase tracking-wide transition-all duration-200 ease-editorial",
+                "relative flex flex-col items-center justify-center border text-sm uppercase tracking-wide transition-all duration-200 ease-editorial",
+                prices ? "h-14 gap-0.5" : "h-12",
                 isUnavailable &&
                   "cursor-not-allowed border-graphite/10 text-mist line-through",
                 !isUnavailable &&
@@ -57,6 +61,9 @@ export function SizeSelector({
               )}
             >
               {size}
+              {prices?.[size] && (
+                <span className="text-[10px] normal-case tracking-normal opacity-70">{prices[size]}</span>
+              )}
             </button>
           );
         })}

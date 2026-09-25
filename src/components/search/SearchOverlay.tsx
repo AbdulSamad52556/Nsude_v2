@@ -6,15 +6,16 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useUI } from "@/context/UIContext";
-import { formatPrice } from "@/lib/utils";
+import { formatPriceRange } from "@/lib/utils";
 
 const popularSearches = ["Core Tee", "Oversized", "Heavyweight", "Black", "Archive"];
 
 interface SearchResult {
   id: string;
   name: string;
-  slug: string;
-  price: number;
+  color: string;
+  href: string;
+  priceRange: { min: number; max: number };
   fit: string;
   image: string | null;
 }
@@ -148,7 +149,7 @@ export function SearchOverlay() {
                       transition={{ delay: i * 0.05, duration: 0.4 }}
                     >
                       <Link
-                        href={`/product/${product.slug}`}
+                        href={product.href}
                         onClick={closeSearch}
                         className="group flex items-center gap-5 border-b border-graphite/10 py-4"
                       >
@@ -169,12 +170,12 @@ export function SearchOverlay() {
                               {product.name}
                             </h3>
                             <p className="mt-1 text-xs text-ash">
-                              {product.fit} fit
+                              {product.color} · {product.fit} fit
                             </p>
                           </div>
                           <div className="flex items-center gap-3">
                             <span className="text-sm text-ink">
-                              {formatPrice(product.price)}
+                              {formatPriceRange(product.priceRange)}
                             </span>
                             <ArrowUpRight
                               size={16}

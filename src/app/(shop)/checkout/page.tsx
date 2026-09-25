@@ -158,7 +158,7 @@ export default function CheckoutPage() {
             {lines.map((line) => (
               <li key={line.key} className="flex items-center gap-4">
                 <div className="relative h-16 w-14 shrink-0 overflow-hidden bg-bone">
-                  <Image src={line.image} alt={line.name} fill sizes="56px" className="object-cover" />
+                  {line.image && <Image src={line.image} alt={line.name} fill sizes="56px" className="object-cover" />}
                   <span className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-ink text-[10px] text-bone">
                     {line.quantity}
                   </span>

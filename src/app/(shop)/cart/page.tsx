@@ -4,7 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useState } from "react";
 import { ArrowRight, Minus, Plus, X, ShoppingBag } from "lucide-react";
-import { useCart } from "@/context/CartContext";
+import { cartLineHref, useCart } from "@/context/CartContext";
 import { formatPrice } from "@/lib/utils";
 
 const FREE_SHIPPING_THRESHOLD = 2999;
@@ -59,15 +59,15 @@ export default function CartPage() {
               key={line.key}
               className="flex gap-6 border-b border-graphite/10 py-8 first:pt-0"
             >
-              <Link href={`/product/${line.slug}`} className="relative h-40 w-32 shrink-0 overflow-hidden bg-bone">
-                <Image src={line.image} alt={line.name} fill sizes="128px" className="object-cover" />
+              <Link href={cartLineHref(line)} className="relative h-40 w-32 shrink-0 overflow-hidden bg-bone">
+                {line.image && <Image src={line.image} alt={line.name} fill sizes="128px" className="object-cover" />}
               </Link>
 
               <div className="flex flex-1 flex-col justify-between">
                 <div className="flex items-start justify-between gap-4">
                   <div>
                     <Link
-                      href={`/product/${line.slug}`}
+                      href={cartLineHref(line)}
                       className="text-sm uppercase tracking-wide text-ink hover:opacity-70"
                     >
                       {line.name}

@@ -6,6 +6,11 @@ export function formatPrice(value: number) {
   }).format(value);
 }
 
+/** "₹1,799", or "From ₹1,799" when the price varies (e.g. by size). */
+export function formatPriceRange(range: { min: number; max: number }) {
+  return range.min === range.max ? formatPrice(range.min) : `From ${formatPrice(range.min)}`;
+}
+
 export function cx(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(" ");
 }

@@ -6,6 +6,7 @@ import path from "path";
 import { PrismaClient } from "@prisma/client";
 import { v2 as cloudinary } from "cloudinary";
 import { heroSeed, products } from "./seed-data";
+import { generateCodes } from "../src/lib/codes";
 
 const db = new PrismaClient();
 
@@ -35,14 +36,27 @@ async function seedProducts() {
   // Stagger createdAt so the storefront's "oldest first" order matches the
   // original catalog order.
   const base = Date.now() - products.length * 1000;
+  const existing = await db.product.findMany({ select: { variants: { select: { code: true } } } });
+  const taken = new Set(existing.flatMap((p) => p.variants.map((v) => v.code)));
   for (const [i, p] of products.entries()) {
-    const exists = await db.product.findUnique({ where: { slug: p.slug } });
+    const exists = await db.product.findFirst({ where: { name: p.name } });
     if (exists) continue;
-    const { id: _ignored, ...data } = p;
+    const { id: _ignored, slug: _seedKey, images, colors, stock, unavailableSizes, ...data } = p;
+    // Each starter color becomes a variant sharing the placeholder photos
+    // (real per-color photos are added from /admin), with its own code.
+    const codes = generateCodes(colors.length, taken);
+    const variants = colors.map((c, ci) => ({
+      name: c.name,
+      code: codes[ci],
+      hex: c.hex,
+      images: images.map((img) => ({ ...img, alt: `${img.alt} (${c.name})` })),
+      stock,
+      unavailableSizes: unavailableSizes ?? [],
+    }));
     await db.product.create({
       data: {
         ...data,
-        unavailableSizes: data.unavailableSizes ?? [],
+        variants,
         compareAtPrice: data.compareAtPrice ?? null,
         createdAt: new Date(base + i * 1000),
       },
@@ -58,7 +72,8 @@ async function seedHero() {
     return;
   }
   for (const [position, slide] of heroSeed.entries()) {
-    const product = await db.product.findUnique({ where: { slug: slide.slug } });
+    const name = products.find((p) => p.slug === slide.slug)?.name;
+    const product = name ? await db.product.findFirst({ where: { name } }) : null;
     if (!product) {
       console.warn(`Hero slide ${position + 1}: product "${slide.slug}" not found, skipped`);
       continue;

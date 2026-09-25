@@ -8,18 +8,26 @@ import {
   useMemo,
   useState,
 } from "react";
-import { Product, Size } from "@/lib/types";
+import { ColorVariant, Product, Size, priceFor } from "@/lib/types";
 
 export interface CartLine {
   key: string;
   productId: string;
   name: string;
-  slug: string;
   image: string;
   price: number;
   size: Size;
+  /** Color name, for display. */
   color: string;
+  /** Product code of this colorway (links to /product/<code>). Absent on
+      lines saved in the bag before product codes existed. */
+  code?: string;
   quantity: number;
+}
+
+/** Where a bag line links: its colorway's page, or the shop for old lines. */
+export function cartLineHref(line: CartLine) {
+  return line.code ? `/product/${line.code}` : "/shop";
 }
 
 interface CartContextValue {
@@ -27,7 +35,7 @@ interface CartContextValue {
   isOpen: boolean;
   openCart: () => void;
   closeCart: () => void;
-  addItem: (product: Product, size: Size, color: string, quantity?: number) => void;
+  addItem: (product: Product, variant: ColorVariant, size: Size, quantity?: number) => void;
   removeItem: (key: string) => void;
   updateQuantity: (key: string, quantity: number) => void;
   clear: () => void;
@@ -59,8 +67,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   }, [lines, hydrated]);
 
   const addItem = useCallback(
-    (product: Product, size: Size, color: string, quantity = 1) => {
-      const key = `${product.id}-${size}-${color}`;
+    (product: Product, variant: ColorVariant, size: Size, quantity = 1) => {
+      const key = `${variant.code}-${size}`;
       setLines((prev) => {
         const existing = prev.find((l) => l.key === key);
         if (existing) {
@@ -74,11 +82,12 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
             key,
             productId: product.id,
             name: product.name,
-            slug: product.slug,
-            image: product.images[0].src,
-            price: product.price,
+            image: variant.images[0]?.src ?? "",
+            // The price of this exact color + size.
+            price: priceFor(product, variant, size),
             size,
-            color,
+            color: variant.name,
+            code: variant.code,
             quantity,
           },
         ];

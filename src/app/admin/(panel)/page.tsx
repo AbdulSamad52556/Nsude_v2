@@ -9,22 +9,21 @@ export const metadata = { title: "Dashboard" };
 const LOW_STOCK = 15;
 
 export default async function AdminDashboard() {
-  const [productCount, featuredCount, heroCount, lowStock] = await Promise.all([
-    db.product.count(),
-    db.product.count({ where: { featured: true } }),
-    db.heroSlide.count(),
-    db.product.findMany({
-      where: { stock: { lt: LOW_STOCK } },
-      orderBy: { stock: "asc" },
-      take: 8,
-    }),
-  ]);
+  const [products, heroCount] = await Promise.all([db.product.findMany(), db.heroSlide.count()]);
+
+  // Stock lives on each color, so low stock is tracked per colorway.
+  const lowColors = products
+    .flatMap((p) => p.variants.map((v) => ({ product: p, variant: v })))
+    .filter(({ variant }) => variant.stock < LOW_STOCK)
+    .sort((a, b) => a.variant.stock - b.variant.stock);
+  const lowStock = lowColors.slice(0, 8);
+  const colorCount = products.reduce((n, p) => n + p.variants.length, 0);
 
   const stats = [
-    { label: "Products", value: productCount, href: "/admin/products" },
-    { label: "Featured", value: featuredCount, href: "/admin/products", hint: "Home page shows the first 4" },
+    { label: "Products", value: products.length, href: "/admin/products", hint: `${colorCount} colorways in the shop` },
+    { label: "Featured", value: products.filter((p) => p.featured).length, href: "/admin/products", hint: "Home page shows the first 4" },
     { label: "Hero slides", value: heroCount, href: "/admin/hero" },
-    { label: `Low stock (<${LOW_STOCK})`, value: lowStock.length, href: "/admin/products" },
+    { label: `Low stock (<${LOW_STOCK})`, value: lowColors.length, href: "/admin/products", hint: "Colors running low" },
   ];
 
   return (
@@ -65,21 +64,27 @@ export default async function AdminDashboard() {
         </div>
         {lowStock.length === 0 ? (
           <p className="border border-graphite/15 p-6 text-sm text-graphite">
-            Everything has at least {LOW_STOCK} in stock.
+            Every color has at least {LOW_STOCK} in stock.
           </p>
         ) : (
           <ul className="divide-y divide-graphite/10 border border-graphite/15">
-            {lowStock.map((p) => (
-              <li key={p.id}>
+            {lowStock.map(({ product: p, variant: v }) => (
+              <li key={v.code}>
                 <Link href={`/admin/products/${p.id}`} className="flex items-center gap-4 p-3 hover:bg-bone">
                   <div className="relative h-14 w-11 shrink-0 overflow-hidden bg-bone">
-                    {p.images[0] && (
-                      <Image src={p.images[0].src} alt="" fill sizes="44px" className="object-cover" />
+                    {v.images[0] && (
+                      <Image src={v.images[0].src} alt="" fill sizes="44px" className="object-cover" />
                     )}
                   </div>
-                  <span className="flex-1 text-sm uppercase tracking-wide">{p.name}</span>
-                  <span className={p.stock === 0 ? "text-sm text-rust" : "text-sm text-graphite"}>
-                    {p.stock === 0 ? "Sold out" : `${p.stock} left`}
+                  <span className="flex flex-1 items-center gap-2 text-sm uppercase tracking-wide">
+                    {p.name}
+                    <span className="flex items-center gap-1.5 text-xs normal-case tracking-normal text-ash">
+                      <span className="h-2.5 w-2.5 rounded-full border border-graphite/20" style={{ backgroundColor: v.hex }} />
+                      {v.name}
+                    </span>
+                  </span>
+                  <span className={v.stock === 0 ? "text-sm text-rust" : "text-sm text-graphite"}>
+                    {v.stock === 0 ? "Sold out" : `${v.stock} left`}
                   </span>
                 </Link>
               </li>

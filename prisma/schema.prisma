@@ -22,9 +22,30 @@ type Image {
   height   Int?
 }
 
-type ColorOption {
-  name String
-  hex  String
+/// One colorway of a product. Each color has its own photos, stock and
+/// sold-out sizes, and is listed as its own card in the shop.
+type ColorVariant {
+  name             String
+  /// Public product code, e.g. "7K2Q": 4+ uppercase letters/digits, unique
+  /// across the whole store and never changed once assigned. The product
+  /// page URL is /product/<code>.
+  code             String
+  hex              String
+  images           Image[]
+  stock            Int      @default(0)
+  /// Subset of the product's `sizes` that are sold out in this color.
+  unavailableSizes String[]
+  /// Per-size prices for this color (whole rupees). A missing size uses
+  /// the product's base `price`.
+  sizePrices       SizePrices?
+}
+
+type SizePrices {
+  S   Int?
+  M   Int?
+  L   Int?
+  XL  Int?
+  XXL Int?
 }
 
 type SizeValues {
@@ -41,32 +62,34 @@ type Measurement {
 }
 
 model Product {
-  id               String        @id @default(auto()) @map("_id") @db.ObjectId
-  name             String
-  slug             String        @unique
-  /// Price in whole rupees (INR).
-  price            Int
-  compareAtPrice   Int?
-  description      String
-  story            String        @default("")
-  images           Image[]
-  colors           ColorOption[]
-  /// Subset of S, M, L, XL, XXL.
-  sizes            String[]
-  unavailableSizes String[]
+  id             String         @id @default(auto()) @map("_id") @db.ObjectId
+  name           String
+  /// Base price in whole rupees (INR), used for every color and size that
+  /// doesn't set its own price in `variants[].sizePrices`.
+  price          Int
+  compareAtPrice Int?
+  description    String
+  story          String         @default("")
+  /// Colorways, in display order. The first is the default color.
+  variants       ColorVariant[]
+  /// Sizes this product is made in; subset of S, M, L, XL, XXL.
+  sizes          String[]
   /// "T-Shirts" | "Long Sleeve"
-  category         String
-  material         String        @default("")
+  category       String
+  material       String         @default("")
   /// "Slim" | "Regular" | "Relaxed" | "Oversized" | "Boxy"
-  fit              String
-  weight           String        @default("")
-  stock            Int           @default(0)
-  featured         Boolean       @default(false)
-  newArrival       Boolean       @default(false)
-  measurements     Measurement[]
-  heroSlides       HeroSlide[]
-  createdAt        DateTime      @default(now())
-  updatedAt        DateTime      @updatedAt
+  fit            String
+  weight         String         @default("")
+  featured       Boolean        @default(false)
+  newArrival     Boolean        @default(false)
+  measurements   Measurement[]
+  heroSlides     HeroSlide[]
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  // No two colorways in different products may share a code. (Within one
+  // product the API guarantees it, since a unique multikey index can't.)
+  @@unique([variants.code])
 }
 
 /// One t-shirt in the home hero carousel: a transparent cutout image that

@@ -16,7 +16,7 @@ import {
 } from "framer-motion";
 import { ArrowRight } from "lucide-react";
 import type { HeroSlide } from "@/lib/types";
-import { formatPrice } from "@/lib/utils";
+import { formatPriceRange } from "@/lib/utils";
 import { MagneticButton } from "@/components/ui/MagneticButton";
 import { useUI } from "@/context/UIContext";
 
@@ -32,9 +32,6 @@ const SNAP_IDLE_MS = 120;
 // Touch scrolls end in momentum, and iOS Safari can report it in sparse,
 // uneven scroll events — so wait longer after touch input before snapping.
 const TOUCH_SNAP_IDLE_MS = 260;
-// Fraction of a tee's scroll distance that counts as intent to move on —
-// small enough that a single mouse-wheel notch advances to the next tee.
-const SNAP_INTENT = 0.04;
 
 interface HeroCopyProps {
   /** Product of the tee currently centered, or null if there are no slides. */
@@ -163,7 +160,7 @@ function HeroCopy({ active, opacity, y }: HeroCopyProps) {
               className="text-right"
             >
               <p className="text-[11px] uppercase tracking-wide text-bone md:text-sm">{active.name}</p>
-              <p className="mt-1 text-[10px] text-bone/70 md:text-xs">{formatPrice(active.price)}</p>
+              <p className="mt-1 text-[10px] text-bone/70 md:text-xs">{formatPriceRange(active.priceRange)}</p>
             </motion.div>
           </AnimatePresence>
         </motion.div>
@@ -181,7 +178,7 @@ interface TeeItemProps {
   gate: MotionValue<number>;
   cutout: { src: string; width: number; height: number };
   name: string;
-  slug: string;
+  code: string;
   mobile: boolean;
 }
 
@@ -215,7 +212,7 @@ const SLOT_OFFSETS = {
  * The first item is exempt: it's the one thing that should already be
  * fully visible before the user has scrolled at all.
  */
-function TeeItem({ p, index, isFirst, isLast, gate, cutout, name, slug, mobile }: TeeItemProps) {
+function TeeItem({ p, index, isFirst, isLast, gate, cutout, name, code, mobile }: TeeItemProps) {
   const { near, far } = SLOT_OFFSETS[mobile ? "mobile" : "desktop"];
   const zero = mobile ? "0vh" : "0vw";
   const points = isLast
@@ -249,7 +246,7 @@ function TeeItem({ p, index, isFirst, isLast, gate, cutout, name, slug, mobile }
         animate={{ y: [0, -16, 0] }}
         transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
       >
-        <Link href={`/product/${slug}`} aria-label={`View ${name}`} data-cursor="View" className="block">
+        <Link href={`/product/${code}`} aria-label={`View ${name}`} data-cursor="View" className="block">
           <Image
             src={cutout.src}
             alt={`${name} product shot`}
@@ -301,7 +298,7 @@ function TeeStage({ p, zoom, gate, mobile, slides }: TeeStageProps) {
           gate={gate}
           cutout={slide.image}
           name={slide.product.name}
-          slug={slide.product.slug}
+          code={slide.product.code}
           mobile={mobile}
         />
       ))}
@@ -334,7 +331,7 @@ function StaticHero({ slides }: { slides: HeroSlide[] }) {
       {first && (
         <div className="absolute inset-0 flex items-center justify-center pb-16">
           <Link
-            href={`/product/${first.product.slug}`}
+            href={`/product/${first.product.code}`}
             aria-label={`View ${first.product.name}`}
             data-cursor="View"
             className="block"
@@ -357,7 +354,11 @@ function StaticHero({ slides }: { slides: HeroSlide[] }) {
 
 export function Hero({ slides }: { slides: HeroSlide[] }) {
   const count = slides.length;
-  const TOTAL_VH = INTRO_VH + count * PER_TEE_VH;
+  // Scroll is spent on the moves *between* tees (count - 1 of them), so the
+  // section releases the page the moment the last tee lands centered,
+  // instead of holding it pinned for another screen of scroll.
+  const steps = Math.max(count - 1, 0);
+  const TOTAL_VH = INTRO_VH + steps * PER_TEE_VH;
   const INTRO_END = INTRO_VH / TOTAL_VH;
   const shouldReduceMotion = useReducedMotion();
   const wrapperRef = useRef<HTMLDivElement>(null);
@@ -385,7 +386,9 @@ export function Hero({ slides }: { slides: HeroSlide[] }) {
   const chromeOpacity = useTransform(smoothScrollYProgress, [0, INTRO_END], [1, 0]);
   const chromeY = useTransform(smoothScrollYProgress, [0, INTRO_END], [0, -18]);
   const teeZoom = useTransform(smoothScrollYProgress, [0, INTRO_END], [1, 1.35]);
-  const p = useTransform(smoothScrollYProgress, [INTRO_END, 1], [0, count]);
+  // With a single slide there's no carousel range (INTRO_END is 1); keep
+  // the input range non-degenerate so `p` just stays at 0.
+  const p = useTransform(smoothScrollYProgress, [INTRO_END, Math.max(1, INTRO_END + 1e-4)], [0, steps]);
   // Sharp on/off switch for neighbor previews: 0 for the entire intro phase
   // (where scroll position is pinned), 1 the instant real cycling begins.
   const previewGate = useTransform(
@@ -400,21 +403,17 @@ export function Hero({ slides }: { slides: HeroSlide[] }) {
   });
 
   // "Gravity" snap: once scrolling settles inside the carousel phase, glide
-  // to a tee so the stage never rests between two shirts. The snap follows
-  // scroll direction relative to the tee we last rested on (`anchor`), so
-  // even a single wheel notch pulls the next tee in instead of springing
-  // back. Reads the raw scroll position (not the spring) so the target is
-  // exact. Skipped while a finger is on the screen so it never fights a drag.
+  // to the nearest tee so the stage never rests between two shirts. Past
+  // the halfway point between two tees, the next one pulls in; short of
+  // it, the current one pulls back. Reads the raw scroll position (not the
+  // spring) so the target is exact. Skipped while a finger is on the screen
+  // so it never fights a drag.
   useEffect(() => {
     if (shouldReduceMotion) return;
 
     const last = count - 1;
     let idleTimer: ReturnType<typeof setTimeout> | undefined;
     let touching = false;
-    // Carousel position (in tees) the next snap measures direction from.
-    // Normally the tee we last rested on; if a glide is interrupted, the
-    // exact spot it was interrupted at.
-    let anchor = 0;
 
     function measure() {
       const el = wrapperRef.current;
@@ -423,7 +422,7 @@ export function Hero({ slides }: { slides: HeroSlide[] }) {
       const range = el.offsetHeight - window.innerHeight;
       if (range <= 0) return null;
       const progress = (window.scrollY - top) / range;
-      const raw = ((progress - INTRO_END) / (1 - INTRO_END)) * count;
+      const raw = steps > 0 ? ((progress - INTRO_END) / (1 - INTRO_END)) * steps : 0;
       return { top, range, progress, raw };
     }
 
@@ -432,38 +431,15 @@ export function Hero({ slides }: { slides: HeroSlide[] }) {
       const m = measure();
       if (!m) return;
       const { top, range, progress, raw } = m;
-      // Intro phase and the space past the section scroll freely.
-      if (progress <= INTRO_END) {
-        anchor = 0;
-        return;
-      }
-      if (progress >= 1) {
-        anchor = last;
-        return;
-      }
+      // Intro phase and the space past the last tee scroll freely.
+      if (progress <= INTRO_END || progress >= 1 || raw >= last) return;
 
-      // The last tee holds centered until the section ends — nothing to snap to.
-      if (raw >= last) {
-        anchor = last;
-        return;
-      }
+      // Nearest tee: reaching halfway (0.5) or more pulls in the next one.
+      // The small epsilon absorbs sub-pixel float error right at the midpoint.
+      const target = Math.min(last, Math.max(0, Math.floor(raw + 0.5 + 0.003)));
+      if (Math.abs(raw - target) < 0.01) return; // already resting on it
 
-      const nearest = Math.round(raw);
-      if (Math.abs(raw - nearest) < 0.01) {
-        anchor = nearest;
-        return;
-      }
-
-      // A deliberate move goes on in its direction; anything smaller settles
-      // on the nearest tee (which, from a resting anchor, is the anchor).
-      const delta = raw - anchor;
-      let target = nearest;
-      if (delta > SNAP_INTENT) target = Math.ceil(raw);
-      else if (delta < -SNAP_INTENT) target = Math.floor(raw);
-      target = Math.min(last, Math.max(0, target));
-
-      anchor = target;
-      const targetProgress = INTRO_END + (target / count) * (1 - INTRO_END);
+      const targetProgress = INTRO_END + (target / steps) * (1 - INTRO_END);
       glideTo(top + targetProgress * range);
     }
 
@@ -498,13 +474,6 @@ export function Hero({ slides }: { slides: HeroSlide[] }) {
       if (gliding) document.documentElement.style.scrollBehavior = "";
       gliding = false;
     }
-    // User input landed mid-glide: measure the next move from right here.
-    function interruptGlide() {
-      if (!gliding) return;
-      stopGlide();
-      const m = measure();
-      if (m) anchor = m.raw;
-    }
 
     // A quiet gap in scroll events doesn't prove the page has stopped: iOS
     // momentum can go quiet mid-glide, and a smooth scrollTo then cancels
@@ -535,12 +504,12 @@ export function Hero({ slides }: { slides: HeroSlide[] }) {
     }
     function onWheel() {
       lastInputTouch = false;
-      interruptGlide();
+      stopGlide();
     }
     function onTouchStart() {
       touching = true;
       lastInputTouch = true;
-      interruptGlide();
+      stopGlide();
       clearTimeout(idleTimer);
       cancelAnimationFrame(settleFrame);
     }
@@ -564,7 +533,7 @@ export function Hero({ slides }: { slides: HeroSlide[] }) {
       window.removeEventListener("touchend", onTouchEnd);
       window.removeEventListener("touchcancel", onTouchEnd);
     };
-  }, [shouldReduceMotion, count, INTRO_END]);
+  }, [shouldReduceMotion, count, steps, INTRO_END]);
 
   // No carousel without slides (none configured yet in /admin/hero).
   if (shouldReduceMotion || count === 0) {

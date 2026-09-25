@@ -18,7 +18,10 @@ Open [http://localhost:3000](http://localhost:3000). The admin panel is at [/adm
 
 The backend runs inside this Next.js app:
 
-- **Database** — MongoDB Atlas via Prisma 6 (`prisma/schema.prisma`): `Product` and `HeroSlide`.
+- **Database** — MongoDB Atlas via Prisma 6 (`prisma/schema.prisma`): `Product` and `HeroSlide`. Each product has color **variants**, each with its own photos, stock and sold-out sizes. The shop lists one card per color.
+- **Pricing** — a product has a base price; each color can set its own price per size (blank = base price). Cards show "From ₹…" when a color's sizes differ, the product page shows the exact price once a size is picked, and the bag charges that color + size price.
+- **Product codes** — every colorway gets a unique code of uppercase letters and digits (4 characters, e.g. `7K2Q`; longer only if 4-character codes ever run out). Product pages live at `/product/<code>` — no names or colors in URLs. Codes are assigned on save, never change, and are enforced unique by a database index. Switching color on a product page moves to that color's code.
+- Upgrading an older database: `npm run db:migrate-variants` (if products still have a single image list), then `npm run db:migrate-codes`.
 - **Images** — Cloudinary, uploaded through `/api/admin/upload` into `nsude/products` and `nsude/hero`. Images removed from a product or slide are deleted from Cloudinary on save.
 - **Admin auth** — a single superadmin from `.env`, signed JWT in an httpOnly cookie. `src/middleware.ts` guards `/admin/*` and `/api/admin/*`.
 - **Admin API** — `src/app/api/admin/*`: products (list, create, update, delete), hero (get, replace), upload, login, logout. Inputs are validated with the zod schemas in `src/lib/validation.ts`.

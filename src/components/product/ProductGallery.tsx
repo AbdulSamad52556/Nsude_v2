@@ -10,6 +10,10 @@ export function ProductGallery({ images }: { images: ProductImage[] }) {
   const [active, setActive] = useState(0);
   const touchX = useRef<number | null>(null);
 
+  if (images.length === 0) {
+    return <div className="aspect-[4/5] w-full bg-bone" aria-hidden />;
+  }
+
   function next() {
     setActive((i) => (i + 1) % images.length);
   }

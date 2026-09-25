@@ -4,6 +4,7 @@ import { ExternalLink } from "lucide-react";
 import { db } from "@/lib/server/db";
 import { toProduct } from "@/lib/server/products";
 import { isObjectId } from "@/lib/server/revalidate";
+import { productHref } from "@/lib/types";
 import { AdminPageHeader } from "@/components/admin/AdminShell";
 import { ProductForm } from "@/components/admin/ProductForm";
 
@@ -22,7 +23,7 @@ export default async function EditProductPage({ params }: { params: { id: string
         subtitle="Changes go live on the store as soon as you save."
         action={
           <Link
-            href={`/product/${product.slug}`}
+            href={productHref(product.variants[0])}
             target="_blank"
             className="flex items-center gap-1 text-xs uppercase tracking-widest2 text-ash hover:text-ink"
           >

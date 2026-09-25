@@ -13,7 +13,7 @@ const nav = [
   { href: "/admin/hero", label: "Hero Carousel", icon: Images },
 ];
 
-export function AdminShell({ email, children }: { email: string; children: React.ReactNode }) {
+export function AdminShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -29,9 +29,8 @@ export function AdminShell({ email, children }: { email: string; children: React
 
   const sidebar = (
     <nav className="flex h-full flex-col gap-1 p-5" aria-label="Admin">
-      <Link href="/admin" className="mb-8 flex items-center gap-2" onClick={() => setOpen(false)}>
+      <Link href="/admin" className="mb-8 flex items-center justify-center" onClick={() => setOpen(false)}>
         <Image src="/brand/nsude-logo-light.png" alt="NSUDE" width={482} height={172} className="h-6 w-auto" />
-        <span className="text-[10px] uppercase tracking-widest2 text-stone">Admin</span>
       </Link>
       {nav.map(({ href, label, icon: Icon }) => (
         <Link
@@ -64,9 +63,6 @@ export function AdminShell({ email, children }: { email: string; children: React
           <LogOut size={16} strokeWidth={1.5} />
           Log Out
         </button>
-        <p className="truncate px-3 pt-2 text-[11px] text-stone" title={email}>
-          {email}
-        </p>
       </div>
     </nav>
   );
