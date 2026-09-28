@@ -7,6 +7,7 @@ import { db } from "@/lib/server/db";
 import { ProductView } from "@/components/product/ProductView";
 import { ProductGrid } from "@/components/product/ProductGrid";
 import { SectionHeading } from "@/components/ui/SectionHeading";
+import { BackButton } from "@/components/ui/BackButton";
 import { priceRange, productHref, totalStock } from "@/lib/types";
 
 /** How many product pages to pre-render at build time. */
@@ -90,13 +91,17 @@ export default async function ProductPage({ params }: { params: { code: string }
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
 
-      <nav aria-label="Breadcrumb" className="mx-auto mb-8 max-w-content text-xs uppercase tracking-wide text-ash">
-        <Link href="/shop" className="hover:text-ink">
-          Shop
-        </Link>
-        <span className="mx-2">/</span>
-        <span className="text-ink">{product.name}</span>
-      </nav>
+      {/* Phones: just a back arrow; larger screens: the breadcrumb. */}
+      <div className="mx-auto mb-4 flex max-w-content items-center md:mb-8">
+        <BackButton className="-ml-3 md:hidden" />
+        <nav aria-label="Breadcrumb" className="hidden text-xs uppercase tracking-wide text-ash md:block">
+          <Link href="/shop" className="hover:text-ink">
+            Shop
+          </Link>
+          <span className="mx-2">/</span>
+          <span className="text-ink">{product.name}</span>
+        </nav>
+      </div>
 
       <ProductView product={product} initialCode={variant.code} />
 

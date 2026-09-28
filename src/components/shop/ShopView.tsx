@@ -246,9 +246,10 @@ export function ShopView({ initialFilters, initialPage }: { initialFilters: Filt
   }, [drawerOpen]);
 
   return (
-    <div className="mx-auto max-w-content px-5 pb-24 pt-28 md:px-10 md:pt-32">
+    <div className="mx-auto max-w-content px-5 pb-24 pt-24 md:px-10 md:pt-32">
       {/* Compact header: just the breadcrumb */}
-      <nav aria-label="Breadcrumb" className="mb-4 text-[11px] uppercase tracking-widest2 text-ash">
+      {/* Breadcrumb on larger screens only. */}
+      <nav aria-label="Breadcrumb" className="mb-4 hidden text-[11px] uppercase tracking-widest2 text-ash md:block">
         <Link href="/" className="hover:text-ink">Home</Link>
         <span className="mx-2">/</span>
         <span className="text-ink">Shop</span>
@@ -257,7 +258,7 @@ export function ShopView({ initialFilters, initialPage }: { initialFilters: Filt
           screen readers and search engines. */}
       <h1 className="sr-only">{filters.category ?? "Shop all T-shirts"}</h1>
 
-      <div className="mt-8 grid grid-cols-1 gap-10 lg:grid-cols-[220px_1fr] xl:grid-cols-[240px_1fr]">
+      <div className="grid grid-cols-1 gap-10 md:mt-8 lg:grid-cols-[220px_1fr] xl:grid-cols-[240px_1fr]">
         {/* Desktop: sticky filter sidebar */}
         <aside aria-label="Filters" className="hidden lg:block">
           {/* Scrolls on its own when taller than the screen; scrollbar hidden. */}

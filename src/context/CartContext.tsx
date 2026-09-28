@@ -9,6 +9,9 @@ import {
   useState,
 } from "react";
 import { ColorVariant, Product, Size, priceFor } from "@/lib/types";
+import { MAX_LINE_QUANTITY } from "@/lib/checkout";
+
+const clampQuantity = (q: number) => Math.min(MAX_LINE_QUANTITY, Math.max(1, q));
 
 export interface CartLine {
   key: string;
@@ -81,7 +84,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         const existing = prev.find((l) => l.key === key);
         if (existing) {
           return prev.map((l) =>
-            l.key === key ? { ...l, quantity: l.quantity + quantity } : l
+            l.key === key ? { ...l, quantity: clampQuantity(l.quantity + quantity) } : l
           );
         }
         return [
@@ -96,7 +99,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
             size,
             color: variant.name,
             code: variant.code,
-            quantity,
+            quantity: clampQuantity(quantity),
           },
         ];
       });
@@ -111,7 +114,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   const updateQuantity = useCallback((key: string, quantity: number) => {
     setLines((prev) =>
-      prev.map((l) => (l.key === key ? { ...l, quantity: Math.max(1, quantity) } : l))
+      prev.map((l) => (l.key === key ? { ...l, quantity: clampQuantity(quantity) } : l))
     );
   }, []);
 
