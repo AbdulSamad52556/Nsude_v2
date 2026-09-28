@@ -105,3 +105,53 @@ model HeroSlide {
 
   @@index([position])
 }
+
+/// A colorway's swatch, for the "other colors" dots on a product card.
+type Swatch {
+  code String
+  name String
+  hex  String
+}
+
+/// Read model for the shop: one lean document per colorway, holding only
+/// what a product card and the shop filters need. Derived from Product —
+/// never edited directly; rebuilt whenever a product is saved or deleted
+/// (see src/lib/server/listings.ts). Lets the shop filter, sort, count and
+/// paginate thousands of colorways with indexed queries instead of loading
+/// the whole catalog.
+model Listing {
+  id               String   @id @default(auto()) @map("_id") @db.ObjectId
+  /// The colorway's product code (the page URL is /product/<code>).
+  code             String   @unique
+  productId        String   @db.ObjectId
+  /// Colorway order within its product (0 = default color).
+  position         Int
+  productName      String
+  colorName        String
+  /// URL-safe color key for filtering, e.g. "off-white".
+  colorKey         String
+  hex              String
+  category         String
+  fit              String
+  /// Sizes that can be bought in this color right now.
+  availableSizes   String[]
+  inStock          Boolean
+  priceMin         Int
+  priceMax         Int
+  /// First two photos (main + hover).
+  images           Image[]
+  swatches         Swatch[]
+  featured         Boolean
+  newArrival       Boolean
+  productCreatedAt DateTime
+  /// Lowercased "name color fit category" for search.
+  searchText       String
+
+  @@index([productId])
+  @@index([category])
+  @@index([fit])
+  @@index([colorKey])
+  @@index([priceMin])
+  @@index([featured, productCreatedAt])
+  @@index([newArrival, productCreatedAt])
+}

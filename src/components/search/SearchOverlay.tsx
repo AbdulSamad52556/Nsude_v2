@@ -10,6 +10,11 @@ import { formatPriceRange } from "@/lib/utils";
 
 const popularSearches = ["Core Tee", "Oversized", "Heavyweight", "Black", "Archive"];
 
+/** Wait this long after the last keystroke before searching. */
+const SEARCH_DEBOUNCE_MS = 300;
+/** Don't search for fewer characters than this (matches /api/search). */
+const MIN_QUERY_LENGTH = 2;
+
 interface SearchResult {
   id: string;
   name: string;
@@ -44,11 +49,13 @@ export function SearchOverlay() {
     if (!isSearchOpen) setQuery("");
   }, [isSearchOpen]);
 
-  // Debounced server search; an in-flight request is aborted when the query
-  // changes so a slow earlier response can't overwrite newer results.
+  // Debounced server search: a request goes out only once typing pauses for
+  // SEARCH_DEBOUNCE_MS, and only for 2+ characters. Any in-flight request is
+  // aborted when the query changes, so a slow earlier response can't
+  // overwrite newer results.
   useEffect(() => {
     const q = query.trim();
-    if (!q) {
+    if (q.length < MIN_QUERY_LENGTH) {
       setResults([]);
       setLoading(false);
       return;
@@ -67,7 +74,7 @@ export function SearchOverlay() {
       } finally {
         if (!controller.signal.aborted) setLoading(false);
       }
-    }, 200);
+    }, SEARCH_DEBOUNCE_MS);
     return () => {
       clearTimeout(timer);
       controller.abort();
@@ -115,7 +122,7 @@ export function SearchOverlay() {
               />
             </div>
 
-            {!query.trim() && (
+            {query.trim().length < MIN_QUERY_LENGTH && (
               <div className="mt-10">
                 <p className="mb-4 text-xs uppercase tracking-widest2 text-ash">
                   Popular Searches
@@ -135,7 +142,7 @@ export function SearchOverlay() {
               </div>
             )}
 
-            {query.trim() && (
+            {query.trim().length >= MIN_QUERY_LENGTH && (
               <div className="mt-10">
                 <p className="mb-4 text-xs uppercase tracking-widest2 text-ash" aria-live="polite">
                   {loading ? "Searching…" : `${results.length} result${results.length === 1 ? "" : "s"}`}

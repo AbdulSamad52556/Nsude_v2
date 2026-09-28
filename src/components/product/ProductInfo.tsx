@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { ArrowRight } from "lucide-react";
 import { ColorVariant, Product, Size, priceFor, priceRange } from "@/lib/types";
@@ -52,9 +53,31 @@ export function ProductInfo({ product, variant, onColorChange }: ProductInfoProp
     addItem(product, variant, size, quantity);
   }
 
+  // Mobile bar: without a size, bring the size picker into view instead.
+  const sizeRef = useRef<HTMLDivElement>(null);
+  function handleBarAddToBag() {
+    if (!soldOut && !size) {
+      setError(true);
+      sizeRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+      return;
+    }
+    handleAddToBag();
+  }
+
+  // The bar is portalled to <body>, which only exists in the browser.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
+  // Reserve room at the bottom of the page on phones so the fixed bar never
+  // covers the end of the page (footer links, copyright).
+  useEffect(() => {
+    document.body.classList.add("pb-[calc(76px+env(safe-area-inset-bottom))]", "md:pb-0");
+    return () => document.body.classList.remove("pb-[calc(76px+env(safe-area-inset-bottom))]", "md:pb-0");
+  }, []);
+
   function handleBuyNow() {
     if (soldOut || !validateSize() || !size) return;
-    addItem(product, variant, size, quantity);
+    addItem(product, variant, size, quantity, { openDrawer: false });
     router.push("/checkout");
   }
 
@@ -78,7 +101,7 @@ export function ProductInfo({ product, variant, onColorChange }: ProductInfoProp
 
       <ColorSelector variants={product.variants} selected={variant.code} onChange={onColorChange} />
 
-      <div>
+      <div ref={sizeRef} className="scroll-mt-28">
         <SizeSelector
           sizes={product.sizes}
           unavailableSizes={unavailableSizes}
@@ -107,11 +130,12 @@ export function ProductInfo({ product, variant, onColorChange }: ProductInfoProp
       </div>
 
       <div className="flex flex-col gap-3">
+        {/* On phones the sticky bar below replaces this button. */}
         <button
           type="button"
           onClick={handleAddToBag}
           disabled={soldOut}
-          className="group flex h-14 w-full items-center justify-center gap-2 bg-ink text-sm uppercase tracking-widest2 text-bone transition-colors duration-300 hover:bg-graphite disabled:cursor-not-allowed disabled:bg-graphite/40"
+          className="group hidden h-14 w-full items-center justify-center gap-2 bg-ink text-sm uppercase tracking-widest2 text-bone transition-colors duration-300 hover:bg-graphite disabled:cursor-not-allowed disabled:bg-graphite/40 md:flex"
         >
           {soldOut ? `${variant.name} — Sold Out` : "Add to Bag"}
           {!soldOut && (
@@ -207,6 +231,31 @@ export function ProductInfo({ product, variant, onColorChange }: ProductInfoProp
           <p>Model is 6&apos;1&quot; (185cm), 78kg, wearing a size M.</p>
         </AccordionItem>
       </div>
+
+      {/* Phones: sticky price + Add to Bag bar. Portalled to <body> so it's
+          fixed to the screen even inside the page's animated wrapper. */}
+      {mounted &&
+        createPortal(
+          <div className="fixed inset-x-0 bottom-0 z-40 border-t border-graphite/10 bg-paper/95 px-5 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-3 backdrop-blur-md md:hidden">
+            <div className="flex items-center gap-4">
+              <div className="min-w-0 shrink-0">
+                <p className="text-base font-medium text-ink" aria-live="polite">{priceText}</p>
+                <p className={cx("truncate text-[11px] uppercase tracking-wide", error && !size ? "text-rust" : "text-ash")}>
+                  {soldOut ? `${variant.name} · Sold out` : size ? `${variant.name} · ${size}` : "Select a size"}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={handleBarAddToBag}
+                disabled={soldOut}
+                className="flex h-12 flex-1 items-center justify-center gap-2 bg-ink text-xs uppercase tracking-widest2 text-bone transition-colors active:bg-graphite disabled:bg-graphite/40"
+              >
+                {soldOut ? "Sold Out" : "Add to Bag"}
+              </button>
+            </div>
+          </div>,
+          document.body
+        )}
     </div>
   );
 }
