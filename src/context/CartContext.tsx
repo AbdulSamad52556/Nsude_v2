@@ -35,7 +35,15 @@ interface CartContextValue {
   isOpen: boolean;
   openCart: () => void;
   closeCart: () => void;
-  addItem: (product: Product, variant: ColorVariant, size: Size, quantity?: number) => void;
+  /** Adds a line and opens the bag drawer, unless `openDrawer` is false
+      (e.g. Buy Now, which goes straight to checkout). */
+  addItem: (
+    product: Product,
+    variant: ColorVariant,
+    size: Size,
+    quantity?: number,
+    options?: { openDrawer?: boolean }
+  ) => void;
   removeItem: (key: string) => void;
   updateQuantity: (key: string, quantity: number) => void;
   clear: () => void;
@@ -67,7 +75,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   }, [lines, hydrated]);
 
   const addItem = useCallback(
-    (product: Product, variant: ColorVariant, size: Size, quantity = 1) => {
+    (product: Product, variant: ColorVariant, size: Size, quantity = 1, { openDrawer = true } = {}) => {
       const key = `${variant.code}-${size}`;
       setLines((prev) => {
         const existing = prev.find((l) => l.key === key);
@@ -92,7 +100,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
           },
         ];
       });
-      setIsOpen(true);
+      if (openDrawer) setIsOpen(true);
     },
     []
   );

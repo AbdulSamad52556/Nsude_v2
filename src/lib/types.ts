@@ -95,6 +95,40 @@ export function totalStock(product: { variants: { stock: number }[] }) {
   return product.variants.reduce((sum, v) => sum + v.stock, 0);
 }
 
+/**
+ * Everything a product card needs, and nothing more. The shop, search and
+ * related-products all send this lean shape to the browser instead of full
+ * products (which carry descriptions, measurements, every photo, …).
+ */
+export interface CardData {
+  code: string;
+  name: string;
+  colorName: string;
+  fit: string;
+  /** Main photo and (optional) hover photo. */
+  images: ProductImage[];
+  price: { min: number; max: number };
+  soldOut: boolean;
+  newArrival: boolean;
+  /** All of the product's colorways, for the dots under the card. */
+  swatches: { code: string; name: string; hex: string }[];
+}
+
+/** Card data for one colorway of a full product. */
+export function toCardData(product: Product, variant: ColorVariant): CardData {
+  return {
+    code: variant.code,
+    name: product.name,
+    colorName: variant.name,
+    fit: product.fit,
+    images: variant.images.slice(0, 2),
+    price: priceRange(product, [variant]),
+    soldOut: variant.stock === 0,
+    newArrival: product.newArrival,
+    swatches: product.variants.map((v) => ({ code: v.code, name: v.name, hex: v.hex })),
+  };
+}
+
 /** One t-shirt in the home hero carousel. */
 export interface HeroSlide {
   id: string;

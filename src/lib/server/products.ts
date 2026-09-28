@@ -51,11 +51,6 @@ export function productImageIds(p: { variants: { images: { publicId?: string | n
   return p.variants.flatMap((v) => v.images.map((i) => i.publicId)).filter((id): id is string => Boolean(id));
 }
 
-export async function getProducts() {
-  const rows = await db.product.findMany({ orderBy: { createdAt: "asc" } });
-  return rows.map(toProduct);
-}
-
 /** The product and colorway behind a product code (case-insensitive). */
 export async function getListingByCode(code: string): Promise<ProductListing | null> {
   const normalized = code.trim().toUpperCase();
@@ -86,52 +81,20 @@ export async function assignVariantCodes<T extends { code?: string }>(
   const needed = keeps.filter((k) => !k).length;
   if (needed === 0) return variants.map((v) => ({ ...v, code: v.code! }));
 
-  const all = await db.product.findMany({ select: { variants: { select: { code: true } } } });
-  const taken = new Set(all.flatMap((p) => p.variants.map((v) => v.code)));
-  const fresh = generateCodes(needed, taken);
-  return variants.map((v, i) => ({ ...v, code: keeps[i] ? v.code! : fresh.shift()! }));
-}
-
-export async function getFeaturedProducts() {
-  const rows = await db.product.findMany({
-    where: { featured: true },
-    orderBy: { createdAt: "asc" },
-  });
-  return rows.map(toProduct);
-}
-
-/** Same-fit products first, then same category, then anything else. */
-export async function getRelatedProducts(product: Product, count = 3) {
-  const others = (await getProducts()).filter((p) => p.id !== product.id);
-  const score = (p: Product) =>
-    (p.fit === product.fit ? 2 : 0) + (p.category === product.category ? 1 : 0);
-  return others.sort((a, b) => score(b) - score(a)).slice(0, count);
-}
-
-/** Every product in every color: the shop lists one card per colorway. */
-export function toListings(products: Product[]): ProductListing[] {
-  return products.flatMap((product) => product.variants.map((variant) => ({ product, variant })));
-}
-
-/**
- * Search by product name, fit, or color. A color match returns just that
- * colorway (so "olive" links straight to the olive tee); a name/fit match
- * returns the product in its default color.
- */
-export async function searchProducts(query: string, limit = 6): Promise<ProductListing[]> {
-  const q = query.trim().toLowerCase();
-  if (!q) return [];
-  // The catalog is small, so filtering in memory is simplest.
-  const results: ProductListing[] = [];
-  for (const product of await getProducts()) {
-    const colorMatches = product.variants.filter((v) => v.name.toLowerCase().includes(q));
-    if (colorMatches.length) {
-      results.push(...colorMatches.map((variant) => ({ product, variant })));
-    } else if (product.name.toLowerCase().includes(q) || product.fit.toLowerCase().includes(q)) {
-      results.push({ product, variant: product.variants[0] });
-    }
+  // Draw candidate codes and check only those against the database (an
+  // indexed lookup), rather than loading every existing code.
+  const fresh: string[] = [];
+  const tried = new Set<string>(kept);
+  while (fresh.length < needed) {
+    const candidates = generateCodes(needed - fresh.length, tried);
+    const clashes = await db.product.findMany({
+      where: { variants: { some: { code: { in: candidates } } } },
+      select: { variants: { select: { code: true } } },
+    });
+    const taken = new Set(clashes.flatMap((p) => p.variants.map((v) => v.code)));
+    fresh.push(...candidates.filter((c) => !taken.has(c)));
   }
-  return results.slice(0, limit);
+  return variants.map((v, i) => ({ ...v, code: keeps[i] ? v.code! : fresh.shift()! }));
 }
 
 export function toHeroSlide(s: DbHeroSlide & { product: DbProduct }): HeroSlide {

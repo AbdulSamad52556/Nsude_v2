@@ -1,5 +1,5 @@
 import type { MetadataRoute } from "next";
-import { getProducts } from "@/lib/server/products";
+import { db } from "@/lib/server/db";
 import { productHref } from "@/lib/types";
 
 const siteUrl = "https://nsude.example.com";
@@ -21,13 +21,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     lastModified: new Date(),
   }));
 
-  // One page per colorway, e.g. /product/7K2Q.
-  const productRoutes = (await getProducts()).flatMap((p) =>
-    p.variants.map((v) => ({
-      url: `${siteUrl}${productHref(v)}`,
-      lastModified: new Date(),
-    }))
-  );
+  // One page per colorway, e.g. /product/7K2Q (codes only — no full products).
+  const codes = await db.listing.findMany({ select: { code: true } });
+  const productRoutes = codes.map((v) => ({
+    url: `${siteUrl}${productHref(v)}`,
+    lastModified: new Date(),
+  }));
 
   return [...staticRoutes, ...productRoutes];
 }

@@ -69,13 +69,13 @@ export function CartDrawer() {
               <div className="flex flex-1 flex-col items-center justify-center gap-4 px-6 text-center">
                 <ShoppingBag size={32} strokeWidth={1} className="text-ash" />
                 <p className="text-sm text-graphite">Your bag is empty.</p>
-                <button
-                  type="button"
+                <Link
+                  href="/shop"
                   onClick={closeCart}
                   className="text-xs uppercase tracking-widest2 text-ink underline underline-offset-4"
                 >
                   Continue shopping
-                </button>
+                </Link>
               </div>
             ) : (
               <>
@@ -104,13 +104,13 @@ export function CartDrawer() {
                       className="transition-transform duration-300 group-hover:translate-x-1"
                     />
                   </Link>
-                  <button
-                    type="button"
+                  <Link
+                    href="/shop"
                     onClick={closeCart}
                     className="mt-3 flex h-12 w-full items-center justify-center text-xs uppercase tracking-widest2 text-graphite hover:text-ink"
                   >
                     Continue Shopping
-                  </button>
+                  </Link>
                 </div>
               </>
             )}

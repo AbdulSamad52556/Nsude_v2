@@ -25,6 +25,7 @@ The backend runs inside this Next.js app:
 - **Images** — Cloudinary, uploaded through `/api/admin/upload` into `nsude/products` and `nsude/hero`. Images removed from a product or slide are deleted from Cloudinary on save.
 - **Admin auth** — a single superadmin from `.env`, signed JWT in an httpOnly cookie. `src/middleware.ts` guards `/admin/*` and `/api/admin/*`.
 - **Admin API** — `src/app/api/admin/*`: products (list, create, update, delete), hero (get, replace), upload, login, logout. Inputs are validated with the zod schemas in `src/lib/validation.ts`.
+- **Shop listings (scales to large catalogs)** — a `Listing` collection holds one lean, indexed document per colorway (card fields only), rebuilt automatically whenever a product is saved or deleted (`src/lib/server/listings.ts`; repair with `npm run db:sync-listings`). The shop filters, sorts, counts and pages (24 at a time, loaded automatically as you scroll) in a single MongoDB aggregation via `/api/listings`; search (`/api/search`, debounced 300 ms, 2+ characters, input matched literally) and related / featured / Shop-The-Fit use small targeted queries. Results are cached and cleared on every admin save.
 - **Storefront reads** — `src/lib/server/products.ts`. Pages are statically cached and re-rendered after any admin save (`revalidatePath`).
 
 ```bash

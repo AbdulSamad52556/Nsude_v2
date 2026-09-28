@@ -1,18 +1,28 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { getListingByCode, getProducts, getRelatedProducts } from "@/lib/server/products";
+import { getListingByCode } from "@/lib/server/products";
+import { getRelatedCards } from "@/lib/server/listings";
+import { db } from "@/lib/server/db";
 import { ProductView } from "@/components/product/ProductView";
 import { ProductGrid } from "@/components/product/ProductGrid";
 import { SectionHeading } from "@/components/ui/SectionHeading";
 import { priceRange, productHref, totalStock } from "@/lib/types";
 
+/** How many product pages to pre-render at build time. */
+const PRERENDER_LIMIT = 200;
+
 // One page per colorway, addressed by its product code (/product/7K2Q).
-// All are pre-rendered at build; colors added later in /admin render on
-// first visit and are cached after that.
+// Only the first PRERENDER_LIMIT (featured first) are built at deploy, so
+// builds stay fast with a large catalog; every other page is rendered on
+// its first visit and cached after that.
 export async function generateStaticParams() {
-  const products = await getProducts();
-  return products.flatMap((p) => p.variants.map((v) => ({ code: v.code })));
+  const rows = await db.listing.findMany({
+    select: { code: true },
+    orderBy: [{ featured: "desc" }, { productCreatedAt: "asc" }, { position: "asc" }],
+    take: PRERENDER_LIMIT,
+  });
+  return rows.map((r) => ({ code: r.code }));
 }
 
 export async function generateMetadata({ params }: { params: { code: string } }): Promise<Metadata> {
@@ -40,7 +50,7 @@ export default async function ProductPage({ params }: { params: { code: string }
   // Codes are uppercase; send lowercase/mixed-case links to the canonical URL.
   if (params.code !== variant.code) redirect(productHref(variant));
 
-  const related = await getRelatedProducts(product, 3);
+  const related = await getRelatedCards(product, 3);
 
   // One offer per colorway, each with its own URL, price range and
   // availability; the aggregate spans every color and size.
@@ -93,7 +103,7 @@ export default async function ProductPage({ params }: { params: { code: string }
       {related.length > 0 && (
         <div className="mx-auto mt-28 max-w-content md:mt-36">
           <SectionHeading title="You May Also Like" className="mb-12" />
-          <ProductGrid listings={related.map((p) => ({ product: p, variant: p.variants[0] }))} />
+          <ProductGrid cards={related} />
         </div>
       )}
     </div>

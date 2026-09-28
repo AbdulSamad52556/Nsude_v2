@@ -4,6 +4,7 @@ import { db } from "@/lib/server/db";
 import { requireAdmin } from "@/lib/server/auth";
 import { deleteImages } from "@/lib/server/cloudinary";
 import { assignVariantCodes, productImageIds, toProduct } from "@/lib/server/products";
+import { syncProductListings } from "@/lib/server/listings";
 import { isObjectId, revalidateStorefront } from "@/lib/server/revalidate";
 import { fieldErrors, productInputSchema, withDerivedPrice } from "@/lib/validation";
 
@@ -58,6 +59,7 @@ export async function PUT(request: NextRequest, { params }: Params) {
   const kept = new Set(productImageIds(parsed.data));
   await deleteImages(productImageIds(existing).filter((id) => !kept.has(id)));
 
+  await syncProductListings(params.id);
   revalidateStorefront();
   return NextResponse.json({ product: toProduct(updated) });
 }
@@ -75,6 +77,7 @@ export async function DELETE(_request: NextRequest, { params }: Params) {
 
   // Hero slides pointing at this product are deleted with it (cascade).
   await db.product.delete({ where: { id: params.id } });
+  await syncProductListings(params.id); // removes its listings
   await deleteImages([
     ...productImageIds(existing),
     ...existing.heroSlides.map((s) => s.image.publicId),

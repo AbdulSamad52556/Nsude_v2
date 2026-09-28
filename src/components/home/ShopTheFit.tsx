@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { ArrowUpRight } from "lucide-react";
-import { priceRange, productHref, type Product } from "@/lib/types";
+import { productHref, type CardData } from "@/lib/types";
 import { campaignImages } from "@/lib/images";
 import { formatPriceRange } from "@/lib/utils";
 import { SectionHeading } from "@/components/ui/SectionHeading";
@@ -31,10 +31,11 @@ const fits = [
   },
 ] as const;
 
-export function ShopTheFit({ products }: { products: Product[] }) {
+/** `cardsByFit`: up to three products per fit tab, fetched on the server. */
+export function ShopTheFit({ cardsByFit }: { cardsByFit: Record<string, CardData[]> }) {
   const [active, setActive] = useState<(typeof fits)[number]["key"]>("Regular");
   const current = fits.find((f) => f.key === active)!;
-  const matches = products.filter((p) => p.fit === active).slice(0, 3);
+  const matches = cardsByFit[active] ?? [];
 
   return (
     <section className="bg-paper px-5 py-28 md:px-10 md:py-36">
@@ -110,13 +111,12 @@ export function ShopTheFit({ products }: { products: Product[] }) {
             </AnimatePresence>
 
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-              {matches.map((product) => {
-                const variant = product.variants[0];
-                const image = variant?.images[0];
+              {matches.map((card) => {
+                const image = card.images[0];
                 return (
                 <Link
-                  key={product.id}
-                  href={productHref(variant)}
+                  key={card.code}
+                  href={productHref(card)}
                   data-cursor="View"
                   className="group flex flex-col gap-3"
                 >
@@ -124,7 +124,7 @@ export function ShopTheFit({ products }: { products: Product[] }) {
                     {image && (
                       <Image
                         src={image.src}
-                        alt={image.alt || product.name}
+                        alt={image.alt || card.name}
                         fill
                         sizes="200px"
                         className="object-cover transition-transform duration-700 ease-editorial group-hover:scale-[1.04]"
@@ -133,7 +133,7 @@ export function ShopTheFit({ products }: { products: Product[] }) {
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-xs uppercase tracking-wide text-ink">
-                      {product.name}
+                      {card.name}
                     </span>
                     <ArrowUpRight
                       size={14}
@@ -141,7 +141,7 @@ export function ShopTheFit({ products }: { products: Product[] }) {
                       className="text-ash transition-transform duration-300 group-hover:translate-x-0.5 group-hover:-translate-y-0.5"
                     />
                   </div>
-                  <span className="text-xs text-ash">{formatPriceRange(priceRange(product, variant ? [variant] : []))}</span>
+                  <span className="text-xs text-ash">{formatPriceRange(card.price)}</span>
                 </Link>
                 );
               })}

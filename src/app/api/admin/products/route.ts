@@ -3,6 +3,7 @@ import { Prisma } from "@prisma/client";
 import { db } from "@/lib/server/db";
 import { requireAdmin } from "@/lib/server/auth";
 import { assignVariantCodes, toProduct } from "@/lib/server/products";
+import { syncProductListings } from "@/lib/server/listings";
 import { revalidateStorefront } from "@/lib/server/revalidate";
 import { fieldErrors, productInputSchema, withDerivedPrice } from "@/lib/validation";
 
@@ -31,17 +32,22 @@ export async function POST(request: NextRequest) {
   // Every color of a new product gets a fresh product code. The unique
   // index is the final guard; on the (very unlikely) race where another
   // save grabbed the same code first, just draw new codes and retry.
+  let created;
   for (let attempt = 0; ; attempt++) {
     try {
       const variants = await assignVariantCodes(
         input.variants.map((v) => ({ ...v, code: undefined }))
       );
-      const created = await db.product.create({ data: { ...input, variants } });
-      revalidateStorefront();
-      return NextResponse.json({ product: toProduct(created) }, { status: 201 });
+      created = await db.product.create({ data: { ...input, variants } });
+      break;
     } catch (err) {
       const duplicateCode = err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002";
       if (!duplicateCode || attempt >= 2) throw err;
     }
   }
+
+  // Outside the retry loop: the product exists now, so never re-create it.
+  await syncProductListings(created.id);
+  revalidateStorefront();
+  return NextResponse.json({ product: toProduct(created) }, { status: 201 });
 }
