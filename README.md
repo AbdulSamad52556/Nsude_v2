@@ -26,6 +26,7 @@ The backend runs inside this Next.js app:
 - **Admin auth** — a single superadmin from `.env`, signed JWT in an httpOnly cookie. `src/middleware.ts` guards `/admin/*` and `/api/admin/*`.
 - **Admin API** — `src/app/api/admin/*`: products (list, create, update, delete), hero (get, replace), upload, login, logout. Inputs are validated with the zod schemas in `src/lib/validation.ts`.
 - **Shop listings (scales to large catalogs)** — a `Listing` collection holds one lean, indexed document per colorway (card fields only), rebuilt automatically whenever a product is saved or deleted (`src/lib/server/listings.ts`; repair with `npm run db:sync-listings`). The shop filters, sorts, counts and pages (24 at a time, loaded automatically as you scroll) in a single MongoDB aggregation via `/api/listings`; search (`/api/search`, debounced 300 ms, 2+ characters, input matched literally) and related / featured / Shop-The-Fit use small targeted queries. Results are cached and cleared on every admin save.
+- **Checkout & orders** — guest checkout at `/checkout` (`src/components/checkout/CheckoutView.tsx`, rules in `src/lib/checkout.ts`). The browser only says *what* to buy; `/api/checkout` prices every line from the catalog, takes stock atomically (per color, never below zero) and saves an `Order`. Payment is **Cash on Delivery** or **Razorpay** (UPI, cards, netbanking, wallets) — Razorpay appears once `RAZORPAY_KEY_ID` / `RAZORPAY_KEY_SECRET` are set. Online orders wait in *Awaiting payment*; the payment signature is verified on the server, and orders left unpaid for 30 minutes (or whose popup was closed) are cancelled with their stock put back. An optional Razorpay webhook (`/api/webhooks/razorpay`, `RAZORPAY_WEBHOOK_SECRET`) marks orders paid even if the customer closes the tab. Admins manage orders at `/admin/orders`: Placed → Shipped → Delivered, or Cancel (restores stock; refund online payments from the Razorpay dashboard).
 - **Storefront reads** — `src/lib/server/products.ts`. Pages are statically cached and re-rendered after any admin save (`revalidatePath`).
 
 ```bash
@@ -42,7 +43,7 @@ Campaign/editorial imagery (collection campaign, about page, fit imagery) is sti
 
 ## Cart & Checkout
 
-Cart state lives in `src/context/CartContext.tsx`, persisted to `localStorage`. Checkout (`src/app/checkout/page.tsx`) is a self-contained UI flow (no real payment gateway wired up) — plug in a payment provider (Razorpay, Stripe) at the `handleSubmit` call site.
+Cart state lives in `src/context/CartContext.tsx`, persisted to `localStorage` (max 10 of one item per line). Prices shown in the bag are refreshed from the server on the checkout page, and the order is always charged at the server's prices — see **Checkout & orders** above.
 
 ## Project Structure
 

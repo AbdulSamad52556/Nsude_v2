@@ -6,7 +6,7 @@ const ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
 export const MIN_CODE_LENGTH = 4;
 export const CODE_PATTERN = /^[A-Z0-9]{4,12}$/;
 
-function randomCode(length: number) {
+export function randomCode(length: number) {
   const bytes = new Uint8Array(length);
   crypto.getRandomValues(bytes);
   // 256 isn't a multiple of 36; the tiny bias is irrelevant for ids.

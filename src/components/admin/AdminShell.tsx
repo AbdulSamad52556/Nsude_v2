@@ -4,11 +4,12 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
-import { ExternalLink, Images, LayoutDashboard, LogOut, Menu, Shirt, X } from "lucide-react";
+import { ExternalLink, Images, LayoutDashboard, LogOut, Menu, Package, Shirt, X } from "lucide-react";
 import { cx } from "@/lib/utils";
 
 const nav = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/admin/orders", label: "Orders", icon: Package },
   { href: "/admin/products", label: "Products", icon: Shirt },
   { href: "/admin/hero", label: "Hero Carousel", icon: Images },
 ];

@@ -155,3 +155,62 @@ model Listing {
   @@index([featured, productCreatedAt])
   @@index([newArrival, productCreatedAt])
 }
+
+/// A line in an order: a snapshot of what was bought, at the price charged
+/// (later product edits never change past orders).
+type OrderItem {
+  productId String @db.ObjectId
+  /// Colorway product code, e.g. "7K2Q".
+  code      String
+  name      String
+  color     String
+  size      String
+  /// Unit price in whole rupees, computed on the server at checkout.
+  price     Int
+  quantity  Int
+  image     String @default("")
+}
+
+type ShippingAddress {
+  firstName String
+  lastName  String
+  line1     String
+  line2     String @default("")
+  city      String
+  state     String
+  pincode   String
+  country   String @default("India")
+}
+
+/// A customer order (guest checkout). Prices and totals are computed on the
+/// server from the catalog; the bag in the browser only says what to buy.
+model Order {
+  id              String          @id @default(auto()) @map("_id") @db.ObjectId
+  /// Customer-facing order number, e.g. "NS-7K2Q9X".
+  number          String          @unique
+  /// "pending_payment" (waiting for Razorpay) | "placed" | "shipped" |
+  /// "delivered" | "cancelled"
+  status          String
+  /// "razorpay" | "cod"
+  paymentMethod   String
+  /// "pending" | "paid" | "failed" | "cod" (collected on delivery)
+  paymentStatus   String
+  razorpayOrderId   String?
+  razorpayPaymentId String?
+  items           OrderItem[]
+  subtotal        Int
+  shipping        Int
+  total           Int
+  email           String
+  phone           String
+  address         ShippingAddress
+  /// True while this order holds stock. Set when stock is taken at
+  /// checkout; cleared when a cancelled / abandoned order gives it back.
+  stockHeld       Boolean         @default(false)
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  @@index([status, createdAt])
+  @@index([razorpayOrderId])
+  @@index([createdAt])
+}

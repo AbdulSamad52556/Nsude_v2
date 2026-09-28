@@ -9,7 +9,11 @@ export const metadata = { title: "Dashboard" };
 const LOW_STOCK = 15;
 
 export default async function AdminDashboard() {
-  const [products, heroCount] = await Promise.all([db.product.findMany(), db.heroSlide.count()]);
+  const [products, heroCount, toShip] = await Promise.all([
+    db.product.findMany(),
+    db.heroSlide.count(),
+    db.order.count({ where: { status: "placed" } }),
+  ]);
 
   // Stock lives on each color, so low stock is tracked per colorway.
   const lowColors = products
@@ -20,6 +24,7 @@ export default async function AdminDashboard() {
   const colorCount = products.reduce((n, p) => n + p.variants.length, 0);
 
   const stats = [
+    { label: "Orders to ship", value: toShip, href: "/admin/orders?status=placed", hint: "Placed, not yet shipped" },
     { label: "Products", value: products.length, href: "/admin/products", hint: `${colorCount} colorways in the shop` },
     { label: "Featured", value: products.filter((p) => p.featured).length, href: "/admin/products", hint: "Home page shows the first 4" },
     { label: "Hero slides", value: heroCount, href: "/admin/hero" },
@@ -30,7 +35,7 @@ export default async function AdminDashboard() {
     <div>
       <AdminPageHeader
         title="Dashboard"
-        subtitle="Manage the catalog and the home page hero."
+        subtitle="Manage orders, the catalog and the home page hero."
         action={
           <Link
             href="/admin/products/new"
@@ -41,7 +46,7 @@ export default async function AdminDashboard() {
         }
       />
 
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-5">
         {stats.map((s) => (
           <Link
             key={s.label}
