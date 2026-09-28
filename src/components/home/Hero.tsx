@@ -518,11 +518,84 @@ export function Hero({ slides }: { slides: HeroSlide[] }) {
       schedule();
     }
 
+    // ---- Sideways input -------------------------------------------------
+    // The carousel is driven by vertical scroll, but sideways gestures over
+    // the hero move it too: a trackpad side-swipe or Shift+wheel scrolls the
+    // same way scrolling down does (and snaps as usual), and a sideways
+    // finger swipe glides to the next/previous tee. Outside the hero, or
+    // past its first/last tee, sideways input is left alone.
+    const hero = wrapperRef.current;
+
+    /** Scroll position of tee `index`; -1 means the intro (headline) view. */
+    function teeY(m: NonNullable<ReturnType<typeof measure>>, index: number) {
+      if (index < 0) return m.top;
+      const progress = steps > 0 ? INTRO_END + (index / steps) * (1 - INTRO_END) : INTRO_END;
+      return m.top + progress * m.range;
+    }
+
+    function onSidewaysWheel(e: WheelEvent) {
+      if (Math.abs(e.deltaX) <= Math.abs(e.deltaY)) return; // mostly vertical
+      const m = measure();
+      if (!m) return;
+      const unit = e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? window.innerHeight : 1;
+      const dx = e.deltaX * unit;
+      const y = window.scrollY;
+      const start = m.top;
+      const end = m.top + m.range;
+      if (y < start - 1 || y > end + 1) return; // hero not pinned
+      if ((dx < 0 && y <= start + 1) || (dx > 0 && y >= end - 1)) return; // at an end
+      // Also stops the browser's back/forward swipe while over the hero.
+      e.preventDefault();
+      stopGlide();
+      lastInputTouch = false;
+      const html = document.documentElement;
+      html.style.scrollBehavior = "auto";
+      window.scrollTo(0, Math.min(end, Math.max(start, y + dx)));
+      html.style.scrollBehavior = "";
+    }
+
+    let swipeX = 0;
+    let swipeY = 0;
+    let swipeAxis: "x" | "y" | null = null;
+    function onSwipeStart(e: TouchEvent) {
+      swipeX = e.touches[0].clientX;
+      swipeY = e.touches[0].clientY;
+      swipeAxis = null;
+    }
+    function onSwipeMove(e: TouchEvent) {
+      const dx = e.touches[0].clientX - swipeX;
+      const dy = e.touches[0].clientY - swipeY;
+      if (!swipeAxis && Math.hypot(dx, dy) > 10) swipeAxis = Math.abs(dx) > Math.abs(dy) ? "x" : "y";
+      // A sideways drag belongs to the carousel, not the browser.
+      if (swipeAxis === "x" && e.cancelable) e.preventDefault();
+    }
+    function onSwipeEnd(e: TouchEvent) {
+      if (swipeAxis !== "x") return;
+      const dx = e.changedTouches[0].clientX - swipeX;
+      if (Math.abs(dx) < 40) return; // too small to count as a swipe
+      const m = measure();
+      if (!m) return;
+      const y = window.scrollY;
+      if (y < m.top - 1 || y > m.top + m.range + 1) return;
+      // Current tee, or -1 while still on the intro/headline view. The first
+      // tee sits exactly where the intro ends, so only count as "intro" when
+      // clearly before that point.
+      const current = m.progress < INTRO_END - 0.005 ? -1 : Math.min(last, Math.max(0, Math.round(m.raw)));
+      // Swipe left → next tee; swipe right → previous (or back to the intro).
+      const next = current + (dx < 0 ? 1 : -1);
+      if (next > last || next < -1) return;
+      glideTo(teeY(m, next));
+    }
+
     window.addEventListener("scroll", onScroll, { passive: true });
     window.addEventListener("wheel", onWheel, { passive: true });
     window.addEventListener("touchstart", onTouchStart, { passive: true });
     window.addEventListener("touchend", onTouchEnd, { passive: true });
     window.addEventListener("touchcancel", onTouchEnd, { passive: true });
+    hero?.addEventListener("wheel", onSidewaysWheel, { passive: false });
+    hero?.addEventListener("touchstart", onSwipeStart, { passive: true });
+    hero?.addEventListener("touchmove", onSwipeMove, { passive: false });
+    hero?.addEventListener("touchend", onSwipeEnd, { passive: true });
     return () => {
       clearTimeout(idleTimer);
       cancelAnimationFrame(settleFrame);
@@ -532,6 +605,10 @@ export function Hero({ slides }: { slides: HeroSlide[] }) {
       window.removeEventListener("touchstart", onTouchStart);
       window.removeEventListener("touchend", onTouchEnd);
       window.removeEventListener("touchcancel", onTouchEnd);
+      hero?.removeEventListener("wheel", onSidewaysWheel);
+      hero?.removeEventListener("touchstart", onSwipeStart);
+      hero?.removeEventListener("touchmove", onSwipeMove);
+      hero?.removeEventListener("touchend", onSwipeEnd);
     };
   }, [shouldReduceMotion, count, steps, INTRO_END]);
 
@@ -547,7 +624,9 @@ export function Hero({ slides }: { slides: HeroSlide[] }) {
       className="relative bg-ink"
       style={{ height: `${TOTAL_VH}vh` }}
     >
-      <div className="sticky top-0 h-[100svh] w-full overflow-hidden">
+      {/* touch-pan-y: the browser handles vertical drags natively and hands
+          sideways ones to the carousel (no horizontal pan / back-swipe). */}
+      <div className="sticky top-0 h-[100svh] w-full touch-pan-y overflow-hidden">
         {/* Keyed so the per-tee transforms rebuild with the right offsets
             when crossing the mobile breakpoint. */}
         <TeeStage key={isMobile ? "m" : "d"} p={p} zoom={teeZoom} gate={previewGate} mobile={isMobile} slides={slides} />
@@ -555,7 +634,8 @@ export function Hero({ slides }: { slides: HeroSlide[] }) {
         <HeroCopy active={slides[activeIndex]?.product ?? null} opacity={chromeOpacity} y={chromeY} />
 
         <motion.div
-          style={{ opacity: chromeOpacity }}
+          // Stays visible through the whole hero (unlike the headline and
+          // CTA, which fade out) so visitors keep the cue to scroll on.
           // On mobile it's smaller and sits lower, below the CTA / product
           // name row, so the three can't collide even on 320px screens.
           className="pointer-events-none absolute bottom-3 left-1/2 z-10 flex -translate-x-1/2 flex-col items-center gap-1.5 text-[8px] md:bottom-6 uppercase tracking-[0.2em] text-bone/60 md:gap-2 md:text-[10px] md:tracking-widest2"
