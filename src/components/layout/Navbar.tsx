@@ -10,6 +10,7 @@ import { cx } from "@/lib/utils";
 import { useCart } from "@/context/CartContext";
 import { useUI } from "@/context/UIContext";
 import { MobileMenu } from "./MobileMenu";
+import { BackButton } from "@/components/ui/BackButton";
 
 const links = [
   { label: "Shop", href: "/shop" },
@@ -82,16 +83,22 @@ export function Navbar() {
           className="mx-auto flex max-w-content items-center justify-between px-5 md:px-10"
           aria-label="Main navigation"
         >
-          <Link href="/" aria-label="NSUDE, home" data-cursor="">
-            <Image
-              src={solid ? "/brand/nsude-logo-dark.png" : "/brand/nsude-logo-light.png"}
-              alt="NSUDE"
-              width={482}
-              height={172}
-              priority
-              className="h-6 w-auto transition-opacity duration-500 ease-editorial md:h-7"
-            />
-          </Link>
+          <div className="flex items-center">
+            {/* Product and checkout pages on phones: back arrow before the logo. */}
+            {(pathname.startsWith("/product/") || pathname === "/checkout") && (
+              <BackButton className="-my-2 -ml-3 mr-1 md:hidden" />
+            )}
+            <Link href="/" aria-label="NSUDE, home" data-cursor="">
+              <Image
+                src={solid ? "/brand/nsude-logo-dark.png" : "/brand/nsude-logo-light.png"}
+                alt="NSUDE"
+                width={482}
+                height={172}
+                priority
+                className="h-6 w-auto transition-opacity duration-500 ease-editorial md:h-7"
+              />
+            </Link>
+          </div>
 
           <ul className="absolute left-1/2 hidden -translate-x-1/2 items-center gap-10 md:flex">
             {links.map((link) => (

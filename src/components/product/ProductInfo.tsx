@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, ShoppingBag } from "lucide-react";
 import { ColorVariant, Product, Size, priceFor, priceRange } from "@/lib/types";
 import { formatPrice, formatPriceRange, cx } from "@/lib/utils";
 import { useCart } from "@/context/CartContext";
@@ -53,20 +53,40 @@ export function ProductInfo({ product, variant, onColorChange }: ProductInfoProp
     addItem(product, variant, size, quantity);
   }
 
-  // Mobile bar: without a size, bring the size picker into view instead.
+  // Phone buttons: without a size, bring the size picker into view instead.
   const sizeRef = useRef<HTMLDivElement>(null);
-  function handleBarAddToBag() {
-    if (!soldOut && !size) {
-      setError(true);
-      sizeRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
-      return;
-    }
-    handleAddToBag();
+  function needsSize() {
+    if (soldOut || size) return false;
+    setError(true);
+    sizeRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+    return true;
   }
 
   // The bar is portalled to <body>, which only exists in the browser.
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
+
+  // Phones: the Buy Now / Add to Bag bar is pinned to the bottom of the
+  // screen until the same buttons in the page scroll up to it; from there it
+  // "docks" — the bar hides and the in-page row scrolls with the page.
+  const inlineRowRef = useRef<HTMLDivElement>(null);
+  const barRowRef = useRef<HTMLDivElement>(null);
+  const [docked, setDocked] = useState(false);
+  useEffect(() => {
+    if (!mounted) return;
+    const update = () => {
+      const inline = inlineRowRef.current?.getBoundingClientRect();
+      const bar = barRowRef.current?.getBoundingClientRect();
+      if (inline && bar) setDocked(inline.top <= bar.top);
+    };
+    update();
+    window.addEventListener("scroll", update, { passive: true });
+    window.addEventListener("resize", update);
+    return () => {
+      window.removeEventListener("scroll", update);
+      window.removeEventListener("resize", update);
+    };
+  }, [mounted]);
 
   // Reserve room at the bottom of the page on phones so the fixed bar never
   // covers the end of the page (footer links, copyright).
@@ -80,6 +100,34 @@ export function ProductInfo({ product, variant, onColorChange }: ProductInfoProp
     addItem(product, variant, size, quantity, { openDrawer: false });
     router.push("/checkout");
   }
+
+  const phoneButtons = soldOut ? (
+    <button
+      type="button"
+      disabled
+      className="flex h-12 w-full items-center justify-center bg-graphite/40 text-xs uppercase tracking-widest2 text-bone"
+    >
+      {variant.name} — Sold Out
+    </button>
+  ) : (
+    <div className="flex gap-3">
+      <button
+        type="button"
+        onClick={() => needsSize() || handleBuyNow()}
+        className="flex h-12 flex-1 items-center justify-center border border-ink bg-paper text-xs uppercase tracking-widest2 text-ink transition-colors active:bg-bone"
+      >
+        Buy Now
+      </button>
+      <button
+        type="button"
+        onClick={() => needsSize() || handleAddToBag()}
+        className="flex h-12 flex-1 items-center justify-center gap-2 bg-ink text-xs uppercase tracking-widest2 text-bone transition-colors active:bg-graphite"
+      >
+        <ShoppingBag size={15} strokeWidth={1.5} />
+        Add to Bag
+      </button>
+    </div>
+  );
 
   return (
     <div className="flex flex-col gap-8">
@@ -129,13 +177,17 @@ export function ProductInfo({ product, variant, onColorChange }: ProductInfoProp
         <QuantitySelector value={quantity} onChange={setQuantity} />
       </div>
 
-      <div className="flex flex-col gap-3">
-        {/* On phones the sticky bar below replaces this button. */}
+      {/* Phones: Buy Now + Add to Bag side by side (the pinned bar docks here). */}
+      <div ref={inlineRowRef} className="md:hidden">
+        {phoneButtons}
+      </div>
+
+      <div className="hidden flex-col gap-3 md:flex">
         <button
           type="button"
           onClick={handleAddToBag}
           disabled={soldOut}
-          className="group hidden h-14 w-full items-center justify-center gap-2 bg-ink text-sm uppercase tracking-widest2 text-bone transition-colors duration-300 hover:bg-graphite disabled:cursor-not-allowed disabled:bg-graphite/40 md:flex"
+          className="group flex h-14 w-full items-center justify-center gap-2 bg-ink text-sm uppercase tracking-widest2 text-bone transition-colors duration-300 hover:bg-graphite disabled:cursor-not-allowed disabled:bg-graphite/40"
         >
           {soldOut ? `${variant.name} — Sold Out` : "Add to Bag"}
           {!soldOut && (
@@ -232,27 +284,18 @@ export function ProductInfo({ product, variant, onColorChange }: ProductInfoProp
         </AccordionItem>
       </div>
 
-      {/* Phones: sticky price + Add to Bag bar. Portalled to <body> so it's
-          fixed to the screen even inside the page's animated wrapper. */}
+      {/* Phones: the pinned bar (see docking above). Portalled to <body> so
+          it's fixed to the screen even inside the page's animated wrapper. */}
       {mounted &&
         createPortal(
-          <div className="fixed inset-x-0 bottom-0 z-40 border-t border-graphite/10 bg-paper/95 px-5 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-3 backdrop-blur-md md:hidden">
-            <div className="flex items-center gap-4">
-              <div className="min-w-0 shrink-0">
-                <p className="text-base font-medium text-ink" aria-live="polite">{priceText}</p>
-                <p className={cx("truncate text-[11px] uppercase tracking-wide", error && !size ? "text-rust" : "text-ash")}>
-                  {soldOut ? `${variant.name} · Sold out` : size ? `${variant.name} · ${size}` : "Select a size"}
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={handleBarAddToBag}
-                disabled={soldOut}
-                className="flex h-12 flex-1 items-center justify-center gap-2 bg-ink text-xs uppercase tracking-widest2 text-bone transition-colors active:bg-graphite disabled:bg-graphite/40"
-              >
-                {soldOut ? "Sold Out" : "Add to Bag"}
-              </button>
-            </div>
+          <div
+            aria-hidden={docked || undefined}
+            className={cx(
+              "fixed inset-x-0 bottom-0 z-40 border-t border-graphite/10 bg-paper px-5 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-3 md:hidden",
+              docked && "invisible"
+            )}
+          >
+            <div ref={barRowRef}>{phoneButtons}</div>
           </div>,
           document.body
         )}
