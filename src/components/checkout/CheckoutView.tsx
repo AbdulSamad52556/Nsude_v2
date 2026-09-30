@@ -21,7 +21,6 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { useCart } from "@/context/CartContext";
-import { BackButton } from "@/components/ui/BackButton";
 import { formatPrice, cx } from "@/lib/utils";
 import {
   FREE_SHIPPING_THRESHOLD,
@@ -797,9 +796,8 @@ export function CheckoutView({ razorpayEnabled }: { razorpayEnabled: boolean }) 
     // Phones: at least a full screen tall, so the footer never shows on the
     // first screen even when every section is closed.
     <div className="mx-auto min-h-[100svh] max-w-content px-5 pb-24 pt-28 md:min-h-0 md:px-10 md:pt-40">
-      {/* Phones: centered title with a back arrow; desktop: large heading. */}
-      <div className="relative mb-8 flex items-center justify-center md:mb-14 md:justify-start">
-        <BackButton className="absolute left-0 -ml-3 md:hidden" />
+      {/* Phones: centered title (back arrow is in the header); desktop: large heading. */}
+      <div className="mb-8 flex items-center justify-center md:mb-14 md:justify-start">
         <h1 className="text-2xl font-medium uppercase tracking-tighter text-ink md:text-display-lg">Checkout</h1>
       </div>
 
