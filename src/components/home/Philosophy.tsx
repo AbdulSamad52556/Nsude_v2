@@ -25,7 +25,7 @@ const pillars = [
 
 export function Philosophy() {
   return (
-    <section className="bg-ink px-5 py-28 text-bone md:px-10 md:py-36">
+    <section className="bg-ink px-5 py-28 text-paper md:px-10 md:py-36">
       <div className="mx-auto max-w-content">
         <Reveal>
           <span className="mb-16 block text-xs uppercase tracking-widest2 text-stone md:mb-24">

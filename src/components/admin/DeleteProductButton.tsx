@@ -42,7 +42,7 @@ export function DeleteProductButton({
         type="button"
         onClick={handleDelete}
         disabled={busy}
-        className="flex h-11 items-center gap-2 border border-rust/40 px-5 text-xs uppercase tracking-widest2 text-rust hover:bg-rust hover:text-bone disabled:opacity-60"
+        className="flex h-11 items-center gap-2 border border-rust/40 px-5 text-xs uppercase tracking-widest2 text-rust hover:bg-rust hover:text-paper disabled:opacity-60"
       >
         {busy ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} strokeWidth={1.5} />}
         Delete

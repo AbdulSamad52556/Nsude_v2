@@ -87,7 +87,7 @@ export default function CartPage() {
                 </div>
 
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center border border-graphite/20">
+                  <div className="flex items-center overflow-hidden rounded-md border border-graphite/20">
                     <button
                       type="button"
                       onClick={() => updateQuantity(line.key, line.quantity - 1)}
@@ -165,7 +165,7 @@ export default function CartPage() {
 
           <Link
             href="/checkout"
-            className="group flex h-14 w-full items-center justify-center gap-2 bg-ink text-sm uppercase tracking-widest2 text-bone transition-colors hover:bg-graphite"
+            className="group flex h-14 w-full items-center justify-center gap-2 rounded-md bg-moss text-sm uppercase tracking-widest2 text-paper transition-[filter] hover:brightness-90"
           >
             Checkout
             <ArrowRight size={16} strokeWidth={1.5} className="transition-transform duration-300 group-hover:translate-x-1" />

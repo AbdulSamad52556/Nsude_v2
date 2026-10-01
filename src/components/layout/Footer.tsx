@@ -32,7 +32,7 @@ const columns = [
 
 export function Footer() {
   return (
-    <footer className="bg-ink text-bone">
+    <footer className="bg-ink text-paper">
       <div className="mx-auto max-w-content px-5 pb-10 pt-20 md:px-10">
         <div className="grid grid-cols-1 gap-16 border-b border-graphite pb-16 md:grid-cols-[1.4fr_1fr_1fr_1.2fr]">
           <div className="flex flex-col justify-between gap-10">
@@ -61,7 +61,7 @@ export function Footer() {
                   <li key={link.label}>
                     <Link
                       href={link.href}
-                      className="text-sm uppercase tracking-wide text-mist transition-colors hover:text-bone"
+                      className="text-sm uppercase tracking-wide text-mist transition-colors hover:text-paper"
                     >
                       {link.label}
                     </Link>
@@ -77,17 +77,17 @@ export function Footer() {
         <div className="flex flex-col-reverse items-center justify-between gap-6 pt-8 text-xs uppercase tracking-wide text-stone md:flex-row">
           <p>© 2026 NSUDE. All rights reserved.</p>
           <div className="flex items-center gap-6">
-            <Link href="/privacy" className="hover:text-bone">
+            <Link href="/privacy" className="hover:text-paper">
               Privacy
             </Link>
-            <Link href="/terms" className="hover:text-bone">
+            <Link href="/terms" className="hover:text-paper">
               Terms
             </Link>
-            <Link href="/shipping" className="hover:text-bone">
+            <Link href="/shipping" className="hover:text-paper">
               Shipping &amp; Returns
             </Link>
           </div>
-          <div className="flex items-center gap-4 text-bone">
+          <div className="flex items-center gap-4 text-paper">
             <a href="https://instagram.com" target="_blank" rel="noreferrer" aria-label="Instagram">
               <Instagram size={16} strokeWidth={1.5} />
             </a>

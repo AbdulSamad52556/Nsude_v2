@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { Check } from "lucide-react";
 import { CATEGORIES, FITS, SIZES } from "@/lib/types";
 import type { ShopFacets } from "@/lib/server/listings";
@@ -29,6 +30,51 @@ function Group({ title, children }: { title: string; children: React.ReactNode }
   );
 }
 
+/** Options shown before "Show more". */
+const VISIBLE_OPTIONS = 5;
+
+/**
+ * An option list that shows the first few options and a "Show more" link
+ * for the rest. Selected options always stay visible, even when collapsed.
+ */
+function OptionList<T>({
+  items,
+  itemKey,
+  isSelected,
+  render,
+}: {
+  items: T[];
+  itemKey: (item: T) => string;
+  isSelected: (item: T) => boolean;
+  render: (item: T) => React.ReactNode;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const collapsible = items.length > VISIBLE_OPTIONS;
+  const visible =
+    expanded || !collapsible ? items : items.filter((item, i) => i < VISIBLE_OPTIONS || isSelected(item));
+  const hiddenCount = items.length - visible.length;
+
+  return (
+    <>
+      <ul className="flex flex-col gap-2.5">
+        {visible.map((item) => (
+          <li key={itemKey(item)}>{render(item)}</li>
+        ))}
+      </ul>
+      {collapsible && (expanded || hiddenCount > 0) && (
+        <button
+          type="button"
+          onClick={() => setExpanded((e) => !e)}
+          aria-expanded={expanded}
+          className="mt-3 text-[11px] uppercase tracking-widest2 text-moss underline decoration-moss/40 underline-offset-4 hover:decoration-moss"
+        >
+          {expanded ? "Show less" : `Show more (+${hiddenCount})`}
+        </button>
+      )}
+    </>
+  );
+}
+
 /**
  * Filter controls shared by the desktop sidebar and the mobile drawer.
  * Each option shows how many colorways it would leave, given every *other*
@@ -41,72 +87,74 @@ export function FilterPanel({ facets, filters, onChange }: Props) {
   return (
     <div>
       <Group title="Category">
-        <ul className="flex flex-col gap-2.5">
-          {[null, ...CATEGORIES].map((category) => {
+        <OptionList
+          items={[null, ...CATEGORIES]}
+          itemKey={(category) => category ?? "all"}
+          isSelected={(category) => filters.category === category}
+          render={(category) => {
             const on = filters.category === category;
             const n = category === null ? allCategories : facets.category[category] ?? 0;
             return (
-              <li key={category ?? "all"}>
-                <label className="flex cursor-pointer items-center gap-3 text-sm text-graphite hover:text-ink">
-                  <span
-                    className={cx(
-                      "flex h-4 w-4 shrink-0 items-center justify-center rounded-full border transition-colors",
-                      on ? "border-ink" : "border-graphite/30"
-                    )}
-                  >
-                    {on && <span className="h-2 w-2 rounded-full bg-ink" />}
-                  </span>
-                  <input
-                    type="radio"
-                    name="shop-category"
-                    className="sr-only"
-                    checked={on}
-                    onChange={() => onChange({ ...filters, category })}
-                  />
-                  <span className={cx("flex-1", on && "text-ink")}>{category ?? "All"}</span>
-                  <span className="text-xs text-ash">{n}</span>
-                </label>
-              </li>
+              <label className="flex cursor-pointer items-center gap-3 text-sm text-graphite hover:text-ink">
+                <span
+                  className={cx(
+                    "flex h-4 w-4 shrink-0 items-center justify-center rounded-full border transition-colors",
+                    on ? "border-moss" : "border-graphite/30"
+                  )}
+                >
+                  {on && <span className="h-2 w-2 rounded-full bg-moss" />}
+                </span>
+                <input
+                  type="radio"
+                  name="shop-category"
+                  className="sr-only"
+                  checked={on}
+                  onChange={() => onChange({ ...filters, category })}
+                />
+                <span className={cx("flex-1", on && "text-ink")}>{category ?? "All"}</span>
+                <span className="text-xs text-ash">{n}</span>
+              </label>
             );
-          })}
-        </ul>
+          }}
+        />
       </Group>
 
       <Group title="Fit">
-        <ul className="flex flex-col gap-2.5">
-          {FITS.map((fit) => {
+        <OptionList
+          items={[...FITS]}
+          itemKey={(fit) => fit}
+          isSelected={(fit) => filters.fits.includes(fit)}
+          render={(fit) => {
             const n = facets.fit[fit] ?? 0;
             const on = filters.fits.includes(fit);
             return (
-              <li key={fit}>
-                <label
+              <label
+                className={cx(
+                  "flex cursor-pointer items-center gap-3 text-sm",
+                  n === 0 && !on ? "text-mist" : "text-graphite hover:text-ink"
+                )}
+              >
+                <span
                   className={cx(
-                    "flex cursor-pointer items-center gap-3 text-sm",
-                    n === 0 && !on ? "text-mist" : "text-graphite hover:text-ink"
+                    "flex h-4 w-4 shrink-0 items-center justify-center border transition-colors",
+                    on ? "border-moss bg-moss text-paper" : "border-graphite/30"
                   )}
                 >
-                  <span
-                    className={cx(
-                      "flex h-4 w-4 shrink-0 items-center justify-center border transition-colors",
-                      on ? "border-ink bg-ink text-bone" : "border-graphite/30"
-                    )}
-                  >
-                    {on && <Check size={11} strokeWidth={2.5} />}
-                  </span>
-                  <input
-                    type="checkbox"
-                    className="sr-only"
-                    checked={on}
-                    disabled={n === 0 && !on}
-                    onChange={() => onChange({ ...filters, fits: toggle(filters.fits, fit) })}
-                  />
-                  <span className={cx("flex-1", on && "text-ink")}>{fit}</span>
-                  <span className="text-xs text-ash">{n}</span>
-                </label>
-              </li>
+                  {on && <Check size={11} strokeWidth={2.5} />}
+                </span>
+                <input
+                  type="checkbox"
+                  className="sr-only"
+                  checked={on}
+                  disabled={n === 0 && !on}
+                  onChange={() => onChange({ ...filters, fits: toggle(filters.fits, fit) })}
+                />
+                <span className={cx("flex-1", on && "text-ink")}>{fit}</span>
+                <span className="text-xs text-ash">{n}</span>
+              </label>
             );
-          })}
-        </ul>
+          }}
+        />
       </Group>
 
       <Group title="Size">
@@ -122,10 +170,10 @@ export function FilterPanel({ facets, filters, onChange }: Props) {
                 disabled={n === 0 && !on}
                 onClick={() => onChange({ ...filters, sizes: toggle(filters.sizes, size) })}
                 className={cx(
-                  "h-10 border text-xs uppercase tracking-wide transition-colors",
+                  "h-10 rounded-md border text-xs uppercase tracking-wide transition-colors",
                   on
-                    ? "border-ink bg-ink text-bone"
-                    : "border-graphite/20 text-ink hover:border-ink disabled:border-graphite/10 disabled:text-mist disabled:hover:border-graphite/10"
+                    ? "border-moss bg-moss text-paper"
+                    : "border-graphite/20 text-ink hover:border-moss disabled:border-graphite/10 disabled:text-mist disabled:hover:border-graphite/10"
                 )}
               >
                 {size}
@@ -136,35 +184,43 @@ export function FilterPanel({ facets, filters, onChange }: Props) {
       </Group>
 
       <Group title="Color">
-        <ul className="flex flex-col gap-2.5">
-          {facets.colors.map((c) => {
+        <OptionList
+          items={facets.colors}
+          itemKey={(c) => c.key}
+          isSelected={(c) => filters.colors.includes(c.key)}
+          render={(c) => {
             const on = filters.colors.includes(c.key);
             const n = c.count;
             return (
-              <li key={c.key}>
-                <button
-                  type="button"
-                  aria-pressed={on}
-                  disabled={n === 0 && !on}
-                  onClick={() => onChange({ ...filters, colors: toggle(filters.colors, c.key) })}
-                  className="group flex w-full items-center gap-3 text-left text-sm text-graphite hover:text-ink disabled:text-mist"
+              <button
+                type="button"
+                aria-pressed={on}
+                disabled={n === 0 && !on}
+                onClick={() => onChange({ ...filters, colors: toggle(filters.colors, c.key) })}
+                className="group flex w-full items-center gap-3 text-left text-sm text-graphite hover:text-ink disabled:text-mist"
+              >
+                {/* The selection ring sits inside this box (not outside it),
+                    so the scrolling sidebar can't clip it. */}
+                <span
+                  className={cx(
+                    "flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-full border-[1.5px] transition-colors",
+                    on ? "border-moss" : "border-transparent"
+                  )}
                 >
                   <span
                     className={cx(
-                      "h-4 w-4 shrink-0 rounded-full border transition-shadow",
-                      on
-                        ? "border-ink ring-1 ring-ink ring-offset-2 ring-offset-paper"
-                        : "border-graphite/20 group-hover:border-graphite/50"
+                      "h-4 w-4 rounded-full border",
+                      on ? "border-graphite/20" : "border-graphite/20 group-hover:border-graphite/50"
                     )}
                     style={{ backgroundColor: c.hex }}
                   />
-                  <span className={cx("flex-1 truncate", on && "text-ink")}>{c.name}</span>
-                  <span className="text-xs text-ash">{n}</span>
-                </button>
-              </li>
+                </span>
+                <span className={cx("flex-1 truncate", on && "text-ink")}>{c.name}</span>
+                <span className="text-xs text-ash">{n}</span>
+              </button>
             );
-          })}
-        </ul>
+          }}
+        />
       </Group>
 
       <Group title="Price">
@@ -183,10 +239,10 @@ export function FilterPanel({ facets, filters, onChange }: Props) {
                   <span
                     className={cx(
                       "flex h-4 w-4 shrink-0 items-center justify-center rounded-full border transition-colors",
-                      on ? "border-ink" : "border-graphite/30"
+                      on ? "border-moss" : "border-graphite/30"
                     )}
                   >
-                    {on && <span className="h-2 w-2 rounded-full bg-ink" />}
+                    {on && <span className="h-2 w-2 rounded-full bg-moss" />}
                   </span>
                   <input
                     type="checkbox"
@@ -216,13 +272,13 @@ export function FilterPanel({ facets, filters, onChange }: Props) {
           In stock only
           <span
             className={cx(
-              "relative h-5 w-9 rounded-full transition-colors",
-              filters.inStock ? "bg-ink" : "bg-graphite/20"
+              "relative h-5 w-9 shrink-0 rounded-full transition-colors",
+              filters.inStock ? "bg-moss" : "bg-graphite/20"
             )}
           >
             <span
               className={cx(
-                "absolute top-0.5 h-4 w-4 rounded-full bg-paper transition-transform",
+                "absolute left-0 top-0.5 h-4 w-4 rounded-full bg-paper shadow-sm transition-transform",
                 filters.inStock ? "translate-x-[18px]" : "translate-x-0.5"
               )}
             />

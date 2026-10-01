@@ -26,7 +26,7 @@ export function Navbar() {
   const pathname = usePathname();
   const shouldReduceMotion = useReducedMotion();
   const { count, openCart } = useCart();
-  const { openSearch, setHeaderHidden } = useUI();
+  const { openSearch } = useUI();
 
   useEffect(() => {
     lastScrollY.current = window.scrollY;
@@ -58,12 +58,10 @@ export function Navbar() {
     if (mobileOpen) setHidden(false);
   }, [mobileOpen]);
 
-  useEffect(() => setHeaderHidden(hidden), [hidden, setHeaderHidden]);
-
   // Only the home page has a dark hero to sit over, so only it gets the
   // transparent header; every other page is solid light with dark content.
   const solid = pathname !== "/" || scrolled;
-  const tone = solid ? "text-ink" : "text-bone";
+  const tone = solid ? "text-ink" : "text-paper";
 
   return (
     <>

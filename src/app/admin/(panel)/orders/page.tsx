@@ -75,7 +75,7 @@ export default async function AdminOrdersPage({ searchParams }: { searchParams: 
               href={href({ status: t.value, q })}
               className={cx(
                 "border px-3 py-1.5 text-[11px] uppercase tracking-widest2",
-                status === t.value ? "border-ink bg-ink text-bone" : "border-graphite/20 text-graphite hover:border-ink"
+                status === t.value ? "border-ink bg-ink text-paper" : "border-graphite/20 text-graphite hover:border-ink"
               )}
             >
               {t.label} <span className="opacity-60">{t.count}</span>
@@ -90,7 +90,7 @@ export default async function AdminOrdersPage({ searchParams }: { searchParams: 
             placeholder="Order no., email or phone"
             className="h-10 w-64 border border-graphite/20 bg-transparent px-3 text-sm focus:border-ink focus:outline-none"
           />
-          <button type="submit" className="h-10 bg-ink px-4 text-xs uppercase tracking-widest2 text-bone hover:bg-graphite">
+          <button type="submit" className="h-10 bg-ink px-4 text-xs uppercase tracking-widest2 text-paper hover:bg-graphite">
             Search
           </button>
         </form>

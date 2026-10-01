@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { AnimatePresence, motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { ArrowRight, ShoppingBag } from "lucide-react";
 import { ColorVariant, Product, Size, priceFor, priceRange } from "@/lib/types";
@@ -53,14 +54,31 @@ export function ProductInfo({ product, variant, onColorChange }: ProductInfoProp
     addItem(product, variant, size, quantity);
   }
 
-  // Phone buttons: without a size, bring the size picker into view instead.
   const sizeRef = useRef<HTMLDivElement>(null);
-  function needsSize() {
-    if (soldOut || size) return false;
-    setError(true);
-    sizeRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
-    return true;
+
+  // Phones: tapping Buy Now / Add to Bag without a size opens a size sheet
+  // from the bottom; "Done" finishes whichever button was tapped.
+  const [sheetAction, setSheetAction] = useState<"add" | "buy" | null>(null);
+  function phoneTap(action: "add" | "buy") {
+    if (!soldOut && !size) {
+      setSheetAction(action);
+      return;
+    }
+    if (action === "add") handleAddToBag();
+    else handleBuyNow();
   }
+  function finishSheet() {
+    const action = sheetAction;
+    setSheetAction(null);
+    if (action === "add") handleAddToBag();
+    else if (action === "buy") handleBuyNow();
+  }
+  useEffect(() => {
+    if (!sheetAction) return;
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setSheetAction(null);
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [sheetAction]);
 
   // The bar is portalled to <body>, which only exists in the browser.
   const [mounted, setMounted] = useState(false);
@@ -101,11 +119,25 @@ export function ProductInfo({ product, variant, onColorChange }: ProductInfoProp
     router.push("/checkout");
   }
 
+  const sizeSelectorProps = {
+    sizes: product.sizes,
+    unavailableSizes,
+    // Show each size's price only when this color's sizes differ.
+    prices: sizesVaryInPrice
+      ? Object.fromEntries(product.sizes.map((s) => [s, formatPrice(priceFor(product, variant, s))]))
+      : undefined,
+    selected: size,
+    onChange: (s: Size) => {
+      setSize(s);
+      setError(false);
+    },
+  };
+
   const phoneButtons = soldOut ? (
     <button
       type="button"
       disabled
-      className="flex h-12 w-full items-center justify-center bg-graphite/40 text-xs uppercase tracking-widest2 text-bone"
+      className="rounded-md flex h-12 w-full items-center justify-center bg-graphite/40 text-xs uppercase tracking-widest2 text-paper"
     >
       {variant.name} — Sold Out
     </button>
@@ -113,15 +145,15 @@ export function ProductInfo({ product, variant, onColorChange }: ProductInfoProp
     <div className="flex gap-3">
       <button
         type="button"
-        onClick={() => needsSize() || handleBuyNow()}
-        className="flex h-12 flex-1 items-center justify-center border border-ink bg-paper text-xs uppercase tracking-widest2 text-ink transition-colors active:bg-bone"
+        onClick={() => phoneTap("buy")}
+        className="rounded-md flex h-12 flex-1 items-center justify-center border border-ink bg-paper text-xs uppercase tracking-widest2 text-ink transition-colors active:border-moss active:bg-moss active:text-paper"
       >
         Buy Now
       </button>
       <button
         type="button"
-        onClick={() => needsSize() || handleAddToBag()}
-        className="flex h-12 flex-1 items-center justify-center gap-2 bg-ink text-xs uppercase tracking-widest2 text-bone transition-colors active:bg-graphite"
+        onClick={() => phoneTap("add")}
+        className="rounded-md flex h-12 flex-1 items-center justify-center gap-2 bg-moss text-xs uppercase tracking-widest2 text-paper transition-colors active:brightness-90"
       >
         <ShoppingBag size={15} strokeWidth={1.5} />
         Add to Bag
@@ -132,11 +164,6 @@ export function ProductInfo({ product, variant, onColorChange }: ProductInfoProp
   return (
     <div className="flex flex-col gap-8">
       <div>
-        {product.newArrival && (
-          <span className="mb-3 inline-block text-xs uppercase tracking-widest2 text-rust">
-            New Arrival
-          </span>
-        )}
         <h1 className="text-display-md font-medium uppercase tracking-tighter text-ink">
           {product.name}
         </h1>
@@ -150,21 +177,7 @@ export function ProductInfo({ product, variant, onColorChange }: ProductInfoProp
       <ColorSelector variants={product.variants} selected={variant.code} onChange={onColorChange} />
 
       <div ref={sizeRef} className="scroll-mt-28">
-        <SizeSelector
-          sizes={product.sizes}
-          unavailableSizes={unavailableSizes}
-          // Show each size's price only when this color's sizes differ.
-          prices={
-            sizesVaryInPrice
-              ? Object.fromEntries(product.sizes.map((s) => [s, formatPrice(priceFor(product, variant, s))]))
-              : undefined
-          }
-          selected={size}
-          onChange={(s) => {
-            setSize(s);
-            setError(false);
-          }}
-        />
+        <SizeSelector {...sizeSelectorProps} />
         {error && (
           <p className="mt-2 text-xs text-rust" role="alert">
             Please select a size to continue.
@@ -187,7 +200,7 @@ export function ProductInfo({ product, variant, onColorChange }: ProductInfoProp
           type="button"
           onClick={handleAddToBag}
           disabled={soldOut}
-          className="group flex h-14 w-full items-center justify-center gap-2 bg-ink text-sm uppercase tracking-widest2 text-bone transition-colors duration-300 hover:bg-graphite disabled:cursor-not-allowed disabled:bg-graphite/40"
+          className="rounded-md group flex h-14 w-full items-center justify-center gap-2 bg-moss text-sm uppercase tracking-widest2 text-paper transition-[filter,background-color] duration-300 hover:brightness-90 disabled:cursor-not-allowed disabled:bg-graphite/40 disabled:brightness-100"
         >
           {soldOut ? `${variant.name} — Sold Out` : "Add to Bag"}
           {!soldOut && (
@@ -202,7 +215,7 @@ export function ProductInfo({ product, variant, onColorChange }: ProductInfoProp
           <button
             type="button"
             onClick={handleBuyNow}
-            className="flex h-14 w-full items-center justify-center border border-ink text-sm uppercase tracking-widest2 text-ink transition-colors duration-300 hover:bg-ink hover:text-bone"
+            className="rounded-md flex h-14 w-full items-center justify-center border border-ink text-sm uppercase tracking-widest2 text-ink transition-colors duration-300 hover:border-moss hover:bg-moss hover:text-paper"
           >
             Buy Now
           </button>
@@ -297,6 +310,48 @@ export function ProductInfo({ product, variant, onColorChange }: ProductInfoProp
           >
             <div ref={barRowRef}>{phoneButtons}</div>
           </div>,
+          document.body
+        )}
+
+      {/* Phones: size sheet (see phoneTap). */}
+      {mounted &&
+        createPortal(
+          <AnimatePresence>
+            {sheetAction && (
+              <div key="size-sheet-root" className="fixed inset-0 z-[70] md:hidden">
+                <motion.div
+                  key="size-sheet-backdrop"
+                  className="absolute inset-0 bg-ink/50"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  onClick={() => setSheetAction(null)}
+                  aria-hidden
+                />
+                <motion.div
+                  key="size-sheet"
+                  role="dialog"
+                  aria-modal="true"
+                  aria-label="Select size"
+                  className="absolute inset-x-0 bottom-0 rounded-t-xl bg-paper px-5 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-5"
+                  initial={{ y: "100%" }}
+                  animate={{ y: 0 }}
+                  exit={{ y: "100%" }}
+                  transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+                >
+                  <SizeSelector {...sizeSelectorProps} label="Select Size" />
+                  <button
+                    type="button"
+                    onClick={finishSheet}
+                    disabled={!size}
+                    className="mt-6 flex h-12 w-full items-center justify-center rounded-md bg-moss text-xs uppercase tracking-widest2 text-paper transition-[filter] active:brightness-90 disabled:bg-graphite/40"
+                  >
+                    Done
+                  </button>
+                </motion.div>
+              </div>
+            )}
+          </AnimatePresence>,
           document.body
         )}
     </div>

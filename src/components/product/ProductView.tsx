@@ -32,7 +32,11 @@ export function ProductView({ product, initialCode }: { product: Product; initia
   return (
     <div className="mx-auto grid max-w-content grid-cols-1 gap-10 md:grid-cols-2 md:gap-16">
       {/* Keyed by color so the gallery restarts on that color's first photo. */}
-      <ProductGallery key={variant.code} images={variant.images} />
+      <ProductGallery
+        key={variant.code}
+        images={variant.images}
+        badge={variant.stock === 0 ? "sold-out" : product.newArrival ? "new" : null}
+      />
       <div className="md:sticky md:top-28 md:h-fit">
         <ProductInfo product={product} variant={variant} onColorChange={changeColor} />
       </div>

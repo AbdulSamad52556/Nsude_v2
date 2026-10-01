@@ -11,6 +11,8 @@ interface SizeSelectorProps {
   prices?: Partial<Record<Size, string>>;
   selected: Size | null;
   onChange: (size: Size) => void;
+  /** Heading above the sizes. */
+  label?: string;
 }
 
 export function SizeSelector({
@@ -19,13 +21,14 @@ export function SizeSelector({
   prices,
   selected,
   onChange,
+  label = "Size",
 }: SizeSelectorProps) {
   const [showGuide, setShowGuide] = useState(false);
 
   return (
     <fieldset>
       <legend className="mb-3 flex w-full items-center justify-between text-xs uppercase tracking-widest2 text-ash">
-        Size
+        {label}
         <button
           type="button"
           onClick={() => setShowGuide((v) => !v)}
@@ -48,16 +51,16 @@ export function SizeSelector({
               onClick={() => onChange(size)}
               aria-pressed={isSelected}
               className={cx(
-                "relative flex flex-col items-center justify-center border text-sm uppercase tracking-wide transition-all duration-200 ease-editorial",
+                "relative flex flex-col items-center justify-center rounded-md border text-sm uppercase tracking-wide transition-all duration-200 ease-editorial",
                 prices ? "h-14 gap-0.5" : "h-12",
                 isUnavailable &&
                   "cursor-not-allowed border-graphite/10 text-mist line-through",
                 !isUnavailable &&
                   isSelected &&
-                  "border-ink bg-ink text-bone",
+                  "border-moss bg-moss text-paper",
                 !isUnavailable &&
                   !isSelected &&
-                  "border-graphite/20 text-ink hover:border-ink"
+                  "border-graphite/20 text-ink hover:border-moss"
               )}
             >
               {size}

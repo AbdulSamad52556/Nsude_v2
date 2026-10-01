@@ -58,7 +58,7 @@ export function CustomCursor() {
         width: label ? 84 : 10,
         height: label ? 84 : 10,
         opacity: visible ? 1 : 0,
-        backgroundColor: "#faf8f3",
+        backgroundColor: "#f8f6f1",
       }}
       transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
     >

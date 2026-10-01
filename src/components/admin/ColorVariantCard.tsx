@@ -188,7 +188,7 @@ export function ColorVariantCard({
         </div>
         <div className="flex items-center gap-1 pt-1.5">
           {index === 0 && (
-            <span className="mr-1 bg-ink px-2 py-0.5 text-[10px] uppercase tracking-wide text-bone" title="Shown first in the shop and on the product page">
+            <span className="mr-1 bg-ink px-2 py-0.5 text-[10px] uppercase tracking-wide text-paper" title="Shown first in the shop and on the product page">
               Default
             </span>
           )}
@@ -237,7 +237,7 @@ export function ColorVariantCard({
                 type="button"
                 onClick={applyBulkPrice}
                 disabled={!bulkPrice}
-                className="h-9 border border-ink px-3 text-[10px] uppercase tracking-widest2 text-ink hover:bg-ink hover:text-bone disabled:border-graphite/20 disabled:text-ash disabled:hover:bg-transparent"
+                className="h-9 border border-ink px-3 text-[10px] uppercase tracking-widest2 text-ink hover:bg-ink hover:text-paper disabled:border-graphite/20 disabled:text-ash disabled:hover:bg-transparent"
               >
                 Apply to all sizes
               </button>
@@ -354,7 +354,7 @@ export function ColorVariantCard({
                   }}
                   className={cx(
                     "flex h-8 items-center gap-2 px-3 text-[10px] uppercase tracking-widest2 transition-colors",
-                    addMode === key ? "bg-ink text-bone" : "text-ash hover:text-ink"
+                    addMode === key ? "bg-ink text-paper" : "text-ash hover:text-ink"
                   )}
                 >
                   <Icon size={13} strokeWidth={1.5} />
@@ -389,7 +389,7 @@ export function ColorVariantCard({
                 type="button"
                 onClick={addFromUrl}
                 disabled={uploading > 0 || !imageUrl.trim()}
-                className="flex h-11 shrink-0 items-center gap-2 bg-ink px-5 text-xs uppercase tracking-widest2 text-bone hover:bg-graphite disabled:opacity-50"
+                className="flex h-11 shrink-0 items-center gap-2 bg-ink px-5 text-xs uppercase tracking-widest2 text-paper hover:bg-graphite disabled:opacity-50"
               >
                 {uploading > 0 ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
                 Add
@@ -403,7 +403,7 @@ export function ColorVariantCard({
                 <div className="relative aspect-[4/5] overflow-hidden bg-bone">
                   <Image src={img.src} alt={img.alt} fill sizes="160px" className="object-cover" />
                   {i === 0 && (
-                    <span className="absolute left-1.5 top-1.5 bg-ink px-1.5 py-0.5 text-[9px] uppercase tracking-wide text-bone">
+                    <span className="absolute left-1.5 top-1.5 bg-ink px-1.5 py-0.5 text-[9px] uppercase tracking-wide text-paper">
                       Main
                     </span>
                   )}

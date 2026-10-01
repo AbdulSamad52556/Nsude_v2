@@ -137,7 +137,7 @@ export function HeroEditor({
                 aria-label={slide.image ? `Replace image for slide ${i + 1}` : `Upload image for slide ${i + 1}`}
               >
                 {uploadingKey === slide.key ? (
-                  <Loader2 size={20} className="animate-spin text-bone" />
+                  <Loader2 size={20} className="animate-spin text-paper" />
                 ) : slide.image ? (
                   <>
                     <Image
@@ -147,7 +147,7 @@ export function HeroEditor({
                       height={slide.image.height}
                       className="h-full w-auto object-contain p-2"
                     />
-                    <span className="absolute inset-x-0 bottom-0 bg-ink/80 py-1 text-center text-[10px] uppercase tracking-wide text-bone opacity-0 transition-opacity group-hover:opacity-100">
+                    <span className="absolute inset-x-0 bottom-0 bg-ink/80 py-1 text-center text-[10px] uppercase tracking-wide text-paper opacity-0 transition-opacity group-hover:opacity-100">
                       Replace
                     </span>
                   </>
@@ -230,7 +230,7 @@ export function HeroEditor({
           type="button"
           onClick={save}
           disabled={saving || uploadingKey !== null || !dirty}
-          className="flex h-11 items-center gap-2 bg-ink px-6 text-xs uppercase tracking-widest2 text-bone hover:bg-graphite disabled:opacity-50"
+          className="flex h-11 items-center gap-2 bg-ink px-6 text-xs uppercase tracking-widest2 text-paper hover:bg-graphite disabled:opacity-50"
         >
           {saving && <Loader2 size={16} className="animate-spin" />}
           Save carousel

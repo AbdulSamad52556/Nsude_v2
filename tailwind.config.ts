@@ -12,8 +12,10 @@ const config: Config = {
         ash: "#6e6e69",
         mist: "#c9c7c0",
         bone: "#f4f1ea",
-        paper: "#faf8f3",
+        paper: "#f8f6f1",
         rust: "#8a5a3f",
+        // Tag color (e.g. the NEW badge on product photos).
+        moss: "#3f4639",
       },
       fontFamily: {
         sans: ["var(--font-inter)", "Helvetica Neue", "Arial", "sans-serif"],

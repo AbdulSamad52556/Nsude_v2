@@ -27,7 +27,7 @@ export default function AboutPage() {
         <div className="relative z-10 px-5 pb-16 md:px-10 md:pb-20">
           <AnimatedText
             text="Built for the everyday. Designed to last."
-            className="max-w-3xl text-display-lg font-medium uppercase tracking-tighter text-bone"
+            className="max-w-3xl text-display-lg font-medium uppercase tracking-tighter text-paper"
           />
         </div>
       </section>
@@ -78,7 +78,7 @@ export default function AboutPage() {
             className="object-cover"
           />
         </div>
-        <div className="flex flex-col justify-center gap-6 bg-ink px-8 py-16 text-bone md:px-14">
+        <div className="flex flex-col justify-center gap-6 bg-ink px-8 py-16 text-paper md:px-14">
           <span className="text-xs uppercase tracking-widest2 text-stone">
             Materials
           </span>

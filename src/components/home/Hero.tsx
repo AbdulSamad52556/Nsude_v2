@@ -95,7 +95,7 @@ function HeroCopy({ active, opacity, y }: HeroCopyProps) {
                 // may otherwise break between any two of them (e.g. before ",").
                 // Below md the size tracks viewport width so "ESSENTIALS," always
                 // fits (display-xl's 56px floor overflows phones ≤375px wide).
-                className="block whitespace-nowrap text-[min(13.5vw,4.5rem)] font-medium uppercase leading-[0.92] tracking-[-0.03em] text-bone md:text-display-xl"
+                className="block whitespace-nowrap text-[min(13.5vw,4.5rem)] font-medium uppercase leading-[0.92] tracking-[-0.03em] text-paper md:text-display-xl"
               >
                 {Array.from(line).map((char, ci) => (
                   <motion.span
@@ -115,7 +115,7 @@ function HeroCopy({ active, opacity, y }: HeroCopyProps) {
           variants={fadeUpVariants}
           initial={initial}
           animate={play}
-          className="mt-4 max-w-[34ch] text-[13px] leading-relaxed text-bone/70 md:mt-6 md:max-w-md md:text-base"
+          className="mt-4 max-w-[34ch] text-[13px] leading-relaxed text-paper/70 md:mt-6 md:max-w-md md:text-base"
         >
           {HEADLINE_DESCRIPTION}
         </motion.p>
@@ -134,7 +134,7 @@ function HeroCopy({ active, opacity, y }: HeroCopyProps) {
                 href="/shop"
                 // Smaller on mobile so the CTA, the centered scroll hint and
                 // the product name all fit on one bottom row.
-                className="group inline-flex items-center gap-2 border-b border-bone pb-1 text-[11px] uppercase tracking-[0.2em] text-bone md:gap-3 md:text-sm md:tracking-widest2"
+                className="group inline-flex items-center gap-2 border-b border-paper pb-1 text-[11px] uppercase tracking-[0.2em] text-paper md:gap-3 md:text-sm md:tracking-widest2"
               >
                 Shop T-Shirts
                 <ArrowRight
@@ -159,8 +159,8 @@ function HeroCopy({ active, opacity, y }: HeroCopyProps) {
               transition={{ duration: 0.4, ease }}
               className="text-right"
             >
-              <p className="text-[11px] uppercase tracking-wide text-bone md:text-sm">{active.name}</p>
-              <p className="mt-1 text-[10px] text-bone/70 md:text-xs">{formatPriceRange(active.priceRange)}</p>
+              <p className="text-[11px] uppercase tracking-wide text-paper md:text-sm">{active.name}</p>
+              <p className="mt-1 text-[10px] text-paper/70 md:text-xs">{formatPriceRange(active.priceRange)}</p>
             </motion.div>
           </AnimatePresence>
         </motion.div>
@@ -638,7 +638,7 @@ export function Hero({ slides }: { slides: HeroSlide[] }) {
           // CTA, which fade out) so visitors keep the cue to scroll on.
           // On mobile it's smaller and sits lower, below the CTA / product
           // name row, so the three can't collide even on 320px screens.
-          className="pointer-events-none absolute bottom-3 left-1/2 z-10 flex -translate-x-1/2 flex-col items-center gap-1.5 text-[8px] md:bottom-6 uppercase tracking-[0.2em] text-bone/60 md:gap-2 md:text-[10px] md:tracking-widest2"
+          className="pointer-events-none absolute bottom-3 left-1/2 z-10 flex -translate-x-1/2 flex-col items-center gap-1.5 text-[8px] md:bottom-6 uppercase tracking-[0.2em] text-paper/60 md:gap-2 md:text-[10px] md:tracking-widest2"
           aria-hidden
         >
           Scroll

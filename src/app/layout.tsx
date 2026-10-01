@@ -60,7 +60,7 @@ export default function RootLayout({
       <body className="min-h-screen bg-ink font-sans antialiased">
         <a
           href="#main-content"
-          className="fixed left-4 top-4 z-[200] -translate-y-24 bg-ink px-4 py-2 text-xs uppercase tracking-widest2 text-bone transition-transform focus:translate-y-0"
+          className="fixed left-4 top-4 z-[200] -translate-y-24 bg-ink px-4 py-2 text-xs uppercase tracking-widest2 text-paper transition-transform focus:translate-y-0"
         >
           Skip to content
         </a>
