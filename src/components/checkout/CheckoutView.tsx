@@ -682,7 +682,7 @@ export function CheckoutView({ razorpayEnabled }: { razorpayEnabled: boolean }) 
         (continuing ? !sectionComplete(step) : blocked || !SECTIONS.every(sectionComplete))
       }
       className={cx(
-        "group h-14 w-full items-center justify-center gap-2 bg-ink text-sm uppercase tracking-widest2 text-bone transition-colors hover:bg-graphite disabled:cursor-not-allowed disabled:bg-graphite/40",
+        "group h-14 w-full items-center justify-center gap-2 rounded-md bg-moss text-sm uppercase tracking-widest2 text-paper transition-[filter,background-color] hover:brightness-90 disabled:cursor-not-allowed disabled:bg-graphite/40 disabled:brightness-100",
         className
       )}
     >
@@ -725,7 +725,7 @@ export function CheckoutView({ razorpayEnabled }: { razorpayEnabled: boolean }) 
               <div className="flex items-center gap-4">
                 <div className="relative h-16 w-14 shrink-0 overflow-hidden bg-bone">
                   {line.image && <Image src={line.image} alt={line.name} fill sizes="56px" className="object-cover" />}
-                  <span className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-ink text-[10px] text-bone">
+                  <span className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-ink text-[10px] text-paper">
                     {line.quantity}
                   </span>
                 </div>

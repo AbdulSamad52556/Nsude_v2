@@ -74,7 +74,7 @@ function LoginForm() {
       <button
         type="submit"
         disabled={submitting}
-        className="group mt-2 flex h-12 w-full items-center justify-center gap-2 bg-ink text-sm uppercase tracking-widest2 text-bone transition-colors hover:bg-graphite disabled:opacity-60"
+        className="group mt-2 flex h-12 w-full items-center justify-center gap-2 bg-ink text-sm uppercase tracking-widest2 text-paper transition-colors hover:bg-graphite disabled:opacity-60"
       >
         {submitting ? <Loader2 size={16} className="animate-spin" /> : "Sign In"}
         {!submitting && <ArrowRight size={16} strokeWidth={1.5} />}

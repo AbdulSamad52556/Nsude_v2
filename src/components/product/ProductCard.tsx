@@ -54,7 +54,7 @@ export function ProductCard({
           </span>
         ) : (
           card.newArrival && (
-            <span className="absolute left-4 top-4 bg-ink px-2.5 py-1 text-[10px] uppercase tracking-widest2 text-bone">
+            <span className="absolute left-4 top-4 bg-moss px-2.5 py-1 text-[10px] uppercase tracking-widest2 text-paper">
               New
             </span>
           )
@@ -75,21 +75,6 @@ export function ProductCard({
         <p className="shrink-0 text-sm text-ink">{formatPriceRange(card.price)}</p>
       </div>
 
-      {/* Other colorways; the one this card shows is ringed. */}
-      {card.swatches.length > 1 && (
-        <div className="mt-3 flex items-center gap-1.5" aria-hidden>
-          {card.swatches.map((s) => (
-            <span
-              key={s.code}
-              className={cx(
-                "h-3 w-3 rounded-full border border-graphite/15",
-                s.code === card.code && "ring-1 ring-ink ring-offset-2 ring-offset-paper"
-              )}
-              style={{ backgroundColor: s.hex }}
-            />
-          ))}
-        </div>
-      )}
     </Link>
   );
 }

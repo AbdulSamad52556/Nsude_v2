@@ -295,7 +295,7 @@ export function ProductForm({ product }: { product?: Product }) {
                       type="button"
                       aria-pressed={on}
                       onClick={() => set("sizes", on ? form.sizes.filter((x) => x !== s) : SIZES.filter((x) => x === s || form.sizes.includes(x)))}
-                      className={cx("h-10 w-12 border text-xs", on ? "border-ink bg-ink text-bone" : "border-graphite/20 hover:border-ink")}
+                      className={cx("h-10 w-12 border text-xs", on ? "border-ink bg-ink text-paper" : "border-graphite/20 hover:border-ink")}
                     >
                       {s}
                     </button>
@@ -454,7 +454,7 @@ export function ProductForm({ product }: { product?: Product }) {
           <button
             type="submit"
             disabled={saving || uploading > 0}
-            className="flex h-11 items-center gap-2 bg-ink px-6 text-xs uppercase tracking-widest2 text-bone hover:bg-graphite disabled:opacity-60"
+            className="flex h-11 items-center gap-2 bg-ink px-6 text-xs uppercase tracking-widest2 text-paper hover:bg-graphite disabled:opacity-60"
           >
             {saving && <Loader2 size={16} className="animate-spin" />}
             {isEdit ? "Save changes" : "Create product"}

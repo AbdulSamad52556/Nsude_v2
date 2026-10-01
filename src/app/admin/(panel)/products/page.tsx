@@ -21,7 +21,7 @@ export default async function AdminProductsPage() {
         action={
           <Link
             href="/admin/products/new"
-            className="flex h-11 items-center gap-2 bg-ink px-5 text-xs uppercase tracking-widest2 text-bone hover:bg-graphite"
+            className="flex h-11 items-center gap-2 bg-ink px-5 text-xs uppercase tracking-widest2 text-paper hover:bg-graphite"
           >
             <Plus size={16} strokeWidth={1.5} /> New Product
           </Link>

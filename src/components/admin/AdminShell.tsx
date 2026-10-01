@@ -40,7 +40,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
           onClick={() => setOpen(false)}
           className={cx(
             "flex items-center gap-3 px-3 py-2.5 text-xs uppercase tracking-widest2 transition-colors",
-            isActive(href) ? "bg-bone/10 text-bone" : "text-stone hover:text-bone"
+            isActive(href) ? "bg-bone/10 text-paper" : "text-stone hover:text-paper"
           )}
         >
           <Icon size={16} strokeWidth={1.5} />
@@ -51,7 +51,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
         <Link
           href="/"
           target="_blank"
-          className="flex items-center gap-3 px-3 py-2.5 text-xs uppercase tracking-widest2 text-stone hover:text-bone"
+          className="flex items-center gap-3 px-3 py-2.5 text-xs uppercase tracking-widest2 text-stone hover:text-paper"
         >
           <ExternalLink size={16} strokeWidth={1.5} />
           View Store
@@ -59,7 +59,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
         <button
           type="button"
           onClick={logout}
-          className="flex items-center gap-3 px-3 py-2.5 text-left text-xs uppercase tracking-widest2 text-stone hover:text-bone"
+          className="flex items-center gap-3 px-3 py-2.5 text-left text-xs uppercase tracking-widest2 text-stone hover:text-paper"
         >
           <LogOut size={16} strokeWidth={1.5} />
           Log Out
@@ -75,7 +75,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
       {/* Mobile: top bar + slide-over sidebar */}
       <div className="sticky top-0 z-30 flex items-center justify-between bg-ink px-5 py-3 md:hidden">
         <Image src="/brand/nsude-logo-light.png" alt="NSUDE" width={482} height={172} className="h-5 w-auto" />
-        <button type="button" onClick={() => setOpen(true)} aria-label="Open menu" className="text-bone">
+        <button type="button" onClick={() => setOpen(true)} aria-label="Open menu" className="text-paper">
           <Menu size={22} strokeWidth={1.5} />
         </button>
       </div>
@@ -87,7 +87,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
               type="button"
               onClick={() => setOpen(false)}
               aria-label="Close menu"
-              className="absolute right-4 top-4 text-bone"
+              className="absolute right-4 top-4 text-paper"
             >
               <X size={20} strokeWidth={1.5} />
             </button>

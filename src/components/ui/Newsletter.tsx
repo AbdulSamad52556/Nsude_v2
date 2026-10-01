@@ -16,14 +16,14 @@ export function Newsletter() {
 
   return (
     <div className="flex flex-col gap-5">
-      <h3 className="text-xl font-medium uppercase tracking-tighter text-bone">
+      <h3 className="text-xl font-medium uppercase tracking-tighter text-paper">
         Join the NSUDE list
       </h3>
       <p className="max-w-xs text-sm leading-relaxed text-mist">
         New releases, restocks, and the occasional word from the studio. No noise.
       </p>
       {submitted ? (
-        <p className="flex items-center gap-2 text-sm text-bone" role="status">
+        <p className="flex items-center gap-2 text-sm text-paper" role="status">
           <Check size={16} aria-hidden /> You&apos;re on the list.
         </p>
       ) : (
@@ -38,12 +38,12 @@ export function Newsletter() {
             placeholder="EMAIL ADDRESS"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="w-full bg-transparent text-sm uppercase tracking-wide text-bone placeholder:text-stone focus:outline-none"
+            className="w-full bg-transparent text-sm uppercase tracking-wide text-paper placeholder:text-stone focus:outline-none"
           />
           <button
             type="submit"
             aria-label="Subscribe"
-            className="flex shrink-0 items-center gap-1 text-xs uppercase tracking-widest2 text-bone transition-opacity hover:opacity-60"
+            className="flex shrink-0 items-center gap-1 text-xs uppercase tracking-widest2 text-paper transition-opacity hover:opacity-60"
           >
             Subscribe <ArrowRight size={14} aria-hidden />
           </button>

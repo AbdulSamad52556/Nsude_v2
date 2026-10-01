@@ -5,12 +5,11 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { usePathname } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
-import { ChevronDown, Loader2, SlidersHorizontal, X } from "lucide-react";
+import { ArrowDownUp, ChevronDown, Loader2, SlidersHorizontal, X } from "lucide-react";
 import type { CardData } from "@/lib/types";
 import type { ShopPage } from "@/lib/server/listings";
 import { ProductGrid } from "@/components/product/ProductGrid";
 import { cx } from "@/lib/utils";
-import { useUI } from "@/context/UIContext";
 import { FilterPanel } from "./FilterPanel";
 import {
   EMPTY_FILTERS,
@@ -24,18 +23,36 @@ import {
 function SortMenu({ value, onChange }: { value: Filters["sort"]; onChange: (v: Filters["sort"]) => void }) {
   const [open, setOpen] = useState(false);
   const current = SORT_OPTIONS.find((o) => o.key === value)!;
-  // Close on Escape, or on a tap anywhere else via a full-screen catcher.
-  // The catcher is portalled to <body>: inside the sticky toolbar (whose
-  // backdrop blur traps fixed children) it would only cover the toolbar.
+  const ref = useRef<HTMLDivElement>(null);
+
+  // Close on Escape or on a tap outside the menu. That outside tap only
+  // closes it: the click it would cause (e.g. opening a product) is
+  // swallowed. (No full-screen overlay — on desktop it sat above the
+  // options and blocked them.)
   useEffect(() => {
     if (!open) return;
+    const onPointerDown = (e: PointerEvent) => {
+      if (ref.current?.contains(e.target as Node)) return;
+      setOpen(false);
+      const swallow = (ev: MouseEvent) => {
+        ev.preventDefault();
+        ev.stopPropagation();
+      };
+      document.addEventListener("click", swallow, { capture: true, once: true });
+      // A scroll or drag produces no click; don't leave the trap behind.
+      window.setTimeout(() => document.removeEventListener("click", swallow, { capture: true }), 600);
+    };
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
+    document.addEventListener("pointerdown", onPointerDown, true);
     document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("pointerdown", onPointerDown, true);
+      document.removeEventListener("keydown", onKey);
+    };
   }, [open]);
 
   return (
-    <div className="relative shrink-0">
+    <div ref={ref} className="relative shrink-0">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
@@ -46,12 +63,10 @@ function SortMenu({ value, onChange }: { value: Filters["sort"]; onChange: (v: F
         <span className="text-ash">Sort:</span> {current.label}
         <ChevronDown size={13} strokeWidth={1.5} className={cx("transition-transform", open && "rotate-180")} />
       </button>
-      {open &&
-        createPortal(<div className="fixed inset-0 z-20" onClick={() => setOpen(false)} aria-hidden />, document.body)}
       {open && (
           <ul
             role="listbox"
-            className="absolute right-0 top-full z-20 mt-3 w-56 border border-graphite/15 bg-paper py-2 shadow-lg"
+            className="absolute right-0 top-full z-40 mt-3 w-56 border border-graphite/15 bg-paper py-2 shadow-lg"
           >
             {SORT_OPTIONS.map((o) => (
               <li key={o.key}>
@@ -220,20 +235,23 @@ export function ShopView({ initialFilters, initialPage }: { initialFilters: Filt
   // Mobile filter drawer.
   const [drawerOpen, setDrawerOpen] = useState(false);
 
-  // Mobile toolbar sticks just under the header, and slides up to the top
-  // of the screen when the header hides (it hides while scrolling down).
-  const { headerHidden } = useUI();
-  const [headerHeight, setHeaderHeight] = useState(0);
+  // Phones / tablets: Sort + Filter live in a bar pinned to the bottom of
+  // the screen; Sort opens a bottom sheet. Both are portalled to <body>.
+  const [sortOpen, setSortOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  // Room at the end of the page so the bar never covers the footer.
   useEffect(() => {
-    const header = document.getElementById("site-header");
-    if (!header) return;
-    const measure = () => setHeaderHeight(header.offsetHeight);
-    measure();
-    const observer = new ResizeObserver(measure);
-    // Border box: the header shrinks by changing its padding.
-    observer.observe(header, { box: "border-box" });
-    return () => observer.disconnect();
+    const cls = ["pb-[calc(56px+env(safe-area-inset-bottom))]", "lg:pb-0"];
+    document.body.classList.add(...cls);
+    return () => document.body.classList.remove(...cls);
   }, []);
+  useEffect(() => {
+    if (!sortOpen) return;
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setSortOpen(false);
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [sortOpen]);
   useEffect(() => {
     if (!drawerOpen) return;
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && setDrawerOpen(false);
@@ -276,35 +294,13 @@ export function ShopView({ initialFilters, initialPage }: { initialFilters: Filt
         </aside>
 
         <div className="min-w-0">
-          {/* Toolbar: mobile filter button, active chips (desktop), sort.
-              Sticky on mobile with a full-bleed background; it sits under
-              the header and slides up when the header hides. */}
-          <div
-            style={{ "--header-offset": `${headerHidden ? 0 : headerHeight}px` } as React.CSSProperties}
-            className={cx(
-              "sticky top-[var(--header-offset)] z-30 -mx-5 flex items-center justify-between gap-3 border-b border-graphite/10 bg-paper/95 px-5 py-3 backdrop-blur-md transition-[top] duration-[400ms] ease-[cubic-bezier(0.16,1,0.3,1)] md:-mx-10 md:px-10",
-              "lg:static lg:mx-0 lg:mb-8 lg:gap-4 lg:border-0 lg:bg-transparent lg:p-0 lg:backdrop-blur-none",
-              chips.length ? "mb-3" : "mb-8"
-            )}
-          >
-            <div className="flex flex-wrap items-center gap-2">
-              <button
-                type="button"
-                onClick={() => setDrawerOpen(true)}
-                className="flex h-9 shrink-0 items-center gap-2 whitespace-nowrap border border-ink px-4 text-xs uppercase tracking-widest2 text-ink lg:hidden"
-              >
-                <SlidersHorizontal size={14} strokeWidth={1.5} />
-                Filters{activeCount > 0 && ` (${activeCount})`}
-              </button>
-              <div className="hidden flex-wrap items-center gap-2 lg:flex">
-                {chipButtons}
-              </div>
-            </div>
+          {/* Desktop toolbar: active chips + sort. (Phones use the bottom bar.) */}
+          <div className="mb-8 hidden items-center justify-between gap-4 lg:flex">
+            <div className="flex flex-wrap items-center gap-2">{chipButtons}</div>
             <SortMenu value={filters.sort} onChange={(sort) => setFilters({ ...filters, sort })} />
           </div>
 
-          {/* Mobile: active chips in one sideways-scrolling row under the
-              sticky bar (they scroll away with the page). */}
+          {/* Phones: active chips in one sideways-scrolling row. */}
           {chips.length > 0 && (
             <div className="-mx-5 mb-6 flex items-center gap-2 overflow-x-auto px-5 [scrollbar-width:none] md:-mx-10 md:px-10 lg:hidden [&::-webkit-scrollbar]:hidden">
               {chipButtons}
@@ -367,6 +363,100 @@ export function ShopView({ initialFilters, initialPage }: { initialFilters: Filt
         </div>
       </div>
 
+      {mounted &&
+        createPortal(
+          <>
+            {/* Phones / tablets: Filter | Sort pinned to the bottom. */}
+            <div className="fixed inset-x-0 bottom-0 z-40 border-t border-graphite/10 bg-paper pb-[env(safe-area-inset-bottom)] lg:hidden">
+              <div className="grid h-14 grid-cols-2">
+                <button
+                  type="button"
+                  onClick={() => setDrawerOpen(true)}
+                  aria-haspopup="dialog"
+                  className="relative flex items-center justify-center gap-2 text-xs uppercase tracking-widest2 text-ink after:absolute after:right-0 after:top-1/2 after:h-6 after:w-px after:-translate-y-1/2 after:bg-graphite/15"
+                >
+                  <SlidersHorizontal size={15} strokeWidth={1.5} />
+                  Filter{activeCount > 0 && ` (${activeCount})`}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSortOpen(true)}
+                  aria-haspopup="dialog"
+                  className="flex items-center justify-center gap-2 text-xs uppercase tracking-widest2 text-ink"
+                >
+                  <ArrowDownUp size={15} strokeWidth={1.5} />
+                  Sort
+                  {filters.sort !== "featured" && <span className="h-1.5 w-1.5 rounded-full bg-moss" aria-label="(changed)" />}
+                </button>
+              </div>
+            </div>
+
+            {/* Sort sheet */}
+            <AnimatePresence>
+              {sortOpen && (
+                <div key="sort-sheet-root" className="fixed inset-0 z-[70] lg:hidden">
+                  <motion.div
+                    key="sort-backdrop"
+                    className="absolute inset-0 bg-ink/50"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    onClick={() => setSortOpen(false)}
+                    aria-hidden
+                  />
+                  <motion.div
+                    key="sort-sheet"
+                    role="dialog"
+                    aria-modal="true"
+                    aria-label="Sort by"
+                    className="absolute inset-x-0 bottom-0 rounded-t-xl bg-paper pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-5"
+                    initial={{ y: "100%" }}
+                    animate={{ y: 0 }}
+                    exit={{ y: "100%" }}
+                    transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+                  >
+                    <p className="mb-2 px-5 text-xs uppercase tracking-widest2 text-ash">Sort by</p>
+                    <ul role="listbox" aria-label="Sort by">
+                      {SORT_OPTIONS.map((o) => {
+                        const on = filters.sort === o.key;
+                        return (
+                          <li key={o.key}>
+                            <button
+                              type="button"
+                              role="option"
+                              aria-selected={on}
+                              onClick={() => {
+                                setSortOpen(false);
+                                if (!on) setFilters({ ...filters, sort: o.key });
+                              }}
+                              className={cx(
+                                "flex w-full items-center justify-between px-5 py-3.5 text-left text-sm",
+                                on ? "text-ink" : "text-graphite"
+                              )}
+                            >
+                              {o.label}
+                              <span
+                                aria-hidden
+                                className={cx(
+                                  "flex h-4 w-4 items-center justify-center rounded-full border",
+                                  on ? "border-moss" : "border-graphite/30"
+                                )}
+                              >
+                                {on && <span className="h-2 w-2 rounded-full bg-moss" />}
+                              </span>
+                            </button>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </motion.div>
+                </div>
+              )}
+            </AnimatePresence>
+          </>,
+          document.body
+        )}
+
       {/* Mobile / tablet: filter drawer */}
       <AnimatePresence>
         {drawerOpen && (
@@ -391,21 +481,14 @@ export function ShopView({ initialFilters, initialPage }: { initialFilters: Filt
               <div className="flex-1 overflow-y-auto px-5 py-6">
                 <FilterPanel facets={facets} filters={filters} onChange={setFilters} />
               </div>
-              <div className="flex gap-3 border-t border-graphite/10 p-4">
+              <div className="border-t border-graphite/10 p-4">
                 <button
                   type="button"
                   onClick={clearAll}
                   disabled={activeCount === 0}
-                  className="h-12 flex-1 border border-graphite/20 text-xs uppercase tracking-widest2 text-ink disabled:text-mist"
+                  className="h-12 w-full rounded-md border border-graphite/20 text-xs uppercase tracking-widest2 text-ink disabled:text-mist"
                 >
                   Clear all
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setDrawerOpen(false)}
-                  className="h-12 flex-[2] bg-ink text-xs uppercase tracking-widest2 text-bone"
-                >
-                  Show {total} {total === 1 ? "result" : "results"}
                 </button>
               </div>
             </motion.div>

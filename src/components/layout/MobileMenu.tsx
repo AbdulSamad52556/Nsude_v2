@@ -38,7 +38,7 @@ export function MobileMenu({
           role="dialog"
           aria-modal="true"
           aria-label="Site menu"
-          className="fixed inset-0 z-[95] flex flex-col bg-ink px-6 pb-10 pt-6 text-bone md:hidden"
+          className="fixed inset-0 z-[95] flex flex-col bg-ink px-6 pb-10 pt-6 text-paper md:hidden"
           initial={{ clipPath: "inset(0 0 100% 0)" }}
           animate={{ clipPath: "inset(0 0 0% 0)" }}
           exit={{ clipPath: "inset(0 0 100% 0)" }}
@@ -50,7 +50,7 @@ export function MobileMenu({
               type="button"
               onClick={onClose}
               aria-label="Close menu"
-              className="text-bone"
+              className="text-paper"
             >
               <X size={24} strokeWidth={1.5} />
             </button>
@@ -87,7 +87,7 @@ export function MobileMenu({
               target="_blank"
               rel="noreferrer"
               aria-label="NSUDE on Instagram"
-              className="flex items-center gap-2 text-bone"
+              className="flex items-center gap-2 text-paper"
             >
               <Instagram size={16} strokeWidth={1.5} /> Instagram
             </a>

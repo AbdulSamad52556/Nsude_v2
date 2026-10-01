@@ -78,7 +78,7 @@ export default function ContactPage() {
             </div>
             <button
               type="submit"
-              className="group flex h-14 w-full items-center justify-center gap-2 bg-ink text-sm uppercase tracking-widest2 text-bone transition-colors hover:bg-graphite sm:w-fit sm:px-10"
+              className="group flex h-14 w-full items-center justify-center gap-2 bg-ink text-sm uppercase tracking-widest2 text-paper transition-colors hover:bg-graphite sm:w-fit sm:px-10"
             >
               Send Message
               <ArrowRight size={16} strokeWidth={1.5} className="transition-transform duration-300 group-hover:translate-x-1" />

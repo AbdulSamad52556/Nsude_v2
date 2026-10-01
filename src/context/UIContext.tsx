@@ -10,10 +10,6 @@ interface UIContextValue {
       (e.g. the home hero headline) play where the visitor can see them. */
   introReady: boolean;
   markIntroReady: () => void;
-  /** Whether the site header has slid away (it hides while scrolling down),
-      so sticky bars can sit at the very top instead of under it. */
-  headerHidden: boolean;
-  setHeaderHidden: (hidden: boolean) => void;
 }
 
 const UIContext = createContext<UIContextValue | null>(null);
@@ -24,11 +20,10 @@ export function UIProvider({ children }: { children: React.ReactNode }) {
   const openSearch = useCallback(() => setIsSearchOpen(true), []);
   const closeSearch = useCallback(() => setIsSearchOpen(false), []);
   const markIntroReady = useCallback(() => setIntroReady(true), []);
-  const [headerHidden, setHeaderHidden] = useState(false);
 
   return (
     <UIContext.Provider
-      value={{ isSearchOpen, openSearch, closeSearch, introReady, markIntroReady, headerHidden, setHeaderHidden }}
+      value={{ isSearchOpen, openSearch, closeSearch, introReady, markIntroReady }}
     >
       {children}
     </UIContext.Provider>

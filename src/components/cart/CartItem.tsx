@@ -33,7 +33,7 @@ export function CartItem({ line }: { line: CartLine }) {
         </div>
 
         <div className="flex items-center justify-between">
-          <div className="flex items-center border border-graphite/20">
+          <div className="flex items-center overflow-hidden rounded-md border border-graphite/20">
             <button
               type="button"
               onClick={() => updateQuantity(line.key, line.quantity - 1)}

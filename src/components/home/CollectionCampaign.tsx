@@ -34,19 +34,19 @@ export function CollectionCampaign() {
 
       <div className="relative z-10 flex h-full flex-col items-start justify-end px-5 pb-16 md:px-10 md:pb-24">
         <Reveal>
-          <span className="mb-4 block text-xs uppercase tracking-widest2 text-bone/70">
+          <span className="mb-4 block text-xs uppercase tracking-widest2 text-paper/70">
             Form / Function
           </span>
         </Reveal>
         <AnimatedText
           text="The NSUDE Collection"
-          className="max-w-3xl text-display-lg font-medium uppercase tracking-tighter text-bone"
+          className="max-w-3xl text-display-lg font-medium uppercase tracking-tighter text-paper"
         />
         <Reveal delay={0.2} className="mt-8">
           <MagneticButton>
             <Link
               href="/shop"
-              className="group inline-flex items-center gap-3 border-b border-bone pb-1 text-sm uppercase tracking-widest2 text-bone"
+              className="group inline-flex items-center gap-3 border-b border-paper pb-1 text-sm uppercase tracking-widest2 text-paper"
             >
               Explore Collection
               <ArrowRight

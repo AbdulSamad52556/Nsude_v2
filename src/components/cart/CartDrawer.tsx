@@ -95,7 +95,7 @@ export function CartDrawer() {
                   <Link
                     href="/checkout"
                     onClick={closeCart}
-                    className="group flex h-14 w-full items-center justify-center gap-2 bg-ink text-sm uppercase tracking-widest2 text-bone transition-colors hover:bg-graphite"
+                    className="group flex h-14 w-full items-center justify-center gap-2 rounded-md bg-moss text-sm uppercase tracking-widest2 text-paper transition-[filter] hover:brightness-90"
                   >
                     Checkout
                     <ArrowRight
