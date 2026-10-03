@@ -85,6 +85,8 @@ export const checkoutSchema = z.object({
   pincode: z.string().trim().regex(/^[1-9]\d{5}$/, "Enter a valid 6-digit PIN code"),
   paymentMethod: z.enum(PAYMENT_METHODS, "Choose a payment method"),
   items: cartItemsSchema,
+  /** Signed-in customers: save this delivery address to the account. */
+  saveAddress: z.boolean().optional(),
 });
 export type CheckoutInput = z.infer<typeof checkoutSchema>;
 

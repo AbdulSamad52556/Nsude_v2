@@ -17,10 +17,12 @@ import {
   Lock,
   Mail,
   MapPin,
+  ShoppingBag,
   Smartphone,
   type LucideIcon,
 } from "lucide-react";
 import { useCart } from "@/context/CartContext";
+import type { AccountData } from "@/lib/account";
 import { formatPrice, cx } from "@/lib/utils";
 import {
   FREE_SHIPPING_THRESHOLD,
@@ -119,14 +121,15 @@ const PAYMENT_OPTIONS: { value: PaymentMethod; title: string; hint: string; icon
   },
 ];
 
-/** A checkout step as a card: the header toggles it open. A finished,
-    closed step shows a tick and Edit. */
+/** A checkout step as a card: the header (with a dropdown arrow) toggles
+    it open. A finished step shows a tick; a step not reached yet is locked. */
 function CheckoutSection({
   id,
   title,
   icon: Icon,
   open,
   complete,
+  locked,
   onToggle,
   children,
 }: {
@@ -135,31 +138,32 @@ function CheckoutSection({
   icon: LucideIcon;
   open: boolean;
   complete: boolean;
+  /** Not reached yet (the main button unlocks it): greyed out, can't open. */
+  locked: boolean;
   onToggle: () => void;
   children: React.ReactNode;
 }) {
   return (
-    <section id={`section-${id}`} className="scroll-mt-28 border border-graphite/15">
+    <section id={`section-${id}`} className="scroll-mt-28 overflow-hidden rounded-lg border border-graphite/10 bg-paper shadow-[0_1px_6px_rgba(10,10,10,0.07)]">
       <button
         type="button"
         onClick={onToggle}
+        disabled={locked}
         aria-expanded={open}
         aria-controls={`section-${id}-body`}
-        className="flex w-full items-center gap-3 p-4 text-left md:gap-4 md:p-5"
+        className="flex w-full items-center gap-3 p-4 text-left disabled:cursor-not-allowed disabled:opacity-40 md:gap-4 md:p-5"
       >
         <Icon size={18} strokeWidth={1.5} className="shrink-0 text-ink" />
-        <span className="flex min-w-0 flex-1 items-center gap-2 text-xs uppercase tracking-widest2 text-ink">
+        <span className="flex min-w-0 flex-1 items-center gap-2 text-[11px] uppercase tracking-widest2 text-ink md:text-xs">
           {title}
-          {complete && !open && <Check size={14} strokeWidth={1.5} className="text-ink" aria-label="Done" />}
+          {complete && !open && !locked && <Check size={14} strokeWidth={1.5} className="text-ink" aria-label="Done" />}
         </span>
-        {open ? (
-          <ChevronUp size={18} strokeWidth={1.5} className="shrink-0 text-graphite" />
-        ) : complete ? (
-          <span className="shrink-0 text-[11px] uppercase tracking-widest2 text-graphite underline underline-offset-4">
-            Edit
-          </span>
-        ) : (
-          <ChevronDown size={18} strokeWidth={1.5} className="shrink-0 text-graphite" />
+        {!locked && (
+          <ChevronDown
+            size={18}
+            strokeWidth={1.5}
+            className={cx("shrink-0 text-graphite transition-transform duration-300", open && "rotate-180")}
+          />
         )}
       </button>
       <AnimatePresence initial={false}>
@@ -231,7 +235,7 @@ async function postJson<T>(url: string, body: unknown): Promise<{ ok: boolean; s
 
 const inputClass = (invalid: boolean) =>
   cx(
-    "h-11 w-full border bg-transparent px-3 text-base text-ink focus:outline-none md:text-sm",
+    "h-10 w-full rounded-md border bg-transparent px-3 text-sm text-ink focus:outline-none md:h-11",
     invalid ? "border-rust focus:border-rust" : "border-graphite/20 focus:border-ink"
   );
 
@@ -252,13 +256,13 @@ function FieldShell({
 }) {
   return (
     <div className={span ? "col-span-2" : undefined}>
-      <label htmlFor={id} className="mb-1.5 block text-[11px] uppercase tracking-widest text-ash">
+      <label htmlFor={id} className="mb-1.5 block text-[10px] uppercase tracking-widest text-ash md:text-[11px]">
         {label}
         {optional && <span className="ml-1 normal-case tracking-normal">(optional)</span>}
       </label>
       {children}
       {error && (
-        <p id={`${id}-error`} className="mt-1 text-[11px] text-rust">
+        <p id={`${id}-error`} className="mt-1 text-[10px] text-rust md:text-[11px]">
           {error}
         </p>
       )}
@@ -273,7 +277,8 @@ function FieldShell({
 export function CheckoutView({ razorpayEnabled }: { razorpayEnabled: boolean }) {
   const { lines, clear, openCart } = useCart();
   const [values, setValues] = useState<FormValues>(EMPTY_FORM);
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(razorpayEnabled ? "razorpay" : "cod");
+  // No method is pre-selected: the customer has to choose one.
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -292,13 +297,61 @@ export function CheckoutView({ razorpayEnabled }: { razorpayEnabled: boolean }) 
   // the page gets room at the bottom so the bar never covers the footer.
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
-  const showBar = !placed && lines.length > 0;
+
+  // Signed-in customers: pre-fill contact details and offer saved addresses.
+  const [account, setAccount] = useState<AccountData | null>(null);
+  const [addressChoice, setAddressChoice] = useState<string>("new");
+  const [saveAddress, setSaveAddress] = useState(true);
+  // Signed in: the verified number is shown as text until "Edit" is tapped.
+  const [editPhone, setEditPhone] = useState(false);
   useEffect(() => {
-    if (!showBar) return;
-    const cls = ["pb-[calc(128px+env(safe-area-inset-bottom))]", "md:pb-0"];
+    fetch("/api/account")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data: { account: AccountData } | null) => {
+        if (!data?.account) return;
+        const acc = data.account;
+        setAccount(acc);
+        setValues((v) => ({ ...v, email: v.email || acc.email, phone: acc.phone }));
+        const preferred = acc.addresses.find((a) => a.id === acc.defaultAddressId) ?? acc.addresses[0];
+        if (preferred) chooseAddress(preferred.id, acc);
+      })
+      .catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  /** Pick a saved address (fills the address fields) or "new" (clears them). */
+  function chooseAddress(id: string, acc: AccountData | null = account) {
+    setAddressChoice(id);
+    const saved = acc?.addresses.find((a) => a.id === id);
+    setValues((v) => ({
+      ...v,
+      firstName: saved?.firstName ?? "",
+      lastName: saved?.lastName ?? "",
+      line1: saved?.line1 ?? "",
+      line2: saved?.line2 ?? "",
+      city: saved?.city ?? "",
+      state: saved?.state ?? "",
+      pincode: saved?.pincode ?? "",
+    }));
+    setErrors((e) => {
+      const next = { ...e };
+      for (const k of ["firstName", "lastName", "line1", "line2", "city", "state", "pincode"]) delete next[k];
+      return next;
+    });
+  }
+  // Bottom bar on phones: Place Order while checking out, Continue Shopping
+  // once the order is confirmed (each needs its own room at the bottom).
+  const barPadding = placed
+    ? "pb-[calc(68px+env(safe-area-inset-bottom))]"
+    : lines.length > 0
+      ? "pb-[calc(128px+env(safe-area-inset-bottom))]"
+      : null;
+  useEffect(() => {
+    if (!barPadding) return;
+    const cls = [barPadding, "md:pb-0"];
     document.body.classList.add(...cls);
     return () => document.body.classList.remove(...cls);
-  }, [showBar]);
+  }, [barPadding]);
 
   // Lines saved before product codes existed can't be ordered.
   const orderable = useMemo(() => lines.filter((l) => l.code), [lines]);
@@ -379,7 +432,11 @@ export function CheckoutView({ razorpayEnabled }: { razorpayEnabled: boolean }) 
   const liveErrors = validate();
   const sectionComplete = (id: SectionId) => SECTION_FIELDS[id].every((f) => !liveErrors[f]);
 
+  // Sections after the current step stay locked until "Continue" reaches them.
+  const isLocked = (id: SectionId) => SECTIONS.indexOf(id) > SECTIONS.indexOf(step);
+
   function toggleSection(id: SectionId) {
+    if (isLocked(id)) return;
     setOpenSections((prev) => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
@@ -435,7 +492,7 @@ export function CheckoutView({ razorpayEnabled }: { razorpayEnabled: boolean }) 
     setPlaced({
       number: order.number,
       total: order.total,
-      paymentMethod,
+      paymentMethod: paymentMethod ?? "cod",
       lines: q?.lines ?? summaryLines,
       email: values.email.trim(),
       address: [
@@ -516,7 +573,12 @@ export function CheckoutView({ razorpayEnabled }: { razorpayEnabled: boolean }) 
     if (submitting || blocked) return;
     setFormError(null);
 
-    const payload = { ...values, paymentMethod, items };
+    const payload = {
+      ...values,
+      paymentMethod,
+      items,
+      saveAddress: Boolean(account) && addressChoice === "new" && saveAddress,
+    };
     const fieldErrors = validate();
     if (Object.keys(fieldErrors).length) {
       showErrors(fieldErrors);
@@ -555,77 +617,146 @@ export function CheckoutView({ razorpayEnabled }: { razorpayEnabled: boolean }) 
   // ------------------------------------------------------------------------
 
   if (placed) {
+    const cardClass = "rounded-lg border border-graphite/10 bg-paper shadow-[0_1px_6px_rgba(10,10,10,0.07)]";
+    const itemsSubtotal = placed.lines.reduce((sum, l) => sum + l.price * l.quantity, 0);
+    const shippingPaid = Math.max(0, placed.total - itemsSubtotal);
+    const cod = placed.paymentMethod === "cod";
     return (
-      <div className="mx-auto max-w-2xl px-5 pb-24 pt-32 md:pt-40">
-        <div className="flex flex-col items-center gap-5 text-center">
-          <span className="flex h-14 w-14 items-center justify-center rounded-full border border-ink">
-            <Check size={22} strokeWidth={1.5} />
+      <div className="mx-auto min-h-[100svh] max-w-2xl px-5 pb-24 pt-24 md:min-h-0 md:pt-40">
+        <div className="flex flex-col items-center gap-3 text-center md:gap-4">
+          <span className="flex h-12 w-12 items-center justify-center rounded-full bg-moss text-paper md:h-14 md:w-14">
+            <Check size={22} strokeWidth={2} />
           </span>
-          <h1 className="text-display-md font-medium uppercase tracking-tighter text-ink">Order Confirmed</h1>
-          <p className="max-w-md text-sm text-graphite">
-            Thank you! Your order <span className="font-medium text-ink">{placed.number}</span> has been placed.
-            {placed.paymentMethod === "cod"
-              ? ` Please keep ${formatPrice(placed.total)} ready to pay on delivery.`
-              : " Your payment was successful."}{" "}
-            We&apos;ll contact you at {placed.email} with shipping updates.
+          <p className="text-[11px] uppercase tracking-widest2 text-ash md:text-xs">Thank you for your order</p>
+          <h1 className="text-xl font-medium uppercase tracking-tighter text-ink md:text-display-md">Order Confirmed</h1>
+          <span className="rounded-md bg-moss/10 px-3 py-1 text-[11px] uppercase tracking-widest2 text-moss md:text-xs">
+            Order {placed.number}
+          </span>
+          <p className="max-w-md text-[13px] leading-relaxed text-graphite md:text-sm">
+            {cod
+              ? `Please keep ${formatPrice(placed.total)} ready to pay when your order arrives.`
+              : "Your payment was successful."}{" "}
+            We&apos;ll send shipping updates to {placed.email}.
           </p>
         </div>
 
-        <div className="mt-10 border border-graphite/15">
-          <ul className="divide-y divide-graphite/10">
-            {placed.lines.map((l) => (
-              <li key={`${l.code}-${l.size}`} className="flex items-center gap-4 p-4">
-                <div className="relative h-16 w-14 shrink-0 overflow-hidden bg-bone">
-                  {l.image && <Image src={l.image} alt="" fill sizes="56px" className="object-cover" />}
-                </div>
-                <div className="flex-1">
-                  <p className="text-xs uppercase tracking-wide text-ink">{l.name}</p>
-                  <p className="text-xs text-ash">
-                    {l.color} · {l.size} · Qty {l.quantity}
-                  </p>
-                </div>
-                <span className="text-xs text-ink">{formatPrice(l.price * l.quantity)}</span>
-              </li>
-            ))}
-          </ul>
-          <div className="grid gap-6 border-t border-graphite/10 p-4 text-sm sm:grid-cols-2">
-            <div>
-              <p className="mb-1 text-[11px] uppercase tracking-widest2 text-ash">Shipping to</p>
-              <p className="whitespace-pre-line text-graphite">{placed.address}</p>
+        <div className="mt-8 flex flex-col gap-4 md:mt-10">
+          {/* Items + totals */}
+          <section className={cardClass}>
+            <p className="border-b border-graphite/10 p-4 text-[11px] uppercase tracking-widest2 text-ink md:p-5 md:text-xs">
+              Items · {placed.lines.reduce((n, l) => n + l.quantity, 0)}
+            </p>
+            <ul className="divide-y divide-graphite/10">
+              {placed.lines.map((l) => (
+                <li key={`${l.code}-${l.size}`} className="flex items-center gap-3 p-4 md:gap-4 md:px-5">
+                  <div className="relative h-16 w-14 shrink-0 overflow-hidden rounded-md bg-bone">
+                    {l.image && <Image src={l.image} alt="" fill sizes="56px" className="object-cover" />}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-[11px] uppercase tracking-wide text-ink md:text-xs">{l.name}</p>
+                    <p className="text-[11px] text-ash md:text-xs">
+                      {l.color} · {l.size} · Qty {l.quantity}
+                    </p>
+                  </div>
+                  <span className="text-[11px] text-ink md:text-xs">{formatPrice(l.price * l.quantity)}</span>
+                </li>
+              ))}
+            </ul>
+            <div className="flex flex-col gap-2 border-t border-graphite/10 p-4 text-xs md:p-5 md:text-sm">
+              <div className="flex justify-between text-graphite">
+                <span>Subtotal</span>
+                <span>{formatPrice(itemsSubtotal)}</span>
+              </div>
+              <div className="flex justify-between text-graphite">
+                <span>Shipping</span>
+                <span>{shippingPaid === 0 ? "Free" : formatPrice(shippingPaid)}</span>
+              </div>
+              <div className="mt-1 flex items-center justify-between border-t border-graphite/10 pt-3 text-ink">
+                <span className="uppercase tracking-widest2 text-ash">Total</span>
+                <span className="text-base md:text-lg">{formatPrice(placed.total)}</span>
+              </div>
             </div>
-            <div className="sm:text-right">
-              <p className="mb-1 text-[11px] uppercase tracking-widest2 text-ash">
-                {placed.paymentMethod === "cod" ? "Pay on delivery" : "Paid online"}
+          </section>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            {/* Delivery */}
+            <section className={cx(cardClass, "p-4 md:p-5")}>
+              <p className="mb-3 flex items-center gap-2 text-[11px] uppercase tracking-widest2 text-ink md:text-xs">
+                <MapPin size={15} strokeWidth={1.5} /> Delivering to
               </p>
-              <p className="text-lg text-ink">{formatPrice(placed.total)}</p>
-            </div>
+              <p className="whitespace-pre-line text-[13px] leading-relaxed text-graphite md:text-sm">{placed.address}</p>
+              <p className="mt-2 text-[11px] text-ash md:text-xs">Updates to {placed.email}</p>
+            </section>
+
+            {/* Payment */}
+            <section className={cx(cardClass, "p-4 md:p-5")}>
+              <p className="mb-3 flex items-center gap-2 text-[11px] uppercase tracking-widest2 text-ink md:text-xs">
+                <CreditCard size={15} strokeWidth={1.5} /> Payment
+              </p>
+              <p className="flex items-center gap-2 text-[13px] text-ink md:text-sm">
+                {cod ? <Banknote size={16} strokeWidth={1.5} /> : <Smartphone size={16} strokeWidth={1.5} />}
+                {cod ? "Cash on delivery" : "Paid online"}
+              </p>
+              <p className="mt-1 text-[11px] text-ash md:text-xs">
+                {cod ? `Keep ${formatPrice(placed.total)} ready at delivery` : `${formatPrice(placed.total)} paid`}
+              </p>
+            </section>
           </div>
         </div>
 
-        <div className="mt-10 flex justify-center">
-          <Link
-            href="/shop"
-            className="group inline-flex items-center gap-2 border-b border-ink pb-1 text-sm uppercase tracking-widest2 text-ink"
-          >
-            Continue Shopping
-            <ArrowRight size={16} strokeWidth={1.5} className="transition-transform duration-300 group-hover:translate-x-1" />
-          </Link>
-        </div>
+        {/* Larger screens: under the cards. */}
+        <Link
+          href="/shop"
+          className="group mt-10 hidden h-14 w-full items-center justify-center gap-2 rounded-md bg-moss text-sm uppercase tracking-widest2 text-paper transition-[filter] hover:brightness-90 md:flex"
+        >
+          Continue Shopping
+          <ArrowRight size={16} strokeWidth={1.5} className="transition-transform duration-300 group-hover:translate-x-1" />
+        </Link>
+
+        {/* Phones: pinned to the bottom of the screen (portalled so it stays
+            fixed inside the page's animated wrapper). */}
+        {mounted &&
+          createPortal(
+            <div className="fixed inset-x-0 bottom-0 z-40 border-t border-graphite/10 bg-paper px-5 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-3 md:hidden">
+              <Link
+                href="/shop"
+                className="flex h-10 w-full items-center justify-center gap-2 rounded-md bg-moss text-xs uppercase tracking-widest2 text-paper transition-[filter] active:brightness-90"
+              >
+                Continue Shopping
+                <ArrowRight size={16} strokeWidth={1.5} />
+              </Link>
+            </div>,
+            document.body
+          )}
       </div>
     );
   }
 
   if (lines.length === 0) {
     return (
-      <div className="mx-auto flex max-w-content flex-col items-center gap-6 px-5 pb-24 pt-32 text-center md:pt-40">
-        <h1 className="text-display-md font-medium uppercase tracking-tighter text-ink">Nothing to Checkout</h1>
-        <p className="text-sm text-graphite">Your bag is empty.</p>
+      // Fills the screen on phones so the footer isn't on the first screen.
+      <div className="mx-auto flex min-h-[100svh] max-w-md flex-col items-center justify-center px-5 pb-16 pt-24 text-center md:min-h-0 md:pb-24 md:pt-40">
+        <span className="flex h-16 w-16 items-center justify-center rounded-full bg-moss/10 text-moss md:h-20 md:w-20">
+          <ShoppingBag size={26} strokeWidth={1.5} />
+        </span>
+        <h1 className="mt-5 text-xl font-medium uppercase tracking-tighter text-ink md:mt-6 md:text-display-md">
+          Your bag is empty
+        </h1>
+        <p className="mt-2 max-w-xs text-[13px] leading-relaxed text-graphite md:mt-3 md:text-sm">
+          There&apos;s nothing to check out yet. Find your next essential in the shop.
+        </p>
         <Link
           href="/shop"
-          className="group mt-2 inline-flex items-center gap-2 border-b border-ink pb-1 text-sm uppercase tracking-widest2 text-ink"
+          className="group mt-7 flex h-10 w-full max-w-xs items-center justify-center gap-2 rounded-md bg-moss text-xs uppercase tracking-widest2 text-paper transition-[filter] hover:brightness-90 md:mt-8 md:h-12 md:text-sm"
         >
           Shop Now
           <ArrowRight size={16} strokeWidth={1.5} className="transition-transform duration-300 group-hover:translate-x-1" />
+        </Link>
+        <Link
+          href="/shop?sort=newest"
+          className="mt-4 text-[11px] uppercase tracking-widest2 text-graphite underline decoration-graphite/30 underline-offset-4 hover:text-ink md:text-xs"
+        >
+          See new arrivals
         </Link>
       </div>
     );
@@ -675,14 +806,23 @@ export function CheckoutView({ razorpayEnabled }: { razorpayEnabled: boolean }) 
     <button
       type={continuing ? "button" : "submit"}
       form="checkout-form"
-      onClick={continuing ? () => continueFrom(step) : undefined}
+      // preventDefault: this tap turns the button into "Place Order", and
+      // without it the browser would count the same tap as submitting.
+      onClick={
+        continuing
+          ? (e) => {
+              e.preventDefault();
+              continueFrom(step);
+            }
+          : undefined
+      }
       // Enabled once this step's fields are valid (all of them to order).
       disabled={
         submitting ||
         (continuing ? !sectionComplete(step) : blocked || !SECTIONS.every(sectionComplete))
       }
       className={cx(
-        "group h-14 w-full items-center justify-center gap-2 rounded-md bg-moss text-sm uppercase tracking-widest2 text-paper transition-[filter,background-color] hover:brightness-90 disabled:cursor-not-allowed disabled:bg-graphite/40 disabled:brightness-100",
+        "group h-10 w-full items-center justify-center gap-2 rounded-md bg-moss md:h-14 text-xs uppercase tracking-widest2 text-paper transition-[filter,background-color] md:text-sm hover:brightness-90 disabled:cursor-not-allowed disabled:bg-graphite/40 disabled:brightness-100",
         className
       )}
     >
@@ -702,7 +842,7 @@ export function CheckoutView({ razorpayEnabled }: { razorpayEnabled: boolean }) 
   );
 
   const errorBox = formError && (
-    <div role="alert" className="flex items-start gap-2 border border-rust/30 p-3 text-sm text-rust">
+    <div role="alert" className="flex items-start gap-2 rounded-md border border-rust/30 p-3 text-xs text-rust md:text-sm">
       <AlertCircle size={16} strokeWidth={1.5} className="mt-0.5 shrink-0" />
       <p>{formError}</p>
     </div>
@@ -731,12 +871,12 @@ export function CheckoutView({ razorpayEnabled }: { razorpayEnabled: boolean }) 
                 </div>
                 <div className="flex flex-1 items-center justify-between gap-3">
                   <div>
-                    <p className="text-xs uppercase tracking-wide text-ink">{line.name}</p>
-                    <p className="text-xs text-ash">
+                    <p className="text-[11px] uppercase tracking-wide text-ink md:text-xs">{line.name}</p>
+                    <p className="text-[11px] text-ash md:text-xs">
                       {line.color} · {line.size}
                     </p>
                   </div>
-                  <span className="text-xs text-ink">{formatPrice(line.price * line.quantity)}</span>
+                  <span className="text-[11px] text-ink md:text-xs">{formatPrice(line.price * line.quantity)}</span>
                 </div>
               </div>
               {issue && <p className="text-xs text-rust">{issue.message}</p>}
@@ -754,7 +894,7 @@ export function CheckoutView({ razorpayEnabled }: { razorpayEnabled: boolean }) 
       </ul>
 
       {blocked && (
-        <div className="flex items-start gap-2 border border-rust/30 p-3 text-xs text-rust">
+        <div className="flex items-start gap-2 rounded-md border border-rust/30 p-3 text-xs text-rust">
           <AlertCircle size={14} strokeWidth={1.5} className="mt-0.5 shrink-0" />
           <p>
             {staleLines > 0
@@ -767,7 +907,7 @@ export function CheckoutView({ razorpayEnabled }: { razorpayEnabled: boolean }) 
         </div>
       )}
 
-      <div className="flex flex-col gap-3 border-t border-graphite/10 pt-4 text-sm">
+      <div className="flex flex-col gap-3 border-t border-graphite/10 pt-4 text-xs md:text-sm">
         <div className="flex items-center justify-between text-graphite">
           <span>Subtotal</span>
           <span>{formatPrice(subtotal)}</span>
@@ -783,7 +923,7 @@ export function CheckoutView({ razorpayEnabled }: { razorpayEnabled: boolean }) 
         )}
         <div className="flex items-center justify-between border-t border-graphite/10 pt-3 text-ink">
           <span className="uppercase tracking-widest2 text-ash">Total</span>
-          <span className="text-lg">{formatPrice(total)}</span>
+          <span className="text-base md:text-lg">{formatPrice(total)}</span>
         </div>
         {quoteFailed && (
           <p className="text-[11px] text-ash">Couldn&apos;t refresh prices; the total is confirmed when you order.</p>
@@ -798,13 +938,13 @@ export function CheckoutView({ razorpayEnabled }: { razorpayEnabled: boolean }) 
     <div className="mx-auto min-h-[100svh] max-w-content px-5 pb-24 pt-28 md:min-h-0 md:px-10 md:pt-40">
       {/* Phones: centered title (back arrow is in the header); desktop: large heading. */}
       <div className="mb-8 flex items-center justify-center md:mb-14 md:justify-start">
-        <h1 className="text-2xl font-medium uppercase tracking-tighter text-ink md:text-display-lg">Checkout</h1>
+        <h1 className="text-xl font-medium uppercase tracking-tighter text-ink md:text-display-lg">Checkout</h1>
       </div>
 
       <div className="grid grid-cols-1 gap-10 md:grid-cols-[1fr_380px] md:gap-16">
         {/* Larger screens: summary card, sticky on the right. (Phones get
             it in the bottom bar instead.) */}
-        <div className="hidden h-fit flex-col gap-6 border border-graphite/15 p-6 md:sticky md:top-28 md:order-2 md:flex">
+        <div className="hidden h-fit flex-col gap-6 rounded-lg border border-graphite/10 bg-paper p-6 shadow-[0_1px_6px_rgba(10,10,10,0.07)] md:sticky md:top-28 md:order-2 md:flex">
           <p className="text-xs uppercase tracking-widest2 text-ash">{summaryTitle}</p>
           {summaryDetails}
           {errorBox}
@@ -824,8 +964,22 @@ export function CheckoutView({ razorpayEnabled }: { razorpayEnabled: boolean }) 
             icon={Mail}
             open={openSections.has("contact")}
             complete={sectionComplete("contact")}
+            locked={isLocked("contact")}
             onToggle={() => toggleSection("contact")}
           >
+            {account ? (
+              <p className="mb-4 rounded-md bg-moss/10 px-3 py-2 text-[11px] text-moss md:text-xs">
+                Logged in as +91 {account.phone}
+              </p>
+            ) : (
+              <p className="mb-4 text-[12px] text-graphite md:text-[13px]">
+                Have an account?{" "}
+                <Link href="/account?next=/checkout" className="text-moss underline underline-offset-4">
+                  Log in
+                </Link>{" "}
+                for faster checkout.
+              </p>
+            )}
             <div className="grid grid-cols-2 gap-x-3 gap-y-4">
               <FieldShell id="email" label="Email Address" error={errors.email} span>
                 <input
@@ -837,23 +991,40 @@ export function CheckoutView({ razorpayEnabled }: { razorpayEnabled: boolean }) 
                 />
               </FieldShell>
               <FieldShell id="phone" label="Mobile Number" error={errors.phone} span>
-                <div
-                  className={cx(
-                    "flex h-11 items-center border focus-within:border-ink",
-                    errors.phone ? "border-rust focus-within:border-rust" : "border-graphite/20"
-                  )}
-                >
-                  <span className="border-r border-graphite/15 px-3 text-base text-ash md:text-sm">+91</span>
-                  <input
-                    {...fieldProps("phone")}
-                    type="tel"
-                    autoComplete="tel-national"
-                    inputMode="numeric"
-                    maxLength={14}
-                    placeholder="10-digit mobile number"
-                    className="h-full w-full bg-transparent px-3 text-base text-ink placeholder:text-ash/60 focus:outline-none md:text-sm"
-                  />
-                </div>
+                {account && !editPhone && values.phone === account.phone ? (
+                  // Signed in: the number they logged in with, no need to retype it.
+                  <div className="flex h-10 items-center justify-between rounded-md border border-graphite/10 bg-bone/40 px-3 md:h-11">
+                    <span className="text-sm text-ink">+91 {account.phone}</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditPhone(true);
+                        window.setTimeout(() => formRef.current?.querySelector<HTMLInputElement>('[name="phone"]')?.focus(), 0);
+                      }}
+                      className="text-[11px] uppercase tracking-widest2 text-moss underline underline-offset-4"
+                    >
+                      Edit
+                    </button>
+                  </div>
+                ) : (
+                  <div
+                    className={cx(
+                      "flex h-10 items-center overflow-hidden rounded-md border focus-within:border-ink md:h-11",
+                      errors.phone ? "border-rust focus-within:border-rust" : "border-graphite/20"
+                    )}
+                  >
+                    <span className="border-r border-graphite/15 px-3 text-sm text-ash">+91</span>
+                    <input
+                      {...fieldProps("phone")}
+                      type="tel"
+                      autoComplete="tel-national"
+                      inputMode="numeric"
+                      maxLength={14}
+                      placeholder="10-digit mobile number"
+                      className="h-full w-full bg-transparent px-3 text-sm text-ink placeholder:text-ash/60 focus:outline-none"
+                    />
+                  </div>
+                )}
               </FieldShell>
             </div>
           </CheckoutSection>
@@ -864,9 +1035,58 @@ export function CheckoutView({ razorpayEnabled }: { razorpayEnabled: boolean }) 
             icon={MapPin}
             open={openSections.has("address")}
             complete={sectionComplete("address")}
+            locked={isLocked("address")}
             onToggle={() => toggleSection("address")}
           >
-            <div className="grid grid-cols-2 gap-x-3 gap-y-4">
+            {account && account.addresses.length > 0 && (
+              <div role="radiogroup" aria-label="Saved addresses" className="mb-4 flex flex-col gap-2.5">
+                {[...account.addresses.map((a) => ({ id: a.id, a })), { id: "new", a: null }].map(({ id, a }) => {
+                  const on = addressChoice === id;
+                  return (
+                    <label
+                      key={id}
+                      className={cx(
+                        "flex cursor-pointer items-start gap-3 rounded-md border p-3 transition-colors",
+                        on ? "border-moss" : "border-graphite/20 hover:border-graphite/50"
+                      )}
+                    >
+                      <input
+                        type="radio"
+                        name="savedAddress"
+                        checked={on}
+                        onChange={() => chooseAddress(id)}
+                        className="sr-only"
+                      />
+                      <span
+                        aria-hidden
+                        className={cx(
+                          "mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border",
+                          on ? "border-moss" : "border-graphite/40"
+                        )}
+                      >
+                        {on && <span className="h-2 w-2 rounded-full bg-moss" />}
+                      </span>
+                      <span className="min-w-0 flex-1 text-[13px] leading-relaxed text-ink md:text-sm">
+                        {a ? (
+                          <>
+                            {`${a.firstName} ${a.lastName}`.trim()}
+                            <span className="block text-[11px] text-graphite md:text-xs">
+                              {[a.line1, a.line2, `${a.city}, ${a.state} ${a.pincode}`].filter(Boolean).join(", ")}
+                            </span>
+                          </>
+                        ) : (
+                          "Use a new address"
+                        )}
+                      </span>
+                      {a && account.defaultAddressId === a.id && (
+                        <span className="shrink-0 rounded-full bg-moss/10 px-2 py-0.5 text-[9px] uppercase tracking-wide text-moss">Default</span>
+                      )}
+                    </label>
+                  );
+                })}
+              </div>
+            )}
+            <div className={cx("grid grid-cols-2 gap-x-3 gap-y-4", addressChoice !== "new" && "hidden")}>
               <FieldShell id="firstName" label="First Name" error={errors.firstName}>
                 <input {...fieldProps("firstName")} autoComplete="given-name" className={inputClass(Boolean(errors.firstName))} />
               </FieldShell>
@@ -920,7 +1140,18 @@ export function CheckoutView({ razorpayEnabled }: { razorpayEnabled: boolean }) 
                   />
                 </div>
               </FieldShell>
-              <p className="col-span-2 -mt-1 text-[11px] text-ash">We currently deliver within India.</p>
+              <p className="col-span-2 -mt-1 text-[10px] text-ash md:text-[11px]">We currently deliver within India.</p>
+              {account && (
+                <label className="col-span-2 flex cursor-pointer items-center gap-2 text-[12px] text-graphite md:text-[13px]">
+                  <input
+                    type="checkbox"
+                    checked={saveAddress}
+                    onChange={(e) => setSaveAddress(e.target.checked)}
+                    className="h-4 w-4 accent-moss"
+                  />
+                  Save this address to my account
+                </label>
+              )}
             </div>
           </CheckoutSection>
 
@@ -930,6 +1161,7 @@ export function CheckoutView({ razorpayEnabled }: { razorpayEnabled: boolean }) 
             icon={CreditCard}
             open={openSections.has("payment")}
             complete={sectionComplete("payment")}
+            locked={isLocked("payment")}
             onToggle={() => toggleSection("payment")}
           >
             <div role="radiogroup" aria-label="Payment method" className="flex flex-col gap-3">
@@ -938,7 +1170,7 @@ export function CheckoutView({ razorpayEnabled }: { razorpayEnabled: boolean }) 
                   <label
                     key={value}
                     className={cx(
-                      "flex cursor-pointer items-center gap-3 border p-3.5 transition-colors md:gap-4 md:p-4",
+                      "flex cursor-pointer items-center gap-3 rounded-md border p-3.5 transition-colors md:gap-4 md:p-4",
                       paymentMethod === value ? "border-ink" : "border-graphite/20 hover:border-graphite/50"
                     )}
                   >
@@ -960,15 +1192,15 @@ export function CheckoutView({ razorpayEnabled }: { razorpayEnabled: boolean }) 
                       {paymentMethod === value && <span className="h-2 w-2 rounded-full bg-ink" />}
                     </span>
                     <span className="flex-1">
-                      <span className="block text-sm text-ink">{title}</span>
-                      <span className="block text-xs text-ash">{hint}</span>
+                      <span className="block text-[13px] text-ink md:text-sm">{title}</span>
+                      <span className="block text-[11px] text-ash md:text-xs">{hint}</span>
                     </span>
                     <Icon size={18} strokeWidth={1.5} className="text-graphite" />
                   </label>
                 )
               )}
             </div>
-            {errors.paymentMethod && <p className="mt-1.5 text-xs text-rust">{errors.paymentMethod}</p>}
+            {errors.paymentMethod && <p className="mt-1.5 text-[11px] text-rust md:text-xs">{errors.paymentMethod}</p>}
           </CheckoutSection>
 
           {/* Phones: errors show at the end of the form; the button lives in
@@ -1008,7 +1240,7 @@ export function CheckoutView({ razorpayEnabled }: { razorpayEnabled: boolean }) 
               >
                 <span aria-hidden className="mb-2 h-1 w-9 rounded-full bg-graphite/25" />
                 <span className="flex w-full items-center justify-center gap-2">
-                  <span className="flex items-center gap-2 text-xs uppercase tracking-widest2 text-ash">
+                  <span className="flex items-center gap-2 text-[11px] uppercase tracking-widest2 text-ash">
                     {summaryTitle}
                     {/* Problems with the bag are flagged while it's closed. */}
                     {blocked && !summaryOpen && <span className="h-2 w-2 rounded-full bg-rust" aria-label="Needs attention" />}

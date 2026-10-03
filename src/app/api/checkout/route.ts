@@ -11,6 +11,8 @@ import {
 } from "@/lib/server/orders";
 import { createRazorpayOrder, razorpayEnabled, razorpayKeyId } from "@/lib/server/razorpay";
 import { rateLimit } from "@/lib/server/rateLimit";
+import { getCustomer, newAddressId } from "@/lib/server/customer";
+import { MAX_SAVED_ADDRESSES } from "@/lib/account";
 import { fieldErrors } from "@/lib/validation";
 import { checkoutSchema } from "@/lib/checkout";
 
@@ -55,6 +57,9 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  // Signed-in customers get the order on their account (guests are fine too).
+  const customer = await getCustomer();
+
   const cod = input.paymentMethod === "cod";
   // If the order can't be saved, the stock just taken goes straight back.
   const order = await withUniqueNumber((number) =>
@@ -81,6 +86,7 @@ export async function POST(request: NextRequest) {
           country: "India",
         },
         stockHeld: true,
+        customerId: customer?.id ?? null,
       },
     })
   ).catch(async (err) => {
@@ -88,6 +94,32 @@ export async function POST(request: NextRequest) {
     throw err;
   });
   await refreshCatalog(quote.lines.map((l) => l.productId));
+
+  // "Save this address" (signed in): add it unless it's already saved.
+  if (customer && input.saveAddress && customer.addresses.length < MAX_SAVED_ADDRESSES) {
+    const address = {
+      firstName: input.firstName,
+      lastName: input.lastName,
+      line1: input.line1,
+      line2: input.line2,
+      city: input.city,
+      state: input.state,
+      pincode: input.pincode,
+    };
+    const key = (a: { line1: string; line2: string; city: string; pincode: string }) => JSON.stringify([a.line1, a.line2, a.city, a.pincode].map((v) => v.toLowerCase()));
+    if (!customer.addresses.some((a) => key(a) === key(address))) {
+      const id = newAddressId();
+      await db.customer
+        .update({
+          where: { id: customer.id },
+          data: {
+            addresses: { push: { id, ...address } },
+            ...(customer.addresses.length === 0 ? { defaultAddressId: id } : {}),
+          },
+        })
+        .catch((err) => console.error("Saving address failed", err));
+    }
+  }
 
   if (cod) {
     return NextResponse.json({ number: order.number, status: order.status, total: order.total });

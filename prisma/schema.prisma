@@ -207,10 +207,54 @@ model Order {
   /// True while this order holds stock. Set when stock is taken at
   /// checkout; cleared when a cancelled / abandoned order gives it back.
   stockHeld       Boolean         @default(false)
+  /// The signed-in customer who placed it (null for guest checkout).
+  customerId      String?         @db.ObjectId
   createdAt       DateTime        @default(now())
   updatedAt       DateTime        @updatedAt
 
   @@index([status, createdAt])
   @@index([razorpayOrderId])
   @@index([createdAt])
+  @@index([customerId, createdAt])
+  @@index([phone, createdAt])
+}
+
+/// A delivery address saved on a customer account.
+type SavedAddress {
+  /// Random id, so one address can be edited or removed.
+  id        String
+  firstName String
+  lastName  String
+  line1     String
+  line2     String @default("")
+  city      String
+  state     String
+  pincode   String
+}
+
+/// A customer account. Customers sign in (and sign up) with their mobile
+/// number and a one-time code — there are no passwords.
+model Customer {
+  id               String         @id @default(auto()) @map("_id") @db.ObjectId
+  /// 10-digit Indian mobile number (no +91), verified by OTP.
+  phone            String         @unique
+  name             String         @default("")
+  email            String         @default("")
+  addresses        SavedAddress[]
+  defaultAddressId String?
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+}
+
+/// A one-time login code. Only a hash is stored; it expires after a few
+/// minutes and allows a handful of wrong attempts.
+model OtpCode {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  phone     String
+  codeHash  String
+  expiresAt DateTime
+  attempts  Int      @default(0)
+  createdAt DateTime @default(now())
+
+  @@index([phone, createdAt])
 }

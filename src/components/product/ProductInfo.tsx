@@ -117,8 +117,8 @@ export function ProductInfo({ product, variant, onColorChange }: ProductInfoProp
   // Reserve room at the bottom of the page on phones so the fixed bar never
   // covers the end of the page (footer links, copyright).
   useEffect(() => {
-    document.body.classList.add("pb-[calc(76px+env(safe-area-inset-bottom))]", "md:pb-0");
-    return () => document.body.classList.remove("pb-[calc(76px+env(safe-area-inset-bottom))]", "md:pb-0");
+    document.body.classList.add("pb-[calc(68px+env(safe-area-inset-bottom))]", "md:pb-0");
+    return () => document.body.classList.remove("pb-[calc(68px+env(safe-area-inset-bottom))]", "md:pb-0");
   }, []);
 
   function handleBuyNow() {
@@ -145,7 +145,7 @@ export function ProductInfo({ product, variant, onColorChange }: ProductInfoProp
     <button
       type="button"
       disabled
-      className="rounded-md flex h-12 w-full items-center justify-center bg-graphite/40 text-xs uppercase tracking-widest2 text-paper"
+      className="rounded-md flex h-10 w-full items-center justify-center bg-graphite/40 text-xs uppercase tracking-widest2 text-paper"
     >
       {variant.name} — Sold Out
     </button>
@@ -154,14 +154,14 @@ export function ProductInfo({ product, variant, onColorChange }: ProductInfoProp
       <button
         type="button"
         onClick={() => phoneTap("buy")}
-        className="rounded-md flex h-12 flex-1 items-center justify-center border border-ink bg-paper text-xs uppercase tracking-widest2 text-ink transition-colors active:border-moss active:bg-moss active:text-paper"
+        className="rounded-md flex h-10 flex-1 items-center justify-center border border-ink bg-paper text-xs uppercase tracking-widest2 text-ink transition-colors active:border-moss active:bg-moss active:text-paper"
       >
         Buy Now
       </button>
       <button
         type="button"
         onClick={() => phoneTap("add")}
-        className="rounded-md flex h-12 flex-1 items-center justify-center gap-2 bg-moss text-xs uppercase tracking-widest2 text-paper transition-colors active:brightness-90"
+        className="rounded-md flex h-10 flex-1 items-center justify-center gap-2 bg-moss text-xs uppercase tracking-widest2 text-paper transition-colors active:brightness-90"
       >
         <ShoppingBag size={15} strokeWidth={1.5} />
         Add to Bag
@@ -172,10 +172,10 @@ export function ProductInfo({ product, variant, onColorChange }: ProductInfoProp
   return (
     <div className="flex flex-col gap-8">
       <div>
-        <h1 className="text-display-md font-medium uppercase tracking-tighter text-ink">
+        <h1 className="text-xl font-medium uppercase tracking-tighter text-ink md:text-display-md">
           {product.name}
         </h1>
-        <p className="mt-2 text-lg text-ink" aria-live="polite">{priceText}</p>
+        <p className="mt-1 text-base text-ink md:mt-2 md:text-lg" aria-live="polite">{priceText}</p>
       </div>
 
       <p className="max-w-md text-sm leading-relaxed text-graphite">
@@ -352,7 +352,7 @@ export function ProductInfo({ product, variant, onColorChange }: ProductInfoProp
                     type="button"
                     onClick={finishSheet}
                     disabled={!size}
-                    className="mt-6 flex h-12 w-full items-center justify-center rounded-md bg-moss text-xs uppercase tracking-widest2 text-paper transition-[filter] active:brightness-90 disabled:bg-graphite/40"
+                    className="mt-6 flex h-10 w-full items-center justify-center rounded-md bg-moss text-xs uppercase tracking-widest2 text-paper transition-[filter] active:brightness-90 disabled:bg-graphite/40"
                   >
                     Done
                   </button>
