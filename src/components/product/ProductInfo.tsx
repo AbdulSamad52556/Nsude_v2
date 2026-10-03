@@ -56,12 +56,20 @@ export function ProductInfo({ product, variant, onColorChange }: ProductInfoProp
 
   const sizeRef = useRef<HTMLDivElement>(null);
 
-  // Phones: tapping Buy Now / Add to Bag without a size opens a size sheet
-  // from the bottom; "Done" finishes whichever button was tapped.
+  // Phones: tapping Buy Now / Add to Bag without a size —
+  // - from the bar pinned to the bottom: opens a size sheet; "Done" finishes
+  //   whichever button was tapped;
+  // - from the buttons docked in the page: the size picker is right above,
+  //   so show its "Please select a size" message there instead.
   const [sheetAction, setSheetAction] = useState<"add" | "buy" | null>(null);
   function phoneTap(action: "add" | "buy") {
     if (!soldOut && !size) {
-      setSheetAction(action);
+      if (docked) {
+        setError(true);
+        sizeRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+      } else {
+        setSheetAction(action);
+      }
       return;
     }
     if (action === "add") handleAddToBag();

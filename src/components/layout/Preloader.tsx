@@ -36,7 +36,7 @@ export function Preloader() {
     <AnimatePresence>
       {visible && (
         <motion.div
-          className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-ink"
+          className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-moss"
           initial={{ opacity: 1 }}
           exit={{
             opacity: 0,
@@ -61,18 +61,18 @@ export function Preloader() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.35, duration: 0.6 }}
-            className="mt-3 text-[11px] uppercase tracking-widest2 text-stone"
+            className="mt-3 text-[11px] uppercase tracking-widest2 text-paper"
           >
             Est. 2024 / Premium Menswear
           </motion.span>
           <motion.div
-            className="mt-10 h-px w-24 overflow-hidden bg-graphite"
+            className="mt-10 h-px w-24 overflow-hidden bg-paper/25"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.5 }}
           >
             <motion.div
-              className="h-full w-full origin-left bg-bone"
+              className="h-full w-full origin-left bg-paper"
               initial={{ scaleX: 0 }}
               animate={{ scaleX: 1 }}
               transition={{ delay: 0.5, duration: 1.9, ease: [0.16, 1, 0.3, 1] }}
