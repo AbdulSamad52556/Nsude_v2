@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter, Fraunces } from "next/font/google";
 import "./globals.css";
 import { CartProvider } from "@/context/CartContext";
@@ -18,6 +18,15 @@ const fraunces = Fraunces({
 });
 
 const siteUrl = "https://nsude.example.com";
+
+// maximumScale 1 stops iOS Safari from zooming the page in when a form field
+// with text under 16px is focused. Pinch-to-zoom still works (Safari ignores
+// this limit for manual zoom), so it doesn't block accessibility zoom.
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+};
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),

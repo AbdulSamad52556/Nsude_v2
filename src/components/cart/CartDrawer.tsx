@@ -86,7 +86,7 @@ export function CartDrawer() {
                 </ul>
 
                 <div className="border-t border-graphite/10 px-6 py-6">
-                  <div className="mb-5 flex items-center justify-between text-sm text-ink">
+                  <div className="mb-4 flex items-center justify-between text-xs text-ink">
                     <span className="uppercase tracking-widest2 text-ash">
                       Subtotal
                     </span>
@@ -95,7 +95,7 @@ export function CartDrawer() {
                   <Link
                     href="/checkout"
                     onClick={closeCart}
-                    className="group flex h-14 w-full items-center justify-center gap-2 rounded-md bg-moss text-sm uppercase tracking-widest2 text-paper transition-[filter] hover:brightness-90"
+                    className="group flex h-10 w-full items-center justify-center gap-2 rounded-md bg-moss md:h-14 text-sm uppercase tracking-widest2 text-paper transition-[filter] hover:brightness-90"
                   >
                     Checkout
                     <ArrowRight
@@ -107,7 +107,7 @@ export function CartDrawer() {
                   <Link
                     href="/shop"
                     onClick={closeCart}
-                    className="mt-3 flex h-12 w-full items-center justify-center text-xs uppercase tracking-widest2 text-graphite hover:text-ink"
+                    className="mt-2 flex h-10 w-full items-center justify-center text-xs md:mt-3 md:h-12 uppercase tracking-widest2 text-graphite hover:text-ink"
                   >
                     Continue Shopping
                   </Link>

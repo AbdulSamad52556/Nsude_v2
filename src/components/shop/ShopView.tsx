@@ -486,7 +486,7 @@ export function ShopView({ initialFilters, initialPage }: { initialFilters: Filt
                   type="button"
                   onClick={clearAll}
                   disabled={activeCount === 0}
-                  className="h-12 w-full rounded-md border border-graphite/20 text-xs uppercase tracking-widest2 text-ink disabled:text-mist"
+                  className="h-10 w-full rounded-md border border-graphite/20 text-xs uppercase tracking-widest2 text-ink disabled:text-mist"
                 >
                   Clear all
                 </button>

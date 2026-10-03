@@ -43,7 +43,7 @@ export function CartItem({ line }: { line: CartLine }) {
             >
               <Minus size={12} strokeWidth={1.5} />
             </button>
-            <span className="flex h-8 w-8 items-center justify-center text-xs">
+            <span className="flex h-8 w-7 items-center justify-center text-xs">
               {line.quantity}
             </span>
             <button

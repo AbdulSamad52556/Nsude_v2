@@ -52,7 +52,7 @@ export function SizeSelector({
               aria-pressed={isSelected}
               className={cx(
                 "relative flex flex-col items-center justify-center rounded-md border text-sm uppercase tracking-wide transition-all duration-200 ease-editorial",
-                prices ? "h-14 gap-0.5" : "h-12",
+                prices ? "h-12 gap-0.5 md:h-14" : "h-10 md:h-12",
                 isUnavailable &&
                   "cursor-not-allowed border-graphite/10 text-mist line-through",
                 !isUnavailable &&
