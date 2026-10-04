@@ -10,7 +10,7 @@ const ACTOR_TONE: Record<string, string> = {
 const ACTOR_LABEL: Record<string, string> = { admin: "Admin", customer: "Customer", system: "System" };
 
 /** Where the thing an entry is about lives in admin. */
-function entityHref(e: AuditLog) {
+export function entityHref(e: Pick<AuditLog, "entity" | "entityId">) {
   if (e.entity === "customer") return `/admin/customers/${e.entityId}`;
   if (e.entity === "product") return `/admin/products/${e.entityId}`;
   if (e.entity === "order") return `/admin/orders/${e.entityId}`;
@@ -40,7 +40,7 @@ export function AuditList({
     return <p className="rounded-lg border border-taupe/30 p-6 text-sm text-graphite">{empty}</p>;
   }
   return (
-    <ol className="rounded-lg divide-y divide-taupe/20 border border-taupe/30 overflow-hidden">
+    <ol className="rounded-lg divide-y divide-taupe border border-taupe/60 overflow-hidden">
       {entries.map((e) => {
         const href = entityHref(e);
         return (

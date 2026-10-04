@@ -5,6 +5,12 @@
 export const VISITOR_COOKIE = "nsude_vid";
 /** Random id per visit; slides forward on activity, ends after 30 idle minutes. */
 export const VISIT_COOKIE = "nsude_sid";
+/** Same, for admin users in the admin panel (a separate visit). */
+export const ADMIN_VISIT_COOKIE = "nsude_asid";
+
+export type ActivityArea = "store" | "admin";
+export const areaOf = (path: string): ActivityArea => (path.startsWith("/admin") ? "admin" : "store");
+export const visitCookie = (area: ActivityArea) => (area === "admin" ? ADMIN_VISIT_COOKIE : VISIT_COOKIE);
 export const VISIT_IDLE_MINUTES = 30;
 
 export const ID_PATTERN = /^[A-Za-z0-9_-]{16,64}$/;
@@ -38,6 +44,8 @@ export const ACTIVITY_LABEL: Record<string, string> = {
   address_deleted: "Deleted an address",
   order_edited: "Edited an order",
   order_cancelled: "Cancelled an order",
+  sign_in_failed: "Sign-in failed (wrong password)",
+  audit: "Saved a change",
 };
 
 /** Events that matter most, highlighted in the timeline. */
@@ -49,6 +57,8 @@ export const KEY_EVENTS = new Set([
   "signed_in",
   "signed_up",
   "order_cancelled",
+  "audit",
+  "sign_in_failed",
 ]);
 
 /** Where a visit got to, best first. */

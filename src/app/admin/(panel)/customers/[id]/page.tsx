@@ -34,7 +34,7 @@ export default async function CustomerPage({ params }: { params: { id: string } 
     db.auditLog.findMany({ where: { entity: "customer", entityId: customer.id }, orderBy: { at: "desc" }, take: 200 }),
     db.customerSession.findMany({ where: { customerId: customer.id, expiresAt: { gt: new Date() } }, orderBy: { lastUsedAt: "desc" } }),
     can(admin, "activity.view")
-      ? db.visitSession.findMany({ where: { customerId: customer.id }, orderBy: { startedAt: "desc" }, take: 10 })
+      ? db.visitSession.findMany({ where: { area: "store", customerId: customer.id }, orderBy: { startedAt: "desc" }, take: 10 })
       : [],
   ]);
 

@@ -6,6 +6,7 @@ import { FormEvent, Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { AlertCircle, ArrowLeft, ArrowRight, Eye, EyeOff, Loader2, Lock } from "lucide-react";
 import { cx } from "@/lib/utils";
+import { ActivityTracker } from "@/components/layout/ActivityTracker";
 
 const inputClass =
   "h-11 w-full rounded-md border border-graphite/20 bg-transparent px-3 text-sm text-ink placeholder:text-ash/60 transition-colors focus:border-moss focus:outline-none focus:ring-2 focus:ring-moss/15";
@@ -116,6 +117,8 @@ function LoginForm() {
 export default function AdminLoginPage() {
   return (
     <main id="main-content" className="flex min-h-[100svh] flex-col items-center justify-center bg-moss px-5 py-12">
+      {/* Starts the admin visit, so the sign-in (or failed attempts) is part of it. */}
+      <ActivityTracker />
       <Image
         src="/brand/nsude-logo-light.png"
         alt="NSUDE"

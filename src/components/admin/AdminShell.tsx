@@ -22,16 +22,17 @@ import {
 } from "lucide-react";
 import { cx } from "@/lib/utils";
 import { can, type AdminIdentity, type Permission } from "@/lib/adminPermissions";
+import { ActivityTracker } from "@/components/layout/ActivityTracker";
 
-// `access`: who sees the link. Pages and APIs check again on the server.
-const nav: { href: string; label: string; icon: typeof Package; access: Permission }[] = [
+// `access`: who sees the link (any one of a list). Pages and APIs check again.
+const nav: { href: string; label: string; icon: typeof Package; access: Permission | Permission[] }[] = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard, access: "dashboard.view" },
   { href: "/admin/users", label: "Users", icon: ShieldCheck, access: "users.view" },
   { href: "/admin/orders", label: "Orders", icon: Package, access: "orders.view" },
   { href: "/admin/products", label: "Products", icon: Shirt, access: "products.view" },
   { href: "/admin/hero", label: "Hero Carousel", icon: Images, access: "hero.view" },
   { href: "/admin/customers", label: "Customers", icon: Users, access: "customers.view" },
-  { href: "/admin/activity", label: "Activity", icon: Activity, access: "activity.view" },
+  { href: "/admin/activity", label: "Activity", icon: Activity, access: ["activity.view", "admin_activity.view"] },
   { href: "/admin/audit", label: "Audit", icon: History, access: "audit.view" },
 ];
 
@@ -63,7 +64,7 @@ export function AdminShell({ admin, children }: { admin: AdminIdentity; children
           <Image src="/brand/nsude-logo-light.png" alt="NSUDE" width={482} height={172} className="h-6 w-auto" />
         </Link>
         {nav
-          .filter(({ access }) => can(admin, access))
+          .filter(({ access }) => (Array.isArray(access) ? access : [access]).some((p) => can(admin, p)))
           .map(({ href, label, icon: Icon }) => {
             const active = isActive(href);
             return (
@@ -137,6 +138,8 @@ export function AdminShell({ admin, children }: { admin: AdminIdentity; children
 
   return (
     <div className="min-h-screen bg-paper md:flex">
+      {/* Admin users' pages and clicks, shown under Activity → Admin users. */}
+      <ActivityTracker />
       <aside className="sticky top-0 hidden h-screen w-60 shrink-0 bg-moss md:block">{sidebar("desktop")}</aside>
 
       {/* Mobile: top bar + slide-over sidebar */}

@@ -1,10 +1,12 @@
 "use client";
 
-// Browser side of activity tracking. `track()` queues an event; batches go to
-// /api/track every few seconds, and on leaving the page via sendBeacon so the
-// last steps of a visit aren't lost. Never records what's typed into forms.
+// Browser side of activity tracking, for shoppers on the storefront and admin
+// users in the admin panel (separate visits). `track()` queues an event;
+// batches go to /api/track every few seconds, and on leaving the page via
+// sendBeacon so the last steps of a visit aren't lost. Never records what's
+// typed into forms.
 
-import { ID_PATTERN, VISIT_COOKIE, VISIT_IDLE_MINUTES, VISITOR_COOKIE } from "@/lib/activity";
+import { ID_PATTERN, VISIT_IDLE_MINUTES, VISITOR_COOKIE, areaOf, visitCookie, type ActivityArea } from "@/lib/activity";
 
 type Value = string | number | boolean;
 type Event = { type: string; at: number; path: string; data?: Record<string, Value> };
@@ -15,7 +17,8 @@ const MAX_BATCH = 40;
 
 let queue: Event[] = [];
 let timer: ReturnType<typeof setTimeout> | null = null;
-let pendingCtx: Record<string, string> | null = null;
+// Where a new visit came from, per area, sent with its first batch.
+const pendingCtx: Partial<Record<ActivityArea, Record<string, string>>> = {};
 
 function readCookie(name: string) {
   return document.cookie
@@ -38,17 +41,17 @@ function newId() {
 }
 
 /** Visitor id (1 year) and visit id (slides 30 minutes on every event). */
-function ids() {
+function ids(area: ActivityArea) {
   let vid = readCookie(VISITOR_COOKIE);
   if (!vid || !ID_PATTERN.test(vid)) vid = newId();
   writeCookie(VISITOR_COOKIE, vid, 365 * 24 * 60 * 60);
 
-  let sid = readCookie(VISIT_COOKIE);
+  let sid = readCookie(visitCookie(area));
   if (!sid || !ID_PATTERN.test(sid)) {
     sid = newId();
-    pendingCtx = visitContext();
+    pendingCtx[area] = visitContext();
   }
-  writeCookie(VISIT_COOKIE, sid, VISIT_IDLE_MINUTES * 60);
+  writeCookie(visitCookie(area), sid, VISIT_IDLE_MINUTES * 60);
   return { vid, sid };
 }
 
@@ -80,10 +83,14 @@ function send(useBeacon: boolean) {
     timer = null;
   }
   if (queue.length === 0) return;
-  const { vid, sid } = ids();
-  const batch = queue.splice(0, MAX_BATCH);
-  const body = JSON.stringify({ vid, sid, ...(pendingCtx ? { ctx: pendingCtx } : {}), events: batch });
-  pendingCtx = null;
+  // One area per batch (a page is either storefront or admin).
+  const area = areaOf(queue[0].path);
+  const { vid, sid } = ids(area);
+  const batch: Event[] = [];
+  while (batch.length < MAX_BATCH && queue.length && areaOf(queue[0].path) === area) batch.push(queue.shift()!);
+  const ctx = pendingCtx[area];
+  delete pendingCtx[area];
+  const body = JSON.stringify({ vid, sid, area, ...(ctx ? { ctx } : {}), events: batch });
   try {
     if (useBeacon && navigator.sendBeacon) {
       navigator.sendBeacon(ENDPOINT, new Blob([body], { type: "application/json" }));
@@ -98,9 +105,10 @@ function send(useBeacon: boolean) {
   if (queue.length > 0) send(useBeacon);
 }
 
-/** Records something the visitor did on the storefront (on `path`, default the current page). */
+/** Records something the visitor did (on `path`, default the current page). */
 export function track(type: string, data?: Record<string, Value | null | undefined>, path?: string) {
-  if (typeof window === "undefined" || location.pathname.startsWith("/admin")) return;
+  if (typeof window === "undefined") return;
+  const where = path ?? location.pathname + location.search;
   const clean: Record<string, Value> = {};
   for (const [k, v] of Object.entries(data ?? {})) {
     if (v === null || v === undefined || v === "") continue;
@@ -109,10 +117,10 @@ export function track(type: string, data?: Record<string, Value | null | undefin
   queue.push({
     type,
     at: Date.now(),
-    path: path ?? location.pathname + location.search,
+    path: where,
     ...(Object.keys(clean).length ? { data: clean } : {}),
   });
-  ids(); // keep the visit alive
+  ids(areaOf(where)); // keep the visit alive
   if (queue.length >= MAX_BATCH) send(false);
   else timer ??= setTimeout(() => send(false), FLUSH_MS);
 }

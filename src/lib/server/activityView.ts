@@ -101,6 +101,10 @@ export function describeEvent(e: Pick<ActivityEvent, "type" | "path" | "data">) 
     case "payment_cancelled":
     case "order_cancelled":
       return str(d.order);
+    case "audit":
+      return join(str(d.action), str(d.entity), d.fields ? `${d.fields} field${d.fields === 1 ? "" : "s"} changed` : "");
+    case "signed_in":
+      return d.role ? `as ${str(d.role)}` : "";
     case "address_saved":
       return d.madeDefault ? "Made default" : d.edited ? "Edited" : "New address";
     default:
