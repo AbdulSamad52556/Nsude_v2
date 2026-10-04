@@ -10,6 +10,8 @@ import { AdminPageHeader } from "@/components/admin/AdminShell";
 import { AdminUserForm } from "@/components/admin/AdminUserForm";
 import { AuditList, auditTime } from "@/components/admin/AuditList";
 import { ReadOnly } from "@/components/admin/ReadOnly";
+import { employeeBalances } from "@/lib/server/finance";
+import { formatPaise } from "@/lib/finance";
 import { formatDuration } from "@/lib/server/activityView";
 import { VISIT_IDLE_MINUTES } from "@/lib/activity";
 
@@ -20,7 +22,7 @@ export default async function UserPage({ params }: { params: { id: string } }) {
   if (!isObjectId(params.id)) notFound();
   const user = await db.adminUser.findUnique({ where: { id: params.id } });
   if (!user) notFound();
-  const [history, actions, sessions] = await Promise.all([
+  const [history, actions, sessions, balances] = await Promise.all([
     db.auditLog.findMany({ where: { entity: "admin_user", entityId: user.id }, orderBy: { at: "desc" }, take: 100 }),
     // What this user has changed around the store.
     db.auditLog.findMany({ where: { actorType: "admin", actorLabel: user.email }, orderBy: { at: "desc" }, take: 20 }),
@@ -28,7 +30,9 @@ export default async function UserPage({ params }: { params: { id: string } }) {
     can(admin, "admin_activity.view")
       ? db.visitSession.findMany({ where: { area: "admin", adminEmail: user.email }, orderBy: { startedAt: "desc" }, take: 10 })
       : [],
+    can(admin, "finance.view") ? employeeBalances() : null,
   ]);
+  const balance = balances?.get(user.email);
 
   return (
     <div>
@@ -42,6 +46,14 @@ export default async function UserPage({ params }: { params: { id: string } }) {
       {user.id === admin.id && (
         <p className="mb-6 rounded-md bg-sand/40 px-3 py-2 text-xs text-ink">
           This is you. You can&apos;t change your own access; use My Password to change your password.
+        </p>
+      )}
+      {balance && balance.owes !== 0 && (
+        <p className="mb-6 rounded-md border border-taupe/40 px-3 py-2 text-xs text-graphite">
+          {balance.owes > 0 ? `Owes the company ${formatPaise(balance.owes)}` : `The company owes them ${formatPaise(-balance.owes)}`} ·{" "}
+          <Link href={`/admin/finance/ledger?employee=${encodeURIComponent(user.email)}`} className="text-moss underline underline-offset-2">
+            see entries
+          </Link>
         </p>
       )}
       <ReadOnly when={!canManageUser(admin, user)} note={user.id !== admin.id}>

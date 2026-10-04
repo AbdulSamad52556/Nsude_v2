@@ -191,15 +191,19 @@ model Order {
   /// "pending_payment" (waiting for Razorpay) | "placed" | "shipped" |
   /// "delivered" | "cancelled"
   status          String
-  /// "razorpay" | "cod"
+  /// "razorpay" | "cod" | "offline" (order entered by an admin, paid by
+  /// cash / UPI / bank / card outside the website)
   paymentMethod   String
-  /// "pending" | "paid" | "failed" | "cod" (collected on delivery)
+  /// "pending" | "paid" | "failed" | "cod" (collected on delivery) |
+  /// "unpaid" (admin order not paid yet) | "refund_due" | "refunded"
   paymentStatus   String
   razorpayOrderId   String?
   razorpayPaymentId String?
   items           OrderItem[]
   subtotal        Int
   shipping        Int
+  /// Discount given on an admin-entered order (whole rupees).
+  discount        Int?
   total           Int
   email           String
   phone           String
@@ -207,8 +211,18 @@ model Order {
   /// True while this order holds stock. Set when stock is taken at
   /// checkout; cleared when a cancelled / abandoned order gives it back.
   stockHeld       Boolean         @default(false)
+  /// When the money for this order was entered in Finance (online payment
+  /// or COD cash received); set once, so it's never counted twice.
+  moneyInAt       DateTime?
+  /// When a refund for this order was entered in Finance.
+  refundedAt      DateTime?
   /// The signed-in customer who placed it (null for guest checkout).
   customerId      String?         @db.ObjectId
+  /// Admin who entered the order (phone / in-person sales); null for orders
+  /// placed on the website.
+  createdBy       String?
+  /// Internal note on an admin-entered order.
+  note            String?
   createdAt       DateTime        @default(now())
   updatedAt       DateTime        @updatedAt
 
@@ -394,4 +408,69 @@ model ActivityEvent {
   @@index([sessionKey, at])
   @@index([customerId, at])
   @@index([type, at])
+}
+
+/// Every change to a colourway's stock, with the stock left afterwards:
+/// sales, cancellations, order edits, restocks, damage, corrections.
+model StockMovement {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  at          DateTime @default(now())
+  productId   String   @db.ObjectId
+  productName String
+  /// Product code of the colourway.
+  code        String
+  color       String
+  /// Units added (+) or removed (−).
+  change      Int
+  /// Stock of this colourway right after the change.
+  stockAfter  Int?
+  /// "sale" | "order_cancelled" | "order_edited" | "restock" | "damaged" |
+  /// "returned" | "correction" | "initial" | "product_edit"
+  reason      String
+  /// Order number, supplier invoice…
+  ref         String?
+  note        String?
+  /// "admin" | "customer" | "system"
+  actorType   String
+  actorLabel  String
+
+  @@index([code, at])
+  @@index([reason, at])
+  @@index([at])
+}
+
+/// The company's money: one row per amount in or out of the company account.
+/// Amounts are in paise (₹1 = 100) and signed: + money in, − money out.
+/// Rows are never deleted; a mistake is voided (kept, but not counted).
+model FinanceEntry {
+  id            String    @id @default(auto()) @map("_id") @db.ObjectId
+  /// When the money moved (can be back-dated, e.g. an expense paid last week).
+  at            DateTime
+  createdAt     DateTime  @default(now())
+  /// "opening" | "order_payment" | "cod_received" | "refund" | "expense" |
+  /// "employee_withdrawal" | "employee_deposit" | "income" | "adjustment"
+  type          String
+  amount        Int
+  /// "bank" | "cash" | "upi" | "card" | "razorpay"
+  method        String?
+  /// Expense category (packaging, shipping, marketing…).
+  category      String?
+  description   String
+  orderId       String?   @db.ObjectId
+  orderNumber   String?
+  /// The admin user who took or added money (employee debt).
+  employeeEmail String?
+  employeeName  String?
+  /// Bank / UPI reference, invoice number…
+  reference     String?
+  /// Who entered it (admin email, or "Razorpay payment").
+  createdBy     String
+  voidedAt      DateTime?
+  voidedBy      String?
+  voidReason    String?
+
+  @@index([at])
+  @@index([type, at])
+  @@index([employeeEmail, at])
+  @@index([orderId])
 }

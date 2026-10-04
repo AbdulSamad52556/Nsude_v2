@@ -40,17 +40,13 @@ export async function PATCH(request: NextRequest, { params }: Params) {
         return NextResponse.json({ error: "Couldn't reach Razorpay to check this payment. Try again." }, { status: 502 });
       }
     } else {
-      await cancelOrder(order);
+      // A paid order being cancelled: its money has to go back (Finance → refunds due).
+      await cancelOrder(order, order.paymentStatus === "paid" ? "refund_due" : undefined, adminActor(session!.email));
     }
   } else {
-    await db.order.update({
-      where: { id: order.id },
-      data: {
-        status: next,
-        // Cash on delivery is collected when the parcel is delivered.
-        ...(next === "delivered" && order.paymentMethod === "cod" ? { paymentStatus: "paid" } : {}),
-      },
-    });
+    // COD stays unpaid until someone confirms the cash arrived (Mark cash
+    // received), which also enters it in Finance.
+    await db.order.update({ where: { id: order.id }, data: { status: next } });
   }
   const after = await db.order.findUnique({ where: { id: order.id } });
   await recordAudit({

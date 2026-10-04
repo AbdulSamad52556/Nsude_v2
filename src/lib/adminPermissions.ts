@@ -23,6 +23,18 @@ export const PERMISSION_AREAS = [
     manage: "Create, edit and delete products",
   },
   {
+    key: "inventory",
+    label: "Inventory",
+    view: "See stock of every colour and the stock ledger",
+    manage: "Restock, write off and correct stock",
+  },
+  {
+    key: "finance",
+    label: "Finance",
+    view: "See the company balance, money in and out, expenses and employee balances",
+    manage: "Add expenses, money taken or added by employees, cash received and refunds",
+  },
+  {
     key: "hero",
     label: "Hero carousel",
     view: "See the home page hero slides",
@@ -73,6 +85,8 @@ export const ADMIN_PAGES: { href: string; permission: Permission }[] = [
   { href: "/admin/users", permission: "users.view" },
   { href: "/admin/orders", permission: "orders.view" },
   { href: "/admin/products", permission: "products.view" },
+  { href: "/admin/inventory", permission: "inventory.view" },
+  { href: "/admin/finance", permission: "finance.view" },
   { href: "/admin/hero", permission: "hero.view" },
   { href: "/admin/customers", permission: "customers.view" },
   { href: "/admin/activity", permission: "activity.view" },

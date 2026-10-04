@@ -1,6 +1,8 @@
 import Link from "next/link";
+import { Plus } from "lucide-react";
 import { db } from "@/lib/server/db";
 import { pageAdmin } from "@/lib/server/auth";
+import { can } from "@/lib/adminPermissions";
 import { formatPrice, cx } from "@/lib/utils";
 import { ORDER_STATUSES, ORDER_STATUS_LABEL, PAYMENT_STATUS_LABEL, type OrderStatus } from "@/lib/checkout";
 import { AdminPageHeader } from "@/components/admin/AdminShell";
@@ -21,7 +23,7 @@ function href(params: Search) {
 }
 
 export default async function AdminOrdersPage({ searchParams }: { searchParams: Search }) {
-  await pageAdmin("orders.view");
+  const admin = await pageAdmin("orders.view");
   const status = ORDER_STATUSES.includes(searchParams.status as OrderStatus)
     ? (searchParams.status as OrderStatus)
     : undefined;
@@ -62,6 +64,16 @@ export default async function AdminOrdersPage({ searchParams }: { searchParams: 
       <AdminPageHeader
         title="Orders"
         subtitle={`${countFor("placed")} to ship · ${allCount} order${allCount === 1 ? "" : "s"} in total.`}
+        action={
+          can(admin, "orders.manage") && (
+            <Link
+              href="/admin/orders/new"
+              className="flex h-11 items-center gap-2 rounded-md bg-moss px-5 text-xs uppercase tracking-widest2 text-paper hover:brightness-90"
+            >
+              <Plus size={16} strokeWidth={1.5} /> New order
+            </Link>
+          )
+        }
       />
 
       <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
@@ -134,7 +146,7 @@ export default async function AdminOrdersPage({ searchParams }: { searchParams: 
                   <td className="p-3 text-graphite">{o.items.reduce((n, i) => n + i.quantity, 0)}</td>
                   <td className="p-3">{formatPrice(o.total)}</td>
                   <td className="p-3">
-                    <p className="text-xs uppercase tracking-wide">{o.paymentMethod === "cod" ? "COD" : "Online"}</p>
+                    <p className="text-xs uppercase tracking-wide">{o.paymentMethod === "cod" ? "COD" : o.paymentMethod === "offline" ? "Admin order" : "Online"}</p>
                     <p className={cx("text-xs", o.paymentStatus === "paid" ? "text-ink" : "text-ash")}>
                       {PAYMENT_STATUS_LABEL[o.paymentStatus] ?? o.paymentStatus}
                     </p>

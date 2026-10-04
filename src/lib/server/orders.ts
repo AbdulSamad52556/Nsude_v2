@@ -5,7 +5,9 @@ import { toProduct } from "./products";
 import { syncProductListings } from "./listings";
 import { revalidateStorefront } from "./revalidate";
 import { findSuccessfulPayment } from "./razorpay";
-import { recordAudit, systemActor } from "./audit";
+import { recordAudit, systemActor, type AuditActor } from "./audit";
+import { logStockMovements } from "./stockLedger";
+import { recordOrderMoneyIn } from "./finance";
 import { priceFor, type Size } from "@/lib/types";
 import { randomCode } from "@/lib/codes";
 import { shippingFor, type OrderStatus } from "@/lib/checkout";
@@ -122,7 +124,7 @@ function quantitiesByCode(lines: { code: string; quantity: number }[]) {
 
 /** Atomically moves stock of one color by `delta`; a decrease only happens
     if enough is left. Returns whether the document changed. */
-async function adjustStock(code: string, delta: number) {
+export async function adjustStock(code: string, delta: number) {
   const variantMatch = delta < 0 ? { code, stock: { $gte: -delta } } : { code };
   const result = (await db.$runCommandRaw({
     update: "Product",
@@ -187,10 +189,11 @@ export async function withUniqueNumber<T>(create: (number: string) => Promise<T>
 }
 
 /** Gives an order's stock back, exactly once, however many callers race. */
-async function releaseStock(order: Order) {
+async function releaseStock(order: Order, by: AuditActor) {
   const { count } = await db.order.updateMany({ where: { id: order.id, stockHeld: true }, data: { stockHeld: false } });
   if (count === 0) return false;
   await giveBackStock(order.items);
+  await logStockMovements(order.items, 1, { reason: "order_cancelled", ref: order.number, actor: by });
   return true;
 }
 
@@ -213,7 +216,10 @@ export async function markPaid(order: Order, razorpayPaymentId: string) {
       where: { id: order.id },
       data: { status: "placed", paymentStatus: "paid", razorpayPaymentId, stockHeld: taken.ok },
     });
-    if (taken.ok) await refreshCatalog(order.items.map((i) => i.productId));
+    if (taken.ok) {
+      await logStockMovements(order.items, -1, { reason: "sale", ref: order.number, actor: systemActor("Late payment revived order") });
+      await refreshCatalog(order.items.map((i) => i.productId));
+    }
   }
   const updated = await db.order.findUniqueOrThrow({ where: { id: order.id } });
   if (updated.paymentStatus === "paid" && order.paymentStatus !== "paid") {
@@ -230,12 +236,21 @@ export async function markPaid(order: Order, razorpayPaymentId: string) {
       ],
     });
   }
+  // The money is in: add it to Finance (once).
+  if (updated.paymentStatus === "paid") {
+    await recordOrderMoneyIn(updated, {
+      type: "order_payment",
+      by: systemActor("Razorpay payment"),
+      method: "razorpay",
+      reference: razorpayPaymentId,
+    }).catch((err) => console.error("Recording order payment in Finance failed", err));
+  }
   return updated;
 }
 
 /** Cancels an order and returns its stock to the shop. */
-export async function cancelOrder(order: Order, paymentStatus?: string) {
-  const released = await releaseStock(order);
+export async function cancelOrder(order: Order, paymentStatus?: string, by: AuditActor = systemActor("Order cancelled")) {
+  const released = await releaseStock(order, by);
   await db.order.update({
     where: { id: order.id },
     data: { status: "cancelled", ...(paymentStatus ? { paymentStatus } : {}) },

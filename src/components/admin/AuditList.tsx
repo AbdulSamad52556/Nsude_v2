@@ -16,6 +16,7 @@ export function entityHref(e: Pick<AuditLog, "entity" | "entityId">) {
   if (e.entity === "order") return `/admin/orders/${e.entityId}`;
   if (e.entity === "hero") return "/admin/hero";
   if (e.entity === "admin_user") return `/admin/users/${e.entityId}`;
+  if (e.entity === "finance") return `/admin/finance/ledger?entry=${e.entityId}`;
   return null;
 }
 

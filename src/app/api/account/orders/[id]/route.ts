@@ -12,6 +12,7 @@ import { CUSTOMER_EDITABLE_STATUS, MAX_LINE_QUANTITY, shippingFor } from "@/lib/
 import { priceFor, SIZES } from "@/lib/types";
 import { formatPrice } from "@/lib/utils";
 import { recordActivity } from "@/lib/server/activity";
+import { logStockMovements } from "@/lib/server/stockLedger";
 
 export const dynamic = "force-dynamic";
 
@@ -53,6 +54,9 @@ export async function PATCH(request: NextRequest, { params }: Params) {
   if (!order || !ownsOrder(customer, order)) return NextResponse.json({ error: "Order not found" }, { status: 404 });
   if (order.status !== CUSTOMER_EDITABLE_STATUS) {
     return NextResponse.json({ error: "This order has already been dispatched, so it can't be changed." }, { status: 409 });
+  }
+  if (order.createdBy) {
+    return NextResponse.json({ error: "This order was placed with our team. Contact us to change it." }, { status: 409 });
   }
 
   const parsed = bodySchema.safeParse(await request.json().catch(() => null));
@@ -147,8 +151,12 @@ export async function PATCH(request: NextRequest, { params }: Params) {
       if (!taken.ok) {
         return NextResponse.json({ error: "Not enough stock for that change. Try a smaller quantity." }, { status: 409 });
       }
+      await logStockMovements(more, -1, { reason: "order_edited", ref: order.number, actor });
     }
-    if (less.length) await giveBackStock(less);
+    if (less.length) {
+      await giveBackStock(less);
+      await logStockMovements(less, 1, { reason: "order_edited", ref: order.number, actor });
+    }
 
     const subtotal = lines.reduce((s, l) => s + l.price * l.quantity, 0);
     const shipping = shippingFor(subtotal);
@@ -178,7 +186,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
   // --- cancel -------------------------------------------------------------------
   if (body.action === "cancel") {
     const refund = order.paymentStatus === "paid";
-    await cancelOrder(order, refund ? "refund_due" : undefined);
+    await cancelOrder(order, refund ? "refund_due" : undefined, actor);
     await audit("Cancelled by customer", [
       { field: "Status", from: "Placed", to: "Cancelled" },
       { field: "Stock", from: "held", to: "returned to shop" },

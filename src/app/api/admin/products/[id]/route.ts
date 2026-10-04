@@ -8,6 +8,7 @@ import { assignVariantCodes, productImageIds, toProduct } from "@/lib/server/pro
 import { syncProductListings } from "@/lib/server/listings";
 import { isObjectId, revalidateStorefront } from "@/lib/server/revalidate";
 import { fieldErrors, productInputSchema, withDerivedPrice } from "@/lib/validation";
+import { logStockChange } from "@/lib/server/stockLedger";
 
 type Params = { params: { id: string } };
 
@@ -64,6 +65,20 @@ export async function PUT(request: NextRequest, { params }: Params) {
   revalidateStorefront();
   const product = toProduct(updated);
   const changes = productChanges(toProduct(existing), product);
+  // Stock ledger: stock typed in on the product page (new colours start here).
+  for (const v of updated.variants) {
+    const before = existing.variants.find((e) => e.code === v.code);
+    await logStockChange({
+      productId: updated.id,
+      productName: updated.name,
+      code: v.code,
+      color: v.name,
+      change: v.stock - (before?.stock ?? 0),
+      stockAfter: v.stock,
+      reason: before ? "product_edit" : "initial",
+      actor: adminActor(session!.email),
+    });
+  }
   if (changes.length) {
     await recordAudit({
       actor: adminActor(session!.email),
