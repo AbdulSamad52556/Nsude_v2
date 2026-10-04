@@ -3,6 +3,7 @@ import { z } from "zod";
 import { db } from "@/lib/server/db";
 import { settleUnpaidOrder } from "@/lib/server/orders";
 import { rateLimit } from "@/lib/server/rateLimit";
+import { recordActivity } from "@/lib/server/activity";
 
 // Called when the visitor closes the Razorpay popup without paying: unless
 // Razorpay did take a payment, the order is cancelled and its stock goes
@@ -25,5 +26,6 @@ export async function POST(request: NextRequest) {
   if (!order) return NextResponse.json({ error: "Order not found" }, { status: 404 });
 
   const status = await settleUnpaidOrder(order);
+  await recordActivity("payment_cancelled", { order: order.number });
   return NextResponse.json({ number: order.number, status: status ?? order.status, total: order.total });
 }

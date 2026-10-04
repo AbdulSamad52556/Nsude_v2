@@ -1,18 +1,18 @@
 import Link from "next/link";
 import { db } from "@/lib/server/db";
+import { pageAdmin } from "@/lib/server/auth";
 import { formatPrice, cx } from "@/lib/utils";
 import { ORDER_STATUSES, ORDER_STATUS_LABEL, PAYMENT_STATUS_LABEL, type OrderStatus } from "@/lib/checkout";
 import { AdminPageHeader } from "@/components/admin/AdminShell";
 import { OrderStatusBadge } from "@/components/admin/OrderStatusBadge";
+import { Pagination, readPaging } from "@/components/admin/Pagination";
 import { ReleaseExpiredOrders } from "@/components/admin/ReleaseExpiredOrders";
 import type { Prisma } from "@prisma/client";
 
 export const metadata = { title: "Orders" };
 export const dynamic = "force-dynamic";
 
-const PAGE_SIZE = 30;
-
-type Search = { status?: string; q?: string; page?: string };
+type Search = { status?: string; q?: string; page?: string; size?: string };
 
 function href(params: Search) {
   const q = new URLSearchParams(Object.entries(params).filter(([, v]) => v) as [string, string][]);
@@ -21,11 +21,11 @@ function href(params: Search) {
 }
 
 export default async function AdminOrdersPage({ searchParams }: { searchParams: Search }) {
+  await pageAdmin("orders.view");
   const status = ORDER_STATUSES.includes(searchParams.status as OrderStatus)
     ? (searchParams.status as OrderStatus)
     : undefined;
   const q = (searchParams.q ?? "").trim().slice(0, 60);
-  const page = Math.max(1, Math.floor(Number(searchParams.page)) || 1);
 
   const where: Prisma.OrderWhereInput = {
     ...(status ? { status } : {}),
@@ -40,19 +40,16 @@ export default async function AdminOrdersPage({ searchParams }: { searchParams: 
       : {}),
   };
 
-  const [orders, total, counts] = await Promise.all([
-    db.order.findMany({
-      where,
-      orderBy: { createdAt: "desc" },
-      skip: (page - 1) * PAGE_SIZE,
-      take: PAGE_SIZE,
-    }),
+  const [total, counts] = await Promise.all([
     db.order.count({ where }),
     db.order.groupBy({ by: ["status"], _count: { _all: true } }),
   ]);
+  const { page, pages, size, skip } = readPaging(searchParams, total);
+  const orders = await db.order.findMany({ where, orderBy: { createdAt: "desc" }, skip, take: size });
+  // Keep the chosen rows-per-page when switching filters.
+  const sizeParam = searchParams.size;
   const countFor = (s: string) => counts.find((c) => c.status === s)?._count._all ?? 0;
   const allCount = counts.reduce((n, c) => n + c._count._all, 0);
-  const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   const tabs = [
     { label: "All", value: undefined, count: allCount },
@@ -72,10 +69,10 @@ export default async function AdminOrdersPage({ searchParams }: { searchParams: 
           {tabs.map((t) => (
             <Link
               key={t.label}
-              href={href({ status: t.value, q })}
+              href={href({ status: t.value, q, size: sizeParam })}
               className={cx(
                 "border px-3 py-1.5 text-[11px] uppercase tracking-widest2",
-                status === t.value ? "border-ink bg-ink text-paper" : "border-graphite/20 text-graphite hover:border-ink"
+                status === t.value ? "border-moss bg-moss text-paper" : "border-taupe/50 text-graphite hover:border-moss"
               )}
             >
               {t.label} <span className="opacity-60">{t.count}</span>
@@ -84,26 +81,27 @@ export default async function AdminOrdersPage({ searchParams }: { searchParams: 
         </nav>
         <form action="/admin/orders" className="flex gap-2">
           {status && <input type="hidden" name="status" value={status} />}
+          {sizeParam && <input type="hidden" name="size" value={sizeParam} />}
           <input
             name="q"
             defaultValue={q}
             placeholder="Order no., email or phone"
-            className="h-10 w-64 border border-graphite/20 bg-transparent px-3 text-sm focus:border-ink focus:outline-none"
+            className="rounded-md h-10 w-64 border border-taupe/50 bg-transparent px-3 text-sm focus:border-moss focus:outline-none"
           />
-          <button type="submit" className="h-10 bg-ink px-4 text-xs uppercase tracking-widest2 text-paper hover:bg-graphite">
+          <button type="submit" className="rounded-md h-10 bg-moss px-4 text-xs uppercase tracking-widest2 text-paper hover:brightness-90">
             Search
           </button>
         </form>
       </div>
 
       {orders.length === 0 ? (
-        <p className="border border-graphite/15 p-8 text-center text-sm text-graphite">
+        <p className="rounded-lg border border-taupe/30 p-8 text-center text-sm text-graphite">
           {q || status ? "No orders match." : "No orders yet."}
         </p>
       ) : (
-        <div className="overflow-x-auto border border-graphite/15">
+        <div className="rounded-lg overflow-x-auto border border-taupe/30">
           <table className="w-full min-w-[820px] text-left text-sm">
-            <thead className="border-b border-graphite/15 text-[11px] uppercase tracking-widest2 text-ash">
+            <thead className="border-b border-taupe/30 bg-sand/30 text-[11px] uppercase tracking-widest2 text-ash">
               <tr>
                 <th className="p-3 font-normal">Order</th>
                 <th className="p-3 font-normal">Date</th>
@@ -114,9 +112,9 @@ export default async function AdminOrdersPage({ searchParams }: { searchParams: 
                 <th className="p-3 font-normal">Status</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-graphite/10">
+            <tbody className="divide-y divide-taupe/20">
               {orders.map((o) => (
-                <tr key={o.id} className="hover:bg-bone/60">
+                <tr key={o.id} className="hover:bg-sand/15">
                   <td className="p-3">
                     <Link href={`/admin/orders/${o.id}`} className="font-mono text-sm underline-offset-4 hover:underline">
                       {o.number}
@@ -151,27 +149,14 @@ export default async function AdminOrdersPage({ searchParams }: { searchParams: 
         </div>
       )}
 
-      {pages > 1 && (
-        <div className="mt-6 flex items-center justify-between text-xs uppercase tracking-widest2">
-          {page > 1 ? (
-            <Link href={href({ status, q, page: String(page - 1) })} className="text-graphite hover:text-ink">
-              ← Newer
-            </Link>
-          ) : (
-            <span />
-          )}
-          <span className="text-ash">
-            Page {page} of {pages}
-          </span>
-          {page < pages ? (
-            <Link href={href({ status, q, page: String(page + 1) })} className="text-graphite hover:text-ink">
-              Older →
-            </Link>
-          ) : (
-            <span />
-          )}
-        </div>
-      )}
+      <Pagination
+        page={page}
+        pages={pages}
+        size={size}
+        total={total}
+        noun={total === 1 ? "order" : "orders"}
+        href={(p) => href({ status, q, ...p })}
+      />
     </div>
   );
 }

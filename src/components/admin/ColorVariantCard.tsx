@@ -34,7 +34,7 @@ export interface VariantDraft {
 }
 
 const inputClass =
-  "h-11 w-full border border-graphite/20 bg-transparent px-3 text-sm focus:border-ink focus:outline-none";
+  "rounded-md h-11 w-full border border-taupe/50 bg-transparent px-3 text-sm focus:border-moss focus:outline-none";
 const labelClass = "mb-2 block text-[11px] uppercase tracking-widest2 text-ash";
 
 function FieldError({ message }: { message?: string }) {
@@ -148,15 +148,15 @@ export function ColorVariantCard({
   const validHex = /^#[0-9a-fA-F]{6}$/.test(variant.hex);
 
   return (
-    <div className="border border-graphite/15">
+    <div className="rounded-lg border border-taupe/30">
       {/* Header: swatch, name, hex, order, remove */}
-      <div className="flex flex-wrap items-start gap-3 border-b border-graphite/10 bg-bone/40 p-4">
+      <div className="flex flex-wrap items-start gap-3 border-b border-taupe/20 bg-bone/40 p-4">
         <input
           type="color"
           aria-label={`Color ${index + 1} swatch`}
           value={validHex ? variant.hex : "#000000"}
           onChange={(e) => onChange({ hex: e.target.value })}
-          className="h-11 w-11 shrink-0 cursor-pointer border border-graphite/20 bg-transparent p-1"
+          className="rounded-md h-11 w-11 shrink-0 cursor-pointer border border-taupe/50 bg-transparent p-1"
         />
         <div className="min-w-[160px] flex-1">
           <input
@@ -188,7 +188,7 @@ export function ColorVariantCard({
         </div>
         <div className="flex items-center gap-1 pt-1.5">
           {index === 0 && (
-            <span className="mr-1 bg-ink px-2 py-0.5 text-[10px] uppercase tracking-wide text-paper" title="Shown first in the shop and on the product page">
+            <span className="mr-1 rounded-sm bg-moss px-2 py-0.5 text-[10px] uppercase tracking-wide text-paper" title="Shown first in the shop and on the product page">
               Default
             </span>
           )}
@@ -216,7 +216,7 @@ export function ColorVariantCard({
           <div className="mb-3 flex flex-wrap items-end justify-between gap-3">
             <p className={cx(labelClass, "mb-0")}>Price &amp; availability for {variant.name || "this color"}</p>
             <div className="flex items-center gap-2">
-              <div className="flex h-9 items-center border border-graphite/20 focus-within:border-ink">
+              <div className="flex h-9 items-center border border-taupe/50 focus-within:border-ink">
                 <span className="pl-2.5 text-xs text-ash">₹</span>
                 <input
                   inputMode="numeric"
@@ -237,7 +237,7 @@ export function ColorVariantCard({
                 type="button"
                 onClick={applyBulkPrice}
                 disabled={!bulkPrice}
-                className="h-9 border border-ink px-3 text-[10px] uppercase tracking-widest2 text-ink hover:bg-ink hover:text-paper disabled:border-graphite/20 disabled:text-ash disabled:hover:bg-transparent"
+                className="rounded-md h-9 border border-ink px-3 text-[10px] uppercase tracking-widest2 text-ink hover:bg-ink hover:text-paper disabled:border-taupe/50 disabled:text-ash disabled:hover:bg-transparent"
               >
                 Apply to all sizes
               </button>
@@ -245,7 +245,7 @@ export function ColorVariantCard({
           </div>
 
           {sizes.length === 0 ? (
-            <p className="border border-dashed border-graphite/20 p-3 text-xs text-ash">
+            <p className="border border-dashed border-taupe/50 p-3 text-xs text-ash">
               Choose the sizes this product is made in (under Sizes &amp; measurements) to set their prices.
             </p>
           ) : (
@@ -263,13 +263,13 @@ export function ColorVariantCard({
                     const soldOut = variant.unavailableSizes.includes(s);
                     const priceError = errors[`sizePrices.${s}`];
                     return (
-                      <tr key={s} className="border-t border-graphite/10">
+                      <tr key={s} className="border-t border-taupe/20">
                         <td className="py-2 pr-3 text-xs font-medium uppercase tracking-wide">{s}</td>
                         <td className="py-2 pr-3">
                           <div
                             className={cx(
                               "flex h-10 w-40 items-center border focus-within:border-ink",
-                              priceError ? "border-rust" : "border-graphite/20"
+                              priceError ? "border-rust" : "border-taupe/50"
                             )}
                           >
                             <span className="pl-3 text-ash">₹</span>
@@ -303,7 +303,7 @@ export function ColorVariantCard({
                             }
                             className={cx(
                               "flex h-8 items-center gap-2 border px-3 text-[10px] uppercase tracking-widest2",
-                              soldOut ? "border-rust/40 text-rust" : "border-graphite/20 text-ink"
+                              soldOut ? "border-rust/40 text-rust" : "border-taupe/50 text-ink"
                             )}
                           >
                             <span className={cx("h-2 w-2 rounded-full", soldOut ? "bg-rust" : "bg-[#4b7a4b]")} />
@@ -336,7 +336,7 @@ export function ColorVariantCard({
         <div>
           <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
             <p className={cx(labelClass, "mb-0")}>Photos of this color</p>
-            <div role="radiogroup" aria-label="How to add photos" className="inline-flex border border-graphite/20">
+            <div role="radiogroup" aria-label="How to add photos" className="inline-flex border border-taupe/50">
               {(
                 [
                   { key: "upload", label: "Upload file", icon: Upload },
@@ -354,7 +354,7 @@ export function ColorVariantCard({
                   }}
                   className={cx(
                     "flex h-8 items-center gap-2 px-3 text-[10px] uppercase tracking-widest2 transition-colors",
-                    addMode === key ? "bg-ink text-paper" : "text-ash hover:text-ink"
+                    addMode === key ? "bg-moss text-paper" : "text-ash hover:text-ink"
                   )}
                 >
                   <Icon size={13} strokeWidth={1.5} />
@@ -389,7 +389,7 @@ export function ColorVariantCard({
                 type="button"
                 onClick={addFromUrl}
                 disabled={uploading > 0 || !imageUrl.trim()}
-                className="flex h-11 shrink-0 items-center gap-2 bg-ink px-5 text-xs uppercase tracking-widest2 text-paper hover:bg-graphite disabled:opacity-50"
+                className="rounded-md flex h-11 shrink-0 items-center gap-2 bg-moss px-5 text-xs uppercase tracking-widest2 text-paper hover:brightness-90 disabled:opacity-50"
               >
                 {uploading > 0 ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
                 Add
@@ -400,10 +400,10 @@ export function ColorVariantCard({
           <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 lg:grid-cols-5">
             {variant.images.map((img, i) => (
               <div key={img.publicId ?? img.src} className="flex flex-col gap-1.5">
-                <div className="relative aspect-[4/5] overflow-hidden bg-bone">
+                <div className="relative aspect-[4/5] overflow-hidden bg-sand/25">
                   <Image src={img.src} alt={img.alt} fill sizes="160px" className="object-cover" />
                   {i === 0 && (
-                    <span className="absolute left-1.5 top-1.5 bg-ink px-1.5 py-0.5 text-[9px] uppercase tracking-wide text-paper">
+                    <span className="absolute left-1.5 top-1.5 rounded-sm bg-moss px-1.5 py-0.5 text-[9px] uppercase tracking-wide text-paper">
                       Main
                     </span>
                   )}
@@ -419,7 +419,7 @@ export function ColorVariantCard({
                 <input
                   aria-label={`Alt text for photo ${i + 1}`}
                   placeholder="Alt text"
-                  className="h-8 w-full border border-graphite/20 bg-transparent px-2 text-[11px] focus:border-ink focus:outline-none"
+                  className="rounded-md h-8 w-full border border-taupe/50 bg-transparent px-2 text-[11px] focus:border-moss focus:outline-none"
                   value={img.alt}
                   onChange={(e) =>
                     onChange({ images: variant.images.map((m, j) => (j === i ? { ...m, alt: e.target.value } : m)) })
@@ -440,7 +440,7 @@ export function ColorVariantCard({
                 type="button"
                 onClick={() => fileInput.current?.click()}
                 disabled={uploading > 0}
-                className="flex aspect-[4/5] flex-col items-center justify-center gap-2 border border-dashed border-graphite/30 text-[10px] uppercase tracking-widest2 text-ash hover:border-ink hover:text-ink disabled:opacity-60"
+                className="flex aspect-[4/5] flex-col items-center justify-center gap-2 border border-dashed border-graphite/30 text-[10px] uppercase tracking-widest2 text-ash hover:border-moss hover:text-ink disabled:opacity-60"
               >
                 {uploading > 0 ? (
                   <>

@@ -106,4 +106,8 @@ export const PAYMENT_STATUS_LABEL: Record<string, string> = {
   paid: "Paid",
   failed: "Not paid",
   cod: "Cash on delivery",
+  refund_due: "Refund due",
 };
+
+/** Customers can change or cancel their order until it's dispatched. */
+export const CUSTOMER_EDITABLE_STATUS: OrderStatus = "placed";

@@ -110,7 +110,7 @@ export function HeroEditor({
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="border border-graphite/15 bg-bone/50 p-4 text-sm text-graphite">
+      <div className="rounded-lg border border-taupe/30 bg-bone/50 p-4 text-sm text-graphite">
         Upload a <strong className="font-medium text-ink">transparent PNG cutout</strong> of each t-shirt (like the
         current ones), then pick the product it links to. Slides play in this order.
         {slides.length !== RECOMMENDED && (
@@ -126,7 +126,7 @@ export function HeroEditor({
         {slides.map((slide, i) => {
           const product = products.find((p) => p.id === slide.productId);
           return (
-            <li key={slide.key} className="flex flex-col gap-4 border border-graphite/15 p-4 sm:flex-row sm:items-center">
+            <li key={slide.key} className="rounded-lg flex flex-col gap-4 border border-taupe/30 p-4 sm:flex-row sm:items-center">
               <span className="text-xs uppercase tracking-widest2 text-ash sm:w-8">{String(i + 1).padStart(2, "0")}</span>
 
               <button
@@ -152,7 +152,7 @@ export function HeroEditor({
                     </span>
                   </>
                 ) : (
-                  <span className="flex flex-col items-center gap-2 text-[11px] uppercase tracking-widest2 text-stone">
+                  <span className="flex flex-col items-center gap-2 text-[11px] uppercase tracking-widest2 text-taupe">
                     <ImagePlus size={20} strokeWidth={1.5} />
                     Upload
                   </span>
@@ -221,7 +221,7 @@ export function HeroEditor({
 
       <input ref={fileInput} type="file" accept="image/png,image/webp,image/avif,image/jpeg" hidden onChange={(e) => handleFile(e.target.files)} />
 
-      <div className="sticky bottom-0 -mx-5 flex flex-wrap items-center justify-between gap-3 border-t border-graphite/15 bg-paper/95 px-5 py-4 backdrop-blur md:-mx-10 md:px-10">
+      <div className="sticky bottom-0 -mx-5 flex flex-wrap items-center justify-between gap-3 border-t border-taupe/30 bg-paper/95 px-5 py-4 backdrop-blur md:-mx-10 md:px-10">
         <p role="status" className={message?.type === "error" ? "text-xs text-rust" : "flex items-center gap-1 text-xs text-graphite"}>
           {message?.type === "ok" && <Check size={14} />}
           {message?.text ?? (dirty ? "Unsaved changes" : "")}
@@ -230,7 +230,7 @@ export function HeroEditor({
           type="button"
           onClick={save}
           disabled={saving || uploadingKey !== null || !dirty}
-          className="flex h-11 items-center gap-2 bg-ink px-6 text-xs uppercase tracking-widest2 text-paper hover:bg-graphite disabled:opacity-50"
+          className="rounded-md flex h-11 items-center gap-2 bg-moss px-6 text-xs uppercase tracking-widest2 text-paper hover:brightness-90 disabled:opacity-50"
         >
           {saving && <Loader2 size={16} className="animate-spin" />}
           Save carousel

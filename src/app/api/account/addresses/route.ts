@@ -2,7 +2,9 @@ import { NextResponse, type NextRequest } from "next/server";
 import { db } from "@/lib/server/db";
 import { getCustomer, newAddressId, toAccountData } from "@/lib/server/customer";
 import { fieldErrors } from "@/lib/validation";
+import { customerActor, describeAddress, recordAudit } from "@/lib/server/audit";
 import { MAX_SAVED_ADDRESSES, addressSchema } from "@/lib/account";
+import { recordActivity } from "@/lib/server/activity";
 
 export const dynamic = "force-dynamic";
 
@@ -29,5 +31,17 @@ export async function POST(request: NextRequest) {
       ...(makeDefault ? { defaultAddressId: id } : {}),
     },
   });
+  await recordAudit({
+    actor: customerActor(customer.phone),
+    entity: "customer",
+    entityId: customer.id,
+    entityLabel: `+91 ${customer.phone}`,
+    action: "Address added",
+    changes: [
+      { field: "Address", from: "—", to: describeAddress(parsed.data) },
+      ...(makeDefault ? [{ field: "Default address", from: "—", to: "this address" }] : []),
+    ],
+  });
+  await recordActivity("address_saved", { new: true }, { customerId: customer.id });
   return NextResponse.json({ account: toAccountData(updated), id });
 }

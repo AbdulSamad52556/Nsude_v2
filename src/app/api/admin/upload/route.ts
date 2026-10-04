@@ -25,7 +25,7 @@ const urlBodySchema = z.object({
 // either an uploaded file (multipart form) or a remote image URL (JSON).
 // The image isn't attached to anything until the product / hero is saved.
 export async function POST(request: NextRequest) {
-  const { error } = await requireAdmin();
+  const { error } = await requireAdmin(["products.manage", "hero.manage"]);
   if (error) return error;
 
   if (request.headers.get("content-type")?.includes("application/json")) {

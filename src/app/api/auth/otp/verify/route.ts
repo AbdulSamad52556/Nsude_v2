@@ -1,8 +1,10 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { db } from "@/lib/server/db";
-import { OTP_MAX_ATTEMPTS, otpMatches, setCustomerSession, toAccountData } from "@/lib/server/customer";
+import { OTP_MAX_ATTEMPTS, otpMatches, startCustomerSession, toAccountData } from "@/lib/server/customer";
 import { rateLimit } from "@/lib/server/rateLimit";
+import { customerActor, recordAudit } from "@/lib/server/audit";
 import { otpSchema, phoneSchema } from "@/lib/account";
+import { linkVisitorToCustomer, recordActivity } from "@/lib/server/activity";
 
 // Checks a login code. On success the customer is signed in — and if this
 // number has never been used, the account is created right here.
@@ -37,6 +39,16 @@ export async function POST(request: NextRequest) {
   await db.otpCode.deleteMany({ where: { phone: phone.data } });
   const existing = await db.customer.findUnique({ where: { phone: phone.data } });
   const customer = existing ?? (await db.customer.create({ data: { phone: phone.data } }));
+  if (!existing) {
+    await recordAudit({
+      actor: customerActor(customer.phone),
+      entity: "customer",
+      entityId: customer.id,
+      entityLabel: `+91 ${customer.phone}`,
+      action: "Account created",
+      changes: [{ field: "Mobile number", from: "—", to: `+91 ${customer.phone}` }],
+    });
+  }
 
   // Guest orders placed earlier with this (now verified) number become part
   // of the account, however long ago they were placed.
@@ -48,7 +60,10 @@ export async function POST(request: NextRequest) {
     })
     .catch((err) => console.error("Linking guest orders failed", err));
 
-  const response = NextResponse.json({ account: toAccountData(customer), isNew: !existing });
-  await setCustomerSession(response, customer);
-  return response;
+  // Access token (1 hour) + refresh token (30 days from last use) cookies.
+  await startCustomerSession(customer.id, request.headers.get("user-agent") ?? "");
+  // This browser's visits so far (as a guest) now belong to the customer.
+  await linkVisitorToCustomer(customer.id);
+  await recordActivity(existing ? "signed_in" : "signed_up", {}, { customerId: customer.id });
+  return NextResponse.json({ account: toAccountData(customer), isNew: !existing });
 }

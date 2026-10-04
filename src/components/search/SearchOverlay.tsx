@@ -7,6 +7,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useUI } from "@/context/UIContext";
 import { formatPriceRange } from "@/lib/utils";
+import { track } from "@/lib/track";
 
 const popularSearches = ["Core Tee", "Oversized", "Heavyweight", "Black", "Archive"];
 
@@ -69,6 +70,7 @@ export function SearchOverlay() {
         });
         const data = (await res.json()) as { results: SearchResult[] };
         setResults(data.results);
+        track("search", { query: q, results: data.results.length });
       } catch (err) {
         if ((err as Error).name !== "AbortError") setResults([]);
       } finally {

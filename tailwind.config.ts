@@ -5,15 +5,19 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        ink: "#0a0a0a",
+        // Brand palette: Deep Black, Off White (paper), Stone Grey (ash),
+        // Taupe, Olive (moss) and the Sand Beige accent.
+        ink: "#000000",
         charcoal: "#161615",
         graphite: "#3a3a38",
         stone: "#8a8a84",
-        ash: "#6e6e69",
+        ash: "#6e6e6e", // Stone Grey
         mist: "#c9c7c0",
         bone: "#f4f1ea",
         paper: "#f8f6f1",
         rust: "#8a5a3f",
+        taupe: "#a89f94",
+        sand: "#d9c9b8",
         // Tag color (e.g. the NEW badge on product photos).
         moss: "#3f4639",
       },

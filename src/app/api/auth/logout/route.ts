@@ -1,9 +1,11 @@
 import { NextResponse } from "next/server";
-import { clearCustomerSession } from "@/lib/server/customer";
+import { endCustomerSession } from "@/lib/server/customer";
+import { recordActivity } from "@/lib/server/activity";
 
-/** Signs the customer out. */
+/** Signs the customer out on this device (the session is deleted, so its
+    tokens stop working straight away). */
 export async function POST() {
-  const response = NextResponse.json({ ok: true });
-  clearCustomerSession(response);
-  return response;
+  await recordActivity("signed_out");
+  await endCustomerSession();
+  return NextResponse.json({ ok: true });
 }
