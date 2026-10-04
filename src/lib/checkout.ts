@@ -107,6 +107,14 @@ export const PAYMENT_STATUS_LABEL: Record<string, string> = {
   failed: "Not paid",
   cod: "Cash on delivery",
   refund_due: "Refund due",
+  refunded: "Refunded",
+  unpaid: "Not paid yet",
+};
+
+export const PAYMENT_METHOD_LABEL: Record<string, string> = {
+  razorpay: "Online (Razorpay)",
+  cod: "Cash on delivery",
+  offline: "Admin order (paid outside the website)",
 };
 
 /** Customers can change or cancel their order until it's dispatched. */

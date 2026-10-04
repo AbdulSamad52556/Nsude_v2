@@ -17,6 +17,7 @@ import { customerActor, describeAddress, recordAudit } from "@/lib/server/audit"
 import { fieldErrors } from "@/lib/validation";
 import { checkoutSchema } from "@/lib/checkout";
 import { recordActivity } from "@/lib/server/activity";
+import { logStockMovements } from "@/lib/server/stockLedger";
 
 // Places an order. Prices come from the catalog, stock is taken atomically,
 // then either the order is placed (cash on delivery) or a Razorpay order is
@@ -94,6 +95,11 @@ export async function POST(request: NextRequest) {
   ).catch(async (err) => {
     await giveBackStock(quote.lines);
     throw err;
+  });
+  await logStockMovements(quote.lines, -1, {
+    reason: "sale",
+    ref: order.number,
+    actor: customer ? customerActor(customer.phone) : { type: "customer", label: `Guest · +91 ${input.phone}` },
   });
   await refreshCatalog(quote.lines.map((l) => l.productId));
 

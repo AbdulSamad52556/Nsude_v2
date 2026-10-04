@@ -296,7 +296,7 @@ function OrderDetails({
         <div className="md:text-right">
           <p className="mb-1 text-[10px] uppercase tracking-widest2 text-ash">Payment</p>
           <p className="text-graphite">
-            {o.paymentMethod === "cod" ? "Cash on delivery" : "Paid online"} · Subtotal {formatPrice(o.subtotal)} · Shipping{" "}
+            {o.paymentMethod === "cod" ? "Cash on delivery" : o.paymentMethod === "offline" ? "Placed with our team" : "Paid online"} · Subtotal {formatPrice(o.subtotal)} · Shipping{" "}
             {o.shipping === 0 ? "Free" : formatPrice(o.shipping)}
           </p>
           <p className="mt-1 text-sm text-ink">Total {formatPrice(o.total)}</p>

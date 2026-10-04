@@ -4,6 +4,8 @@ import Image from "next/image";
 import { ArrowRight, Plus } from "lucide-react";
 import { db } from "@/lib/server/db";
 import { pageAdmin } from "@/lib/server/auth";
+import { sumPaise } from "@/lib/server/finance";
+import { formatPaise } from "@/lib/finance";
 import { can, firstAllowedPage, type Permission } from "@/lib/adminPermissions";
 import { AdminPageHeader } from "@/components/admin/AdminShell";
 
@@ -16,10 +18,11 @@ export default async function AdminDashboard() {
   // Without dashboard access, land on the first page they can open.
   if (!can(admin, "dashboard.view")) redirect(firstAllowedPage(admin) ?? "/admin/no-access");
   const seeProducts = can(admin, "products.view");
-  const [products, heroCount, toShip] = await Promise.all([
+  const [products, heroCount, toShip, balance] = await Promise.all([
     seeProducts ? db.product.findMany() : [],
     can(admin, "hero.view") ? db.heroSlide.count() : 0,
     can(admin, "orders.view") ? db.order.count({ where: { status: "placed" } }) : 0,
+    can(admin, "finance.view") ? sumPaise() : 0,
   ]);
 
   // Stock lives on each color, so low stock is tracked per colorway.
@@ -32,6 +35,7 @@ export default async function AdminDashboard() {
 
   // Only the numbers this admin is allowed to see.
   const stats = [
+    { access: "finance.view", label: "Company balance", value: formatPaise(balance), href: "/admin/finance", hint: "Money in the account" },
     { access: "orders.view", label: "Orders to ship", value: toShip, href: "/admin/orders?status=placed", hint: "Placed, not yet shipped" },
     { access: "products.view", label: "Products", value: products.length, href: "/admin/products", hint: `${colorCount} colorways in the shop` },
     { access: "products.view", label: "Featured", value: products.filter((p) => p.featured).length, href: "/admin/products", hint: "Home page shows the first 4" },
@@ -61,7 +65,7 @@ export default async function AdminDashboard() {
           Your account doesn&apos;t have access to any area yet. Ask the super admin to give you permissions.
         </p>
       )}
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-5">
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-6">
         {stats.map((s) => (
           <Link
             key={s.label}

@@ -61,7 +61,10 @@ export default async function AdminProductsPage({ searchParams }: { searchParams
                 <th className="p-3 font-normal">Stock</th>
                 <th className="p-3 font-normal">Fit</th>
                 <th className="p-3 font-normal">Flags</th>
-                <th className="p-3 font-normal sr-only">Actions</th>
+                <th className="relative p-3 font-normal">
+                  {/* relative: keeps the hidden label inside the table's scroll box */}
+                  <span className="sr-only">Actions</span>
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-taupe/20">

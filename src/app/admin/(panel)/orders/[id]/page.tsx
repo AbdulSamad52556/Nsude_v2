@@ -8,11 +8,13 @@ import { can } from "@/lib/adminPermissions";
 import { NEXT_STATUSES } from "@/lib/server/orders";
 import { isObjectId } from "@/lib/server/revalidate";
 import { formatPrice } from "@/lib/utils";
-import { PAYMENT_STATUS_LABEL, type OrderStatus } from "@/lib/checkout";
+import { PAYMENT_METHOD_LABEL, PAYMENT_STATUS_LABEL, type OrderStatus } from "@/lib/checkout";
 import { AdminPageHeader } from "@/components/admin/AdminShell";
 import { OrderStatusBadge } from "@/components/admin/OrderStatusBadge";
 import { OrderStatusControl } from "@/components/admin/OrderStatusControl";
 import { AuditList } from "@/components/admin/AuditList";
+import { OrderMoneyButton } from "@/components/admin/FinanceActions";
+import { formatPaise } from "@/lib/finance";
 
 export const metadata = { title: "Order" };
 export const dynamic = "force-dynamic";
@@ -37,7 +39,7 @@ export default async function AdminOrderPage({ params }: { params: { id: string 
       </Link>
       <AdminPageHeader
         title={order.number}
-        subtitle={`Placed ${dateTime(order.createdAt)} · ${itemCount} item${itemCount === 1 ? "" : "s"}`}
+        subtitle={`${order.createdBy ? `Entered by ${order.createdBy}` : "Placed"} ${dateTime(order.createdAt)} · ${itemCount} item${itemCount === 1 ? "" : "s"}`}
         action={<OrderStatusBadge status={order.status} />}
       />
 
@@ -75,6 +77,12 @@ export default async function AdminOrderPage({ params }: { params: { id: string 
               <dt>Shipping</dt>
               <dd>{order.shipping === 0 ? "Free" : formatPrice(order.shipping)}</dd>
             </div>
+            {order.discount ? (
+              <div className="flex justify-between text-graphite">
+                <dt>Discount</dt>
+                <dd>−{formatPrice(order.discount)}</dd>
+              </div>
+            ) : null}
             <div className="flex justify-between border-t border-taupe/20 pt-2 text-base">
               <dt>Total</dt>
               <dd>{formatPrice(order.total)}</dd>
@@ -101,7 +109,7 @@ export default async function AdminOrderPage({ params }: { params: { id: string 
 
           <section className="rounded-lg border border-taupe/30 p-4 text-sm">
             <h2 className="mb-3 text-xs uppercase tracking-widest2">Payment</h2>
-            <p>{order.paymentMethod === "cod" ? "Cash on delivery" : "Online (Razorpay)"}</p>
+            <p>{PAYMENT_METHOD_LABEL[order.paymentMethod] ?? order.paymentMethod}</p>
             <p className="text-graphite">{PAYMENT_STATUS_LABEL[order.paymentStatus] ?? order.paymentStatus}</p>
             {order.razorpayPaymentId && (
               <p className="mt-2 break-all font-mono text-xs text-ash">Payment {order.razorpayPaymentId}</p>
@@ -109,7 +117,48 @@ export default async function AdminOrderPage({ params }: { params: { id: string 
             {order.razorpayOrderId && (
               <p className="break-all font-mono text-xs text-ash">Razorpay order {order.razorpayOrderId}</p>
             )}
+            {/* Money in / back out, entered in Finance. */}
+            {order.moneyInAt && (
+              <p className="mt-2 text-xs text-moss">
+                {formatPaise(order.total * 100)} in Finance
+                {can(admin, "finance.view") && (
+                  <>
+                    {" · "}
+                    <Link href={`/admin/finance/ledger?q=${order.number}`} className="underline underline-offset-2">
+                      view
+                    </Link>
+                  </>
+                )}
+              </p>
+            )}
+            {order.refundedAt && <p className="mt-1 text-xs text-rust">Refund of {formatPaise(order.total * 100)} paid</p>}
+            {(can(admin, "orders.manage") || can(admin, "finance.manage")) && (
+              <div className="mt-3">
+                {order.paymentMethod === "cod" &&
+                  !order.moneyInAt &&
+                  order.paymentStatus !== "paid" &&
+                  ["placed", "shipped", "delivered"].includes(order.status) && (
+                    <OrderMoneyButton orderId={order.id} orderNumber={order.number} amountPaise={order.total * 100} action="cash_received" />
+                  )}
+                {order.paymentMethod === "offline" &&
+                  !order.moneyInAt &&
+                  order.paymentStatus !== "paid" &&
+                  ["placed", "shipped", "delivered"].includes(order.status) && (
+                    <OrderMoneyButton orderId={order.id} orderNumber={order.number} amountPaise={order.total * 100} action="paid" />
+                  )}
+                {order.paymentStatus === "refund_due" && !order.refundedAt && (
+                  <OrderMoneyButton orderId={order.id} orderNumber={order.number} amountPaise={order.total * 100} action="refunded" />
+                )}
+              </div>
+            )}
           </section>
+
+          {order.note && (
+            <section className="rounded-lg bg-sand/30 p-4 text-sm">
+              <h2 className="mb-2 text-xs uppercase tracking-widest2">Internal note</h2>
+              <p className="whitespace-pre-line text-graphite">{order.note}</p>
+            </section>
+          )}
 
           <section className="rounded-lg border border-taupe/30 p-4 text-sm">
             <h2 className="mb-3 text-xs uppercase tracking-widest2">Customer</h2>

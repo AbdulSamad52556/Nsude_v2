@@ -3,10 +3,12 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { LayoutGroup, motion, useReducedMotion } from "framer-motion";
 import {
   Activity,
+  Boxes,
+  Wallet,
   ExternalLink,
   History,
   Images,
@@ -23,6 +25,7 @@ import {
 import { cx } from "@/lib/utils";
 import { can, type AdminIdentity, type Permission } from "@/lib/adminPermissions";
 import { ActivityTracker } from "@/components/layout/ActivityTracker";
+import { NavigationProgress } from "./NavigationProgress";
 
 // `access`: who sees the link (any one of a list). Pages and APIs check again.
 const nav: { href: string; label: string; icon: typeof Package; access: Permission | Permission[] }[] = [
@@ -30,6 +33,8 @@ const nav: { href: string; label: string; icon: typeof Package; access: Permissi
   { href: "/admin/users", label: "Users", icon: ShieldCheck, access: "users.view" },
   { href: "/admin/orders", label: "Orders", icon: Package, access: "orders.view" },
   { href: "/admin/products", label: "Products", icon: Shirt, access: "products.view" },
+  { href: "/admin/inventory", label: "Inventory", icon: Boxes, access: "inventory.view" },
+  { href: "/admin/finance", label: "Finance", icon: Wallet, access: "finance.view" },
   { href: "/admin/hero", label: "Hero Carousel", icon: Images, access: "hero.view" },
   { href: "/admin/customers", label: "Customers", icon: Users, access: "customers.view" },
   { href: "/admin/activity", label: "Activity", icon: Activity, access: ["activity.view", "admin_activity.view"] },
@@ -96,12 +101,6 @@ export function AdminShell({ admin, children }: { admin: AdminIdentity; children
             );
           })}
         <div className="mt-auto flex flex-col gap-1 border-t border-paper/15 pt-4">
-          <div className="mb-2 px-3">
-            <p className="truncate text-sm text-paper">{admin.name}</p>
-            <p className="truncate text-[11px] text-paper/60">
-              {admin.role === "superadmin" ? `${admin.email} · full access` : admin.email}
-            </p>
-          </div>
           {admin.role === "staff" && (
             <Link
               href="/admin/account"
@@ -140,6 +139,10 @@ export function AdminShell({ admin, children }: { admin: AdminIdentity; children
     <div className="min-h-screen bg-paper md:flex">
       {/* Admin users' pages and clicks, shown under Activity → Admin users. */}
       <ActivityTracker />
+      {/* Reads the query string, so it sits in its own Suspense boundary. */}
+      <Suspense fallback={null}>
+        <NavigationProgress />
+      </Suspense>
       <aside className="sticky top-0 hidden h-screen w-60 shrink-0 bg-moss md:block">{sidebar("desktop")}</aside>
 
       {/* Mobile: top bar + slide-over sidebar */}

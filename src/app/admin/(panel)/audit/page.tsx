@@ -17,6 +17,7 @@ const FILTERS = [
   { key: "order", label: "Orders" },
   { key: "hero", label: "Hero" },
   { key: "admin_user", label: "Admin users" },
+  { key: "finance", label: "Finance" },
 ] as const;
 const ACTORS = [
   { key: "", label: "Anyone" },

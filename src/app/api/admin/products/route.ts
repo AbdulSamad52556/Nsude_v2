@@ -7,6 +7,7 @@ import { assignVariantCodes, toProduct } from "@/lib/server/products";
 import { syncProductListings } from "@/lib/server/listings";
 import { revalidateStorefront } from "@/lib/server/revalidate";
 import { fieldErrors, productInputSchema, withDerivedPrice } from "@/lib/validation";
+import { logStockChange } from "@/lib/server/stockLedger";
 
 export async function GET() {
   const { error } = await requireAdmin("products.view");
@@ -59,5 +60,18 @@ export async function POST(request: NextRequest) {
     action: "Product created",
     changes: productSnapshot(product),
   });
+  // Stock ledger: each colour starts with its opening stock.
+  for (const v of created.variants) {
+    await logStockChange({
+      productId: created.id,
+      productName: created.name,
+      code: v.code,
+      color: v.name,
+      change: v.stock,
+      stockAfter: v.stock,
+      reason: "initial",
+      actor: adminActor(session!.email),
+    });
+  }
   return NextResponse.json({ product }, { status: 201 });
 }

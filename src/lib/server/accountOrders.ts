@@ -31,7 +31,8 @@ export async function productsByCode(codes: string[]) {
 
 /** What the account page shows for one order, including what can be changed. */
 export function toOrderSummary(order: Order, catalog: Awaited<ReturnType<typeof productsByCode>>) {
-  const editable = order.status === CUSTOMER_EDITABLE_STATUS;
+  // Orders entered by the shop (phone / in-person) are changed by the shop only.
+  const editable = order.status === CUSTOMER_EDITABLE_STATUS && !order.createdBy;
   // Items can be changed only on cash-on-delivery orders (no payment to adjust).
   const itemsEditable = editable && order.paymentMethod === "cod";
   return {

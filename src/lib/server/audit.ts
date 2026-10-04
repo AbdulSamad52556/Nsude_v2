@@ -9,7 +9,7 @@ import { priceFor, type Product } from "@/lib/types";
 // own copy of prices and the delivery address, so later edits never alter
 // past orders — this log is what shows how things changed over time.
 
-export type AuditEntity = "customer" | "product" | "hero" | "order" | "admin_user";
+export type AuditEntity = "customer" | "product" | "hero" | "order" | "admin_user" | "finance";
 export interface AuditActor {
   type: "customer" | "admin" | "system";
   label: string;
