@@ -13,9 +13,17 @@ const RETENTION_DAYS = Math.max(1, Number(process.env.ACTIVITY_RETENTION_DAYS) |
 export const expiresAt = () => new Date(Date.now() + RETENTION_DAYS * 24 * 60 * 60 * 1000);
 
 // MongoDB deletes rows once `expiresAt` passes. Created here rather than in
-// the Prisma schema because Prisma can't declare TTL indexes; idempotent.
+// the Prisma schema because Prisma can't declare TTL indexes. `prisma db
+// push` drops indexes it doesn't know, so this re-checks every hour;
+// creating an index that exists is a no-op.
+const TTL_CHECK_MS = 60 * 60 * 1000;
 let ttlReady: Promise<void> | null = null;
+let ttlCheckedAt = 0;
 export function ensureActivityTtl() {
+  if (Date.now() - ttlCheckedAt > TTL_CHECK_MS) {
+    ttlCheckedAt = Date.now();
+    ttlReady = null;
+  }
   ttlReady ??= (async () => {
     for (const collection of ["VisitSession", "ActivityEvent"]) {
       await db.$runCommandRaw({
