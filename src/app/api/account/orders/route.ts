@@ -1,12 +1,14 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/server/db";
 import { getCustomer } from "@/lib/server/customer";
+import { productsByCode, toOrderSummary } from "@/lib/server/accountOrders";
 
 export const dynamic = "force-dynamic";
 
 /**
  * The signed-in customer's orders, newest first: orders placed while signed
  * in, plus earlier guest orders with the same (OTP-verified) phone number.
+ * Each says what the customer may still change (until it's dispatched).
  */
 export async function GET() {
   const customer = await getCustomer();
@@ -22,27 +24,11 @@ export async function GET() {
     take: 50,
   });
 
-  return NextResponse.json({
-    orders: orders.map((o) => ({
-      id: o.id,
-      number: o.number,
-      status: o.status,
-      paymentMethod: o.paymentMethod,
-      paymentStatus: o.paymentStatus,
-      createdAt: o.createdAt.toISOString(),
-      total: o.total,
-      subtotal: o.subtotal,
-      shipping: o.shipping,
-      items: o.items.map((i) => ({
-        code: i.code,
-        name: i.name,
-        color: i.color,
-        size: i.size,
-        price: i.price,
-        quantity: i.quantity,
-        image: i.image,
-      })),
-      address: o.address,
-    })),
-  });
+  // Size options are only needed for orders whose items can still change.
+  const editableCodes = orders
+    .filter((o) => o.status === "placed" && o.paymentMethod === "cod")
+    .flatMap((o) => o.items.map((i) => i.code));
+  const catalog = await productsByCode(editableCodes);
+
+  return NextResponse.json({ orders: orders.map((o) => toOrderSummary(o, catalog)) });
 }

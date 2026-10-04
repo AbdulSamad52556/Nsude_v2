@@ -258,3 +258,132 @@ model OtpCode {
 
   @@index([phone, createdAt])
 }
+
+/// A customer's login on one device. The browser holds a short-lived access
+/// token (1 hour) and a long-lived refresh token (30 days from last use);
+/// only a hash of the refresh token is stored. Every refresh rotates it, and
+/// re-using an old one ends the session (it may have been stolen).
+model CustomerSession {
+  id                String    @id @default(auto()) @map("_id") @db.ObjectId
+  customerId        String    @db.ObjectId
+  tokenHash         String    @unique
+  /// The token this one replaced, accepted only for a few seconds after a
+  /// rotation (two tabs refreshing at once); later use ends the session.
+  previousTokenHash String?
+  rotatedAt         DateTime?
+  expiresAt         DateTime
+  lastUsedAt        DateTime  @default(now())
+  userAgent         String    @default("")
+  createdAt         DateTime  @default(now())
+
+  @@index([customerId])
+  @@index([previousTokenHash])
+  @@index([expiresAt])
+}
+
+/// One field that changed in an edit: its old and new value, as display text.
+type AuditChange {
+  field String
+  from  String @default("")
+  to    String @default("")
+}
+
+/// Edit history for the whole store: every change to a customer account,
+/// product, hero slide or order — who did it, when, and old → new values.
+/// Append-only; shown to admins only.
+model AuditLog {
+  id          String        @id @default(auto()) @map("_id") @db.ObjectId
+  at          DateTime      @default(now())
+  /// "customer" | "admin" | "system"
+  actorType   String
+  /// Admin email, or "+91 …" for a customer, or e.g. "Payment check".
+  actorLabel  String
+  /// "customer" | "product" | "hero" | "order"
+  entity      String
+  entityId    String
+  /// Human name of the thing changed (product name, order number, phone…).
+  entityLabel String
+  /// What happened, e.g. "Account created", "Address edited", "Product updated".
+  action      String
+  changes     AuditChange[]
+
+  @@index([at])
+  @@index([entity, entityId, at])
+}
+
+/// People who can sign in to admin, besides the superadmin in .env.
+/// What each can see or change is in `permissions` (see lib/adminPermissions).
+model AdminUser {
+  id             String    @id @default(auto()) @map("_id") @db.ObjectId
+  email          String    @unique
+  name           String
+  /// scrypt hash, never the password itself.
+  passwordHash   String
+  /// e.g. ["orders.view", "products.manage"]
+  permissions    String[]
+  active         Boolean   @default(true)
+  /// Bumped on password change; older sessions stop working.
+  sessionVersion Int       @default(0)
+  lastLoginAt    DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+}
+
+/// One storefront visit: from the first page to the last, until 30 minutes
+/// without activity. Browsing before sign-in is linked to the customer once
+/// they sign in on the same device.
+model VisitSession {
+  id            String    @id @default(auto()) @map("_id") @db.ObjectId
+  /// Random id from the browser (cookie), unique per visit.
+  key           String    @unique
+  /// Random id per browser (1-year cookie); ties visits from one device.
+  visitorId     String
+  customerId    String?   @db.ObjectId
+  startedAt     DateTime  @default(now())
+  lastSeenAt    DateTime  @default(now())
+  landingPath   String
+  exitPath      String
+  referrer      String?
+  utmSource     String?
+  utmMedium     String?
+  utmCampaign   String?
+  /// "mobile" | "tablet" | "desktop"
+  device        String
+  browser       String
+  os            String
+  screen        String?
+  language      String?
+  pageViews     Int       @default(0)
+  eventCount    Int       @default(0)
+  addedToBag    Boolean   @default(false)
+  reachedCheckout Boolean @default(false)
+  orderNumbers  String[]
+  /// Deleted by a MongoDB TTL index after the retention period.
+  expiresAt     DateTime
+
+  @@index([visitorId, startedAt])
+  @@index([customerId, startedAt])
+  @@index([lastSeenAt])
+}
+
+/// Something a visitor did: viewed a page, clicked, picked a size, added to
+/// bag, searched, placed an order… Never stores what was typed into forms.
+model ActivityEvent {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  sessionKey String
+  visitorId  String
+  customerId String?  @db.ObjectId
+  at         DateTime @default(now())
+  /// e.g. "page_view", "click", "add_to_bag", "order_placed"
+  type       String
+  path       String
+  /// Small key → value details (product code, size, label, query…).
+  data       Json?
+  /// "client" (browser) or "server" (confirmed by the server).
+  source     String   @default("client")
+  expiresAt  DateTime
+
+  @@index([sessionKey, at])
+  @@index([customerId, at])
+  @@index([type, at])
+}

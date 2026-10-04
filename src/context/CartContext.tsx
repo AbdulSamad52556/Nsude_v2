@@ -6,10 +6,12 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import { ColorVariant, Product, Size, priceFor } from "@/lib/types";
 import { MAX_LINE_QUANTITY } from "@/lib/checkout";
+import { track } from "@/lib/track";
 
 const clampQuantity = (q: number) => Math.min(MAX_LINE_QUANTITY, Math.max(1, q));
 
@@ -61,6 +63,9 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const [lines, setLines] = useState<CartLine[]>([]);
   const [isOpen, setIsOpen] = useState(false);
   const [hydrated, setHydrated] = useState(false);
+  // Latest lines, so remove / quantity events can say which item it was.
+  const linesRef = useRef(lines);
+  linesRef.current = lines;
 
   useEffect(() => {
     try {
@@ -104,15 +109,29 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         ];
       });
       if (openDrawer) setIsOpen(true);
+      track(openDrawer ? "add_to_bag" : "buy_now", {
+        product: product.name,
+        code: variant.code,
+        color: variant.name,
+        size,
+        quantity,
+        price: priceFor(product, variant, size),
+      });
     },
     []
   );
 
   const removeItem = useCallback((key: string) => {
+    const line = linesRef.current.find((l) => l.key === key);
+    if (line) track("remove_from_bag", { product: line.name, code: line.code, size: line.size, quantity: line.quantity });
     setLines((prev) => prev.filter((l) => l.key !== key));
   }, []);
 
   const updateQuantity = useCallback((key: string, quantity: number) => {
+    const line = linesRef.current.find((l) => l.key === key);
+    if (line && line.quantity !== clampQuantity(quantity)) {
+      track("bag_quantity", { product: line.name, code: line.code, size: line.size, from: line.quantity, to: clampQuantity(quantity) });
+    }
     setLines((prev) =>
       prev.map((l) => (l.key === key ? { ...l, quantity: clampQuantity(quantity) } : l))
     );
@@ -120,7 +139,10 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   const clear = useCallback(() => setLines([]), []);
 
-  const openCart = useCallback(() => setIsOpen(true), []);
+  const openCart = useCallback(() => {
+    setIsOpen(true);
+    track("bag_open", { items: linesRef.current.reduce((n, l) => n + l.quantity, 0) });
+  }, []);
   const closeCart = useCallback(() => setIsOpen(false), []);
 
   const subtotal = useMemo(

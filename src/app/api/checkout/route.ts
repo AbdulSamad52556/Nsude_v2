@@ -13,8 +13,10 @@ import { createRazorpayOrder, razorpayEnabled, razorpayKeyId } from "@/lib/serve
 import { rateLimit } from "@/lib/server/rateLimit";
 import { getCustomer, newAddressId } from "@/lib/server/customer";
 import { MAX_SAVED_ADDRESSES } from "@/lib/account";
+import { customerActor, describeAddress, recordAudit } from "@/lib/server/audit";
 import { fieldErrors } from "@/lib/validation";
 import { checkoutSchema } from "@/lib/checkout";
+import { recordActivity } from "@/lib/server/activity";
 
 // Places an order. Prices come from the catalog, stock is taken atomically,
 // then either the order is placed (cash on delivery) or a Razorpay order is
@@ -95,6 +97,36 @@ export async function POST(request: NextRequest) {
   });
   await refreshCatalog(quote.lines.map((l) => l.productId));
 
+  // History: the order as placed (its prices and address never change after).
+  await recordAudit({
+    actor: customer ? customerActor(customer.phone) : { type: "customer", label: `Guest · +91 ${input.phone}` },
+    entity: "order",
+    entityId: order.id,
+    entityLabel: order.number,
+    action: "Order placed",
+    changes: [
+      ...quote.lines.map((l) => ({
+        field: `Item · ${l.name} (${l.color} · ${l.size})`,
+        from: "—",
+        to: `${l.quantity} × ₹${l.price.toLocaleString("en-IN")}`,
+      })),
+      { field: "Total", from: "—", to: `₹${order.total.toLocaleString("en-IN")}` },
+      { field: "Ship to", from: "—", to: describeAddress(input) },
+      { field: "Payment", from: "—", to: cod ? "Cash on delivery" : "Online (Razorpay)" },
+    ],
+  });
+
+  await recordActivity(
+    "order_placed",
+    {
+      order: order.number,
+      total: order.total,
+      items: quote.lines.reduce((n, l) => n + l.quantity, 0),
+      payment: cod ? "cod" : "online",
+    },
+    { customerId: customer?.id }
+  );
+
   // "Save this address" (signed in): add it unless it's already saved.
   if (customer && input.saveAddress && customer.addresses.length < MAX_SAVED_ADDRESSES) {
     const address = {
@@ -118,6 +150,14 @@ export async function POST(request: NextRequest) {
           },
         })
         .catch((err) => console.error("Saving address failed", err));
+      await recordAudit({
+        actor: customerActor(customer.phone),
+        entity: "customer",
+        entityId: customer.id,
+        entityLabel: `+91 ${customer.phone}`,
+        action: "Address added (at checkout)",
+        changes: [{ field: "Address", from: "—", to: describeAddress(address) }],
+      });
     }
   }
 

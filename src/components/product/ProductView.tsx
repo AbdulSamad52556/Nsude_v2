@@ -1,9 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { findVariant, productHref, type Product } from "@/lib/types";
+import { findVariant, priceRange, productHref, type Product } from "@/lib/types";
 import { ProductGallery } from "./ProductGallery";
 import { ProductInfo } from "./ProductInfo";
+import { track } from "@/lib/track";
 
 /**
  * Gallery + details for one product, driven by the selected colorway.
@@ -19,6 +20,16 @@ export function ProductView({ product, initialCode }: { product: Product; initia
   // A real navigation to another color of this product (e.g. a search
   // result) re-renders with a new initialCode; follow it.
   useEffect(() => setCode(initialCode), [initialCode]);
+
+  useEffect(() => {
+    track("product_view", {
+      product: product.name,
+      code: variant.code,
+      color: variant.name,
+      price: priceRange(product, [variant]).min,
+      inStock: variant.stock > 0,
+    });
+  }, [product, variant]);
 
   const changeColor = useCallback(
     (next: string) => {

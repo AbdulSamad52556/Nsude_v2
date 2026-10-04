@@ -4,6 +4,7 @@ import { db } from "@/lib/server/db";
 import { markPaid } from "@/lib/server/orders";
 import { verifyPaymentSignature } from "@/lib/server/razorpay";
 import { rateLimit } from "@/lib/server/rateLimit";
+import { recordActivity } from "@/lib/server/activity";
 
 // Called by the checkout page after the Razorpay popup reports success.
 // The signature proves the payment came from Razorpay for this order.
@@ -31,5 +32,6 @@ export async function POST(request: NextRequest) {
   if (!order) return NextResponse.json({ error: "Order not found" }, { status: 404 });
 
   const updated = await markPaid(order, razorpay_payment_id);
+  await recordActivity("payment_completed", { order: order.number, total: order.total });
   return NextResponse.json({ number: updated.number, status: updated.status, total: updated.total });
 }

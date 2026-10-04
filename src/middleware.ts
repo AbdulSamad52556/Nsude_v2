@@ -1,7 +1,8 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { SESSION_COOKIE, verifySessionToken } from "@/lib/auth/session";
 
-// Everything under /admin and /api/admin requires a superadmin session,
+// Everything under /admin and /api/admin requires an admin session (permissions are
+// checked per page and per API route),
 // except the login page and login endpoint themselves.
 const PUBLIC_ADMIN_PATHS = new Set(["/admin/login", "/api/admin/login"]);
 

@@ -2,13 +2,14 @@ import { NextResponse, type NextRequest } from "next/server";
 import { Prisma } from "@prisma/client";
 import { db } from "@/lib/server/db";
 import { requireAdmin } from "@/lib/server/auth";
+import { adminActor, recordAudit, productSnapshot } from "@/lib/server/audit";
 import { assignVariantCodes, toProduct } from "@/lib/server/products";
 import { syncProductListings } from "@/lib/server/listings";
 import { revalidateStorefront } from "@/lib/server/revalidate";
 import { fieldErrors, productInputSchema, withDerivedPrice } from "@/lib/validation";
 
 export async function GET() {
-  const { error } = await requireAdmin();
+  const { error } = await requireAdmin("products.view");
   if (error) return error;
 
   const rows = await db.product.findMany({ orderBy: { createdAt: "desc" } });
@@ -16,7 +17,7 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
-  const { error } = await requireAdmin();
+  const { error, session } = await requireAdmin("products.manage");
   if (error) return error;
 
   const parsed = productInputSchema.safeParse(await request.json().catch(() => null));
@@ -49,5 +50,14 @@ export async function POST(request: NextRequest) {
   // Outside the retry loop: the product exists now, so never re-create it.
   await syncProductListings(created.id);
   revalidateStorefront();
-  return NextResponse.json({ product: toProduct(created) }, { status: 201 });
+  const product = toProduct(created);
+  await recordAudit({
+    actor: adminActor(session!.email),
+    entity: "product",
+    entityId: product.id,
+    entityLabel: product.name,
+    action: "Product created",
+    changes: productSnapshot(product),
+  });
+  return NextResponse.json({ product }, { status: 201 });
 }

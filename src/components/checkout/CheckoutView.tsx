@@ -17,6 +17,7 @@ import {
   Lock,
   Mail,
   MapPin,
+  Pencil,
   ShoppingBag,
   Smartphone,
   type LucideIcon,
@@ -24,6 +25,7 @@ import {
 import { useCart } from "@/context/CartContext";
 import type { AccountData } from "@/lib/account";
 import { formatPrice, cx } from "@/lib/utils";
+import { track } from "@/lib/track";
 import {
   FREE_SHIPPING_THRESHOLD,
   INDIAN_STATES,
@@ -185,6 +187,24 @@ function CheckoutSection({
   );
 }
 
+/** A saved detail shown as text, with an Edit link to change it. */
+function SavedValue({ value, onEdit }: { value: string; onEdit: () => void }) {
+  return (
+    <div className="flex h-10 items-center justify-between gap-3 rounded-md border border-graphite/10 bg-bone/40 px-3 md:h-11">
+      <span className="min-w-0 truncate text-sm text-ink">{value}</span>
+      <button
+        type="button"
+        onClick={onEdit}
+        aria-label="Edit"
+        title="Edit"
+        className="-mr-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-moss transition-colors hover:bg-moss/10"
+      >
+        <Pencil size={15} strokeWidth={1.5} />
+      </button>
+    </div>
+  );
+}
+
 // ---------------------------------------------------------------------------
 // Razorpay popup
 // ---------------------------------------------------------------------------
@@ -304,6 +324,10 @@ export function CheckoutView({ razorpayEnabled }: { razorpayEnabled: boolean }) 
   const [saveAddress, setSaveAddress] = useState(true);
   // Signed in: the verified number is shown as text until "Edit" is tapped.
   const [editPhone, setEditPhone] = useState(false);
+  const [editEmail, setEditEmail] = useState(false);
+  // Signed in with saved addresses: the chosen one shows as a summary; the
+  // list only opens on "Change".
+  const [showAddressList, setShowAddressList] = useState(false);
   useEffect(() => {
     fetch("/api/account")
       .then((res) => (res.ok ? res.json() : null))
@@ -318,6 +342,13 @@ export function CheckoutView({ razorpayEnabled }: { razorpayEnabled: boolean }) 
       .catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  /** Edit the chosen saved address for this order: the form opens filled in. */
+  function editSavedAddress() {
+    setAddressChoice("new");
+    setShowAddressList(false);
+    window.setTimeout(() => formRef.current?.querySelector<HTMLInputElement>('[name="firstName"]')?.focus(), 0);
+  }
 
   /** Pick a saved address (fills the address fields) or "new" (clears them). */
   function chooseAddress(id: string, acc: AccountData | null = account) {
@@ -455,6 +486,7 @@ export function CheckoutView({ razorpayEnabled }: { razorpayEnabled: boolean }) 
       return;
     }
     const next = SECTIONS[SECTIONS.indexOf(id) + 1];
+    track("checkout_step", { completed: id, next: next ?? "place order" });
     setConfirmed((prev) => new Set(prev).add(id));
     setOpenSections((prev) => {
       const set = new Set(prev);
@@ -982,30 +1014,35 @@ export function CheckoutView({ razorpayEnabled }: { razorpayEnabled: boolean }) 
             )}
             <div className="grid grid-cols-2 gap-x-3 gap-y-4">
               <FieldShell id="email" label="Email Address" error={errors.email} span>
-                <input
-                  {...fieldProps("email")}
-                  type="email"
-                  autoComplete="email"
-                  inputMode="email"
-                  className={inputClass(Boolean(errors.email))}
-                />
+                {account?.email && !editEmail && values.email === account.email ? (
+                  // Signed in with a saved email: no need to retype it.
+                  <SavedValue
+                    value={account.email}
+                    onEdit={() => {
+                      setEditEmail(true);
+                      window.setTimeout(() => formRef.current?.querySelector<HTMLInputElement>('[name="email"]')?.focus(), 0);
+                    }}
+                  />
+                ) : (
+                  <input
+                    {...fieldProps("email")}
+                    type="email"
+                    autoComplete="email"
+                    inputMode="email"
+                    className={inputClass(Boolean(errors.email))}
+                  />
+                )}
               </FieldShell>
               <FieldShell id="phone" label="Mobile Number" error={errors.phone} span>
                 {account && !editPhone && values.phone === account.phone ? (
                   // Signed in: the number they logged in with, no need to retype it.
-                  <div className="flex h-10 items-center justify-between rounded-md border border-graphite/10 bg-bone/40 px-3 md:h-11">
-                    <span className="text-sm text-ink">+91 {account.phone}</span>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setEditPhone(true);
-                        window.setTimeout(() => formRef.current?.querySelector<HTMLInputElement>('[name="phone"]')?.focus(), 0);
-                      }}
-                      className="text-[11px] uppercase tracking-widest2 text-moss underline underline-offset-4"
-                    >
-                      Edit
-                    </button>
-                  </div>
+                  <SavedValue
+                    value={`+91 ${account.phone}`}
+                    onEdit={() => {
+                      setEditPhone(true);
+                      window.setTimeout(() => formRef.current?.querySelector<HTMLInputElement>('[name="phone"]')?.focus(), 0);
+                    }}
+                  />
                 ) : (
                   <div
                     className={cx(
@@ -1038,7 +1075,52 @@ export function CheckoutView({ razorpayEnabled }: { razorpayEnabled: boolean }) 
             locked={isLocked("address")}
             onToggle={() => toggleSection("address")}
           >
-            {account && account.addresses.length > 0 && (
+            {/* Signed in with a saved address: show it, with Edit / Change. */}
+            {account && !showAddressList && addressChoice !== "new" && (() => {
+              const a = account.addresses.find((x) => x.id === addressChoice);
+              if (!a) return null;
+              return (
+                <div className="flex items-start justify-between gap-3 rounded-md border border-graphite/10 bg-bone/40 p-3">
+                  <p className="min-w-0 text-[13px] leading-relaxed text-ink md:text-sm">
+                    {`${a.firstName} ${a.lastName}`.trim()}
+                    <span className="block text-[11px] text-graphite md:text-xs">
+                      {[a.line1, a.line2, `${a.city}, ${a.state} ${a.pincode}`].filter(Boolean).join(", ")}
+                    </span>
+                  </p>
+                  <div className="flex shrink-0 flex-col items-end gap-2">
+                    <button
+                      type="button"
+                      onClick={editSavedAddress}
+                      aria-label="Edit address"
+                      title="Edit address"
+                      className="-mr-1 -mt-1 flex h-8 w-8 items-center justify-center rounded-md text-moss transition-colors hover:bg-moss/10"
+                    >
+                      <Pencil size={15} strokeWidth={1.5} />
+                    </button>
+                    {account.addresses.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => setShowAddressList(true)}
+                        className="text-[11px] uppercase tracking-widest2 text-graphite underline underline-offset-4"
+                      >
+                        Change
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            })()}
+            {/* Typing an address while having saved ones: a way back. */}
+            {account && account.addresses.length > 0 && addressChoice === "new" && !showAddressList && (
+              <button
+                type="button"
+                onClick={() => setShowAddressList(true)}
+                className="mb-4 text-[11px] uppercase tracking-widest2 text-moss underline underline-offset-4"
+              >
+                Use a saved address
+              </button>
+            )}
+            {account && account.addresses.length > 0 && showAddressList && (
               <div role="radiogroup" aria-label="Saved addresses" className="mb-4 flex flex-col gap-2.5">
                 {[...account.addresses.map((a) => ({ id: a.id, a })), { id: "new", a: null }].map(({ id, a }) => {
                   const on = addressChoice === id;
@@ -1054,7 +1136,10 @@ export function CheckoutView({ razorpayEnabled }: { razorpayEnabled: boolean }) 
                         type="radio"
                         name="savedAddress"
                         checked={on}
-                        onChange={() => chooseAddress(id)}
+                        onChange={() => {
+                          chooseAddress(id);
+                          setShowAddressList(false);
+                        }}
                         className="sr-only"
                       />
                       <span
@@ -1179,7 +1264,10 @@ export function CheckoutView({ razorpayEnabled }: { razorpayEnabled: boolean }) 
                       name="paymentMethod"
                       value={value}
                       checked={paymentMethod === value}
-                      onChange={() => setPaymentMethod(value)}
+                      onChange={() => {
+                        setPaymentMethod(value);
+                        track("payment_method", { method: value });
+                      }}
                       className="sr-only"
                     />
                     <span

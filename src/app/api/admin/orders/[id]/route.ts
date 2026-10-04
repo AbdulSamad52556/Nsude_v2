@@ -2,9 +2,10 @@ import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
 import { db } from "@/lib/server/db";
 import { requireAdmin } from "@/lib/server/auth";
+import { adminActor, recordAudit } from "@/lib/server/audit";
 import { NEXT_STATUSES, cancelOrder, settleUnpaidOrder } from "@/lib/server/orders";
 import { isObjectId } from "@/lib/server/revalidate";
-import { ORDER_STATUSES, type OrderStatus } from "@/lib/checkout";
+import { ORDER_STATUSES, ORDER_STATUS_LABEL, type OrderStatus } from "@/lib/checkout";
 
 type Params = { params: { id: string } };
 
@@ -13,7 +14,7 @@ const schema = z.object({ status: z.enum(ORDER_STATUSES) });
 /** Moves an order along: placed → shipped → delivered, or cancelled
     (which puts its stock back on sale). */
 export async function PATCH(request: NextRequest, { params }: Params) {
-  const { error } = await requireAdmin();
+  const { error, session } = await requireAdmin("orders.manage");
   if (error) return error;
   if (!isObjectId(params.id)) return NextResponse.json({ error: "Order not found" }, { status: 404 });
 
@@ -51,5 +52,19 @@ export async function PATCH(request: NextRequest, { params }: Params) {
       },
     });
   }
+  const after = await db.order.findUnique({ where: { id: order.id } });
+  await recordAudit({
+    actor: adminActor(session!.email),
+    entity: "order",
+    entityId: order.id,
+    entityLabel: order.number,
+    action: `Status changed to ${ORDER_STATUS_LABEL[next]}`,
+    changes: [
+      { field: "Status", from: ORDER_STATUS_LABEL[order.status as OrderStatus] ?? order.status, to: ORDER_STATUS_LABEL[next] },
+      ...(after && after.paymentStatus !== order.paymentStatus
+        ? [{ field: "Payment", from: order.paymentStatus, to: after.paymentStatus }]
+        : []),
+    ],
+  });
   return NextResponse.json({ ok: true });
 }

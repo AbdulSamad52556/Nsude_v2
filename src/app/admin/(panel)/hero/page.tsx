@@ -1,13 +1,17 @@
 import { db } from "@/lib/server/db";
+import { pageAdmin } from "@/lib/server/auth";
+import { can } from "@/lib/adminPermissions";
 import { getHeroSlides, toProduct } from "@/lib/server/products";
 import { priceRange } from "@/lib/types";
 import { formatPriceRange } from "@/lib/utils";
 import { AdminPageHeader } from "@/components/admin/AdminShell";
 import { HeroEditor } from "@/components/admin/HeroEditor";
+import { ReadOnly } from "@/components/admin/ReadOnly";
 
 export const metadata = { title: "Hero Carousel" };
 
 export default async function AdminHeroPage() {
+  const admin = await pageAdmin("hero.view");
   const [slides, rows] = await Promise.all([
     getHeroSlides(),
     db.product.findMany({ orderBy: { name: "asc" } }),
@@ -25,7 +29,9 @@ export default async function AdminHeroPage() {
         title="Hero Carousel"
         subtitle="The t-shirts that rotate in the home page hero as visitors scroll."
       />
-      <HeroEditor initialSlides={slides} products={products} />
+      <ReadOnly when={!can(admin, "hero.manage")}>
+        <HeroEditor initialSlides={slides} products={products} />
+      </ReadOnly>
     </div>
   );
 }

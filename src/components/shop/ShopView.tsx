@@ -11,6 +11,7 @@ import type { ShopPage } from "@/lib/server/listings";
 import { ProductGrid } from "@/components/product/ProductGrid";
 import { cx } from "@/lib/utils";
 import { FilterPanel } from "./FilterPanel";
+import { track } from "@/lib/track";
 import {
   EMPTY_FILTERS,
   PRICE_BANDS,
@@ -136,6 +137,7 @@ export function ShopView({ initialFilters, initialPage }: { initialFilters: Filt
           setData(page);
           setCards(page.cards);
           setLoading(null);
+          track("shop_filter", { filters: qs || "none", results: page.total });
         })
         .catch((err: Error) => {
           if (err.name === "AbortError") return;

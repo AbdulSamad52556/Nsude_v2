@@ -4,9 +4,10 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState, type FormEvent } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ArrowRight, ChevronDown, Loader2, LogOut, MapPin, Package, Plus, ShoppingBag, User } from "lucide-react";
+import { ArrowRight, ChevronDown, Loader2, LogOut, MapPin, Minus, Package, Plus, ShoppingBag, User, X } from "lucide-react";
 import { cx, formatPrice } from "@/lib/utils";
-import { ORDER_STATUS_LABEL, type OrderStatus } from "@/lib/checkout";
+import { MAX_LINE_QUANTITY, ORDER_STATUS_LABEL, shippingFor, type OrderStatus } from "@/lib/checkout";
+import type { OrderSummary as ServerOrderSummary } from "@/lib/server/accountOrders";
 import { formatAddress, profileSchema, type AccountData, type AddressInput } from "@/lib/account";
 import { PhoneLogin } from "./PhoneLogin";
 import { AddressForm } from "./AddressForm";
@@ -27,10 +28,16 @@ function safeNext(next: string | null) {
   return next && next.startsWith("/") && !next.startsWith("//") ? next : null;
 }
 
-export function AccountView({ initialAccount }: { initialAccount: AccountData | null }) {
+export function AccountView() {
   const router = useRouter();
   const next = safeNext(useSearchParams().get("next"));
-  const [account, setAccount] = useState<AccountData | null>(initialAccount);
+  // undefined = still checking the session; null = signed out.
+  const [account, setAccount] = useState<AccountData | null | undefined>(undefined);
+  useEffect(() => {
+    api<{ account: AccountData }>("/api/account", "GET")
+      .then((res) => setAccount(res.ok ? res.data.account : null))
+      .catch(() => setAccount(null));
+  }, []);
   const [tab, setTab] = useState<"orders" | "addresses" | "profile">("orders");
 
   function signedIn(acc: AccountData, isNew: boolean) {
@@ -49,6 +56,14 @@ export function AccountView({ initialAccount }: { initialAccount: AccountData | 
     await api("/api/auth/logout", "POST");
     setAccount(null);
     router.refresh();
+  }
+
+  if (account === undefined) {
+    return (
+      <div className="flex min-h-[100svh] items-center justify-center md:min-h-[60vh]">
+        <Loader2 size={22} className="animate-spin text-ash" aria-label="Loading your account" />
+      </div>
+    );
   }
 
   if (!account) {
@@ -105,7 +120,7 @@ export function AccountView({ initialAccount }: { initialAccount: AccountData | 
       </div>
 
       <div className="mt-5 md:mt-6">
-        {tab === "orders" && <OrdersTab />}
+        {tab === "orders" && <OrdersTab account={account} />}
         {tab === "addresses" && <AddressesTab account={account} onChange={setAccount} />}
         {tab === "profile" && <ProfileTab account={account} onChange={setAccount} />}
       </div>
@@ -117,19 +132,10 @@ export function AccountView({ initialAccount }: { initialAccount: AccountData | 
 // Orders
 // ---------------------------------------------------------------------------
 
-interface OrderSummary {
-  id: string;
-  number: string;
+type OrderSummary = Omit<ServerOrderSummary, "status" | "address"> & {
   status: OrderStatus;
-  paymentMethod: "cod" | "razorpay";
-  paymentStatus: string;
-  createdAt: string;
-  total: number;
-  subtotal: number;
-  shipping: number;
-  items: { code: string; name: string; color: string; size: string; price: number; quantity: number; image: string }[];
   address: AddressInput;
-}
+};
 
 const STATUS_TONE: Record<OrderStatus, string> = {
   pending_payment: "bg-bone text-graphite",
@@ -139,7 +145,7 @@ const STATUS_TONE: Record<OrderStatus, string> = {
   cancelled: "bg-bone text-ash line-through",
 };
 
-function OrdersTab() {
+function OrdersTab({ account }: { account: AccountData }) {
   const [orders, setOrders] = useState<OrderSummary[] | null>(null);
   const [failed, setFailed] = useState(false);
   const [open, setOpen] = useState<string | null>(null);
@@ -150,6 +156,8 @@ function OrdersTab() {
       else setFailed(true);
     });
   }, []);
+
+  const replace = (o: OrderSummary) => setOrders((list) => list?.map((x) => (x.id === o.id ? o : x)) ?? null);
 
   if (failed) return <p className="text-sm text-rust">Couldn&apos;t load your orders. Refresh to try again.</p>;
   if (!orders) {
@@ -210,44 +218,363 @@ function OrdersTab() {
               <ChevronDown size={16} strokeWidth={1.5} className={cx("shrink-0 text-graphite transition-transform", expanded && "rotate-180")} />
             </button>
 
-            {expanded && (
-              <div className="border-t border-graphite/10">
-                <ul className="divide-y divide-graphite/10">
-                  {o.items.map((i) => (
-                    <li key={i.code + i.size} className="flex items-center gap-3 px-4 py-3 md:px-5">
-                      <Link href={`/product/${i.code}`} className="relative h-14 w-12 shrink-0 overflow-hidden rounded-md bg-bone">
-                        {i.image && <Image src={i.image} alt="" fill sizes="48px" className="object-cover" />}
-                      </Link>
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-[11px] uppercase tracking-wide text-ink md:text-xs">{i.name}</p>
-                        <p className="text-[11px] text-ash md:text-xs">
-                          {i.color} · {i.size} · Qty {i.quantity}
-                        </p>
-                      </div>
-                      <span className="text-[11px] text-ink md:text-xs">{formatPrice(i.price * i.quantity)}</span>
-                    </li>
-                  ))}
-                </ul>
-                <div className="grid gap-4 border-t border-graphite/10 p-4 text-[12px] md:grid-cols-2 md:p-5 md:text-[13px]">
-                  <div>
-                    <p className="mb-1 text-[10px] uppercase tracking-widest2 text-ash">Delivered to</p>
-                    <p className="leading-relaxed text-graphite">{formatAddress(o.address)}</p>
-                  </div>
-                  <div className="md:text-right">
-                    <p className="mb-1 text-[10px] uppercase tracking-widest2 text-ash">Payment</p>
-                    <p className="text-graphite">
-                      {o.paymentMethod === "cod" ? "Cash on delivery" : "Paid online"} · Subtotal {formatPrice(o.subtotal)} · Shipping{" "}
-                      {o.shipping === 0 ? "Free" : formatPrice(o.shipping)}
-                    </p>
-                    <p className="mt-1 text-sm text-ink">Total {formatPrice(o.total)}</p>
-                  </div>
-                </div>
-              </div>
-            )}
+            {expanded && <OrderDetails order={o} account={account} onChange={replace} />}
           </li>
         );
       })}
     </ul>
+  );
+}
+
+type EditMode = null | "address" | "contact" | "items";
+
+/** One order's details, plus (until it's dispatched) ways to change it. */
+function OrderDetails({
+  order: o,
+  account,
+  onChange,
+}: {
+  order: OrderSummary;
+  account: AccountData;
+  onChange: (o: OrderSummary) => void;
+}) {
+  const [mode, setMode] = useState<EditMode>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  async function send(body: Record<string, unknown>, done: string) {
+    setBusy(true);
+    setError(null);
+    const res = await api<{ order: OrderSummary }>(`/api/account/orders/${o.id}`, "PATCH", body);
+    setBusy(false);
+    if (!res.ok) {
+      setError(res.data.error ?? "Couldn't update the order. Try again.");
+      return null;
+    }
+    onChange(res.data.order);
+    setMode(null);
+    setNotice(done);
+    return null;
+  }
+
+  async function cancel() {
+    const paid = o.paymentStatus === "paid";
+    if (!window.confirm(`Cancel order ${o.number}?${paid ? " Your payment will be refunded." : ""}`)) return;
+    await send({ action: "cancel" }, paid ? "Order cancelled — your refund is on its way." : "Order cancelled.");
+  }
+
+  const actionBtn =
+    "rounded-md border border-graphite/20 px-3 py-2 text-[10px] uppercase tracking-widest2 text-ink transition-colors hover:border-moss md:text-[11px]";
+
+  return (
+    <div className="border-t border-graphite/10">
+      <ul className="divide-y divide-graphite/10">
+        {o.items.map((i) => (
+          <li key={i.code + i.size} className="flex items-center gap-3 px-4 py-3 md:px-5">
+            <Link href={`/product/${i.code}`} className="relative h-14 w-12 shrink-0 overflow-hidden rounded-md bg-bone">
+              {i.image && <Image src={i.image} alt="" fill sizes="48px" className="object-cover" />}
+            </Link>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-[11px] uppercase tracking-wide text-ink md:text-xs">{i.name}</p>
+              <p className="text-[11px] text-ash md:text-xs">
+                {i.color} · {i.size} · Qty {i.quantity}
+              </p>
+            </div>
+            <span className="text-[11px] text-ink md:text-xs">{formatPrice(i.price * i.quantity)}</span>
+          </li>
+        ))}
+      </ul>
+      <div className="grid gap-4 border-t border-graphite/10 p-4 text-[12px] md:grid-cols-2 md:p-5 md:text-[13px]">
+        <div>
+          <p className="mb-1 text-[10px] uppercase tracking-widest2 text-ash">Delivering to</p>
+          <p className="leading-relaxed text-graphite">{formatAddress(o.address)}</p>
+          <p className="mt-1 text-[11px] text-ash">
+            +91 {o.phone} · {o.email}
+          </p>
+        </div>
+        <div className="md:text-right">
+          <p className="mb-1 text-[10px] uppercase tracking-widest2 text-ash">Payment</p>
+          <p className="text-graphite">
+            {o.paymentMethod === "cod" ? "Cash on delivery" : "Paid online"} · Subtotal {formatPrice(o.subtotal)} · Shipping{" "}
+            {o.shipping === 0 ? "Free" : formatPrice(o.shipping)}
+          </p>
+          <p className="mt-1 text-sm text-ink">Total {formatPrice(o.total)}</p>
+          {o.paymentStatus === "refund_due" && <p className="mt-1 text-[11px] text-moss">Refund in progress</p>}
+        </div>
+      </div>
+
+      {(o.editable || notice) && (
+        <div className="border-t border-graphite/10 p-4 md:p-5">
+          {notice && <p className="mb-3 rounded-md bg-moss/10 px-3 py-2 text-[12px] text-moss">{notice}</p>}
+          {error && <p className="mb-3 rounded-md border border-rust/30 px-3 py-2 text-[12px] text-rust">{error}</p>}
+
+          {o.editable && mode === null && (
+            <>
+              <p className="mb-3 text-[11px] text-ash md:text-xs">You can change or cancel this order until it&apos;s dispatched.</p>
+              <div className="flex flex-wrap gap-2">
+                <button type="button" className={actionBtn} onClick={() => setMode("address")}>
+                  Change address
+                </button>
+                <button type="button" className={actionBtn} onClick={() => setMode("contact")}>
+                  Change contact
+                </button>
+                {o.itemsEditable && (
+                  <button type="button" className={actionBtn} onClick={() => setMode("items")}>
+                    Edit items
+                  </button>
+                )}
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={cancel}
+                  className="rounded-md border border-graphite/20 px-3 py-2 text-[10px] uppercase tracking-widest2 text-rust transition-colors hover:border-rust md:text-[11px]"
+                >
+                  Cancel order
+                </button>
+              </div>
+            </>
+          )}
+
+          {mode === "address" && (
+            <AddressEditor
+              current={o.address}
+              saved={account.addresses}
+              onCancel={() => setMode(null)}
+              onSave={(address) => send({ action: "address", address }, "Delivery address updated.")}
+            />
+          )}
+          {mode === "contact" && (
+            <ContactEditor
+              email={o.email}
+              phone={o.phone}
+              busy={busy}
+              onCancel={() => setMode(null)}
+              onSave={(email, phone) => send({ action: "contact", email, phone }, "Contact details updated.")}
+            />
+          )}
+          {mode === "items" && (
+            <ItemsEditor
+              items={o.items}
+              busy={busy}
+              onCancel={() => setMode(null)}
+              onSave={(items) => send({ action: "items", items }, "Items updated.")}
+            />
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function AddressEditor({
+  current,
+  saved,
+  onSave,
+  onCancel,
+}: {
+  current: AddressInput;
+  saved: AccountData["addresses"];
+  onSave: (a: AddressInput) => Promise<string | null>;
+  onCancel: () => void;
+}) {
+  // Picking a saved address re-fills the form (remounted by key).
+  const [start, setStart] = useState<{ key: string; address: AddressInput }>({ key: "current", address: current });
+  return (
+    <div>
+      <p className="mb-3 text-[11px] uppercase tracking-widest2 text-ink md:text-xs">New delivery address</p>
+      {saved.length > 0 && (
+        <div className="mb-4 flex flex-wrap gap-2">
+          {saved.map((a) => (
+            <button
+              key={a.id}
+              type="button"
+              onClick={() => setStart({ key: a.id, address: a })}
+              className={cx(
+                "max-w-full truncate rounded-md border px-3 py-1.5 text-left text-[11px]",
+                start.key === a.id ? "border-moss text-ink" : "border-graphite/20 text-graphite hover:border-moss"
+              )}
+            >
+              Use: {a.line1}, {a.city}
+            </button>
+          ))}
+        </div>
+      )}
+      <AddressForm key={start.key} initial={start.address} submitLabel="Save address" onSubmit={(a) => onSave(a)} onCancel={onCancel} />
+    </div>
+  );
+}
+
+function ContactEditor({
+  email: initialEmail,
+  phone: initialPhone,
+  busy,
+  onSave,
+  onCancel,
+}: {
+  email: string;
+  phone: string;
+  busy: boolean;
+  onSave: (email: string, phone: string) => void;
+  onCancel: () => void;
+}) {
+  const [email, setEmail] = useState(initialEmail);
+  const [phone, setPhone] = useState(initialPhone);
+  const input = "h-10 w-full rounded-md border border-graphite/20 bg-transparent px-3 text-sm text-ink focus:border-ink focus:outline-none md:h-11";
+  return (
+    <form
+      onSubmit={(e) => {
+        e.preventDefault();
+        onSave(email, phone);
+      }}
+      className="flex flex-col gap-4"
+    >
+      <p className="text-[11px] uppercase tracking-widest2 text-ink md:text-xs">Contact for this order</p>
+      <div>
+        <label htmlFor="order-email" className="mb-1.5 block text-[10px] uppercase tracking-widest text-ash md:text-[11px]">
+          Email
+        </label>
+        <input id="order-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} className={input} />
+      </div>
+      <div>
+        <label htmlFor="order-phone" className="mb-1.5 block text-[10px] uppercase tracking-widest text-ash md:text-[11px]">
+          Mobile number
+        </label>
+        <div className="flex h-10 items-center overflow-hidden rounded-md border border-graphite/20 focus-within:border-ink md:h-11">
+          <span className="border-r border-graphite/15 px-3 text-sm text-ash">+91</span>
+          <input
+            id="order-phone"
+            type="tel"
+            inputMode="numeric"
+            maxLength={14}
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+            className="h-full w-full bg-transparent px-3 text-sm text-ink focus:outline-none"
+          />
+        </div>
+      </div>
+      <EditorButtons busy={busy} onCancel={onCancel} label="Save contact" />
+    </form>
+  );
+}
+
+function ItemsEditor({
+  items,
+  busy,
+  onSave,
+  onCancel,
+}: {
+  items: OrderSummary["items"];
+  busy: boolean;
+  onSave: (items: { code: string; size: string; quantity: number }[]) => void;
+  onCancel: () => void;
+}) {
+  const [lines, setLines] = useState(items.map((i) => ({ ...i, removed: false })));
+  const kept = lines.filter((l) => !l.removed);
+  const priceOf = (l: (typeof lines)[number]) => l.sizeOptions.find((s) => s.size === l.size)?.price ?? l.price;
+  const subtotal = kept.reduce((s, l) => s + priceOf(l) * l.quantity, 0);
+  const shipping = shippingFor(subtotal);
+
+  const update = (index: number, patch: Partial<(typeof lines)[number]>) =>
+    setLines((ls) => ls.map((l, i) => (i === index ? { ...l, ...patch } : l)));
+
+  return (
+    <div className="flex flex-col gap-3">
+      <p className="text-[11px] uppercase tracking-widest2 text-ink md:text-xs">Edit items</p>
+      <ul className="flex flex-col gap-3">
+        {lines.map((l, index) => (
+          <li
+            key={l.code + index}
+            className={cx("flex flex-wrap items-center gap-3 rounded-md border border-graphite/10 p-3", l.removed && "opacity-40")}
+          >
+            <div className="relative h-12 w-10 shrink-0 overflow-hidden rounded-md bg-bone">
+              {l.image && <Image src={l.image} alt="" fill sizes="40px" className="object-cover" />}
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-[11px] uppercase tracking-wide text-ink md:text-xs">{l.name}</p>
+              <p className="text-[11px] text-ash">{l.color}</p>
+            </div>
+            {l.removed ? (
+              <button type="button" onClick={() => update(index, { removed: false })} className="text-[11px] uppercase tracking-widest2 text-moss underline">
+                Undo
+              </button>
+            ) : (
+              <div className="flex items-center gap-2">
+                <select
+                  aria-label="Size"
+                  value={l.size}
+                  onChange={(e) => update(index, { size: e.target.value as typeof l.size })}
+                  className="h-8 rounded-md border border-graphite/20 bg-transparent px-2 text-xs"
+                >
+                  {l.sizeOptions.map((s) => (
+                    <option key={s.size} value={s.size} disabled={!s.available}>
+                      {s.size}
+                      {s.price !== l.price ? ` · ${formatPrice(s.price)}` : ""}
+                      {!s.available ? " (sold out)" : ""}
+                    </option>
+                  ))}
+                </select>
+                <div className="flex items-center overflow-hidden rounded-md border border-graphite/20">
+                  <button
+                    type="button"
+                    aria-label="Decrease quantity"
+                    disabled={l.quantity <= 1}
+                    onClick={() => update(index, { quantity: l.quantity - 1 })}
+                    className="flex h-8 w-8 items-center justify-center disabled:opacity-30"
+                  >
+                    <Minus size={12} strokeWidth={1.5} />
+                  </button>
+                  <span className="flex h-8 w-7 items-center justify-center text-xs">{l.quantity}</span>
+                  <button
+                    type="button"
+                    aria-label="Increase quantity"
+                    disabled={l.quantity >= MAX_LINE_QUANTITY}
+                    onClick={() => update(index, { quantity: l.quantity + 1 })}
+                    className="flex h-8 w-8 items-center justify-center disabled:opacity-30"
+                  >
+                    <Plus size={12} strokeWidth={1.5} />
+                  </button>
+                </div>
+                <button type="button" aria-label="Remove item" onClick={() => update(index, { removed: true })} className="p-1 text-ash hover:text-rust">
+                  <X size={15} strokeWidth={1.5} />
+                </button>
+              </div>
+            )}
+          </li>
+        ))}
+      </ul>
+      <p className="text-right text-[12px] text-graphite md:text-[13px]">
+        New total <span className="text-ink">{formatPrice(subtotal + shipping)}</span>
+        {shipping > 0 && <span className="text-ash"> (incl. {formatPrice(shipping)} shipping)</span>}
+      </p>
+      {kept.length === 0 && <p className="text-[12px] text-rust">Keep at least one item — or cancel the order instead.</p>}
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          onSave(kept.map((l) => ({ code: l.code, size: l.size, quantity: l.quantity })));
+        }}
+      >
+        <EditorButtons busy={busy} onCancel={onCancel} label="Save items" disabled={kept.length === 0} />
+      </form>
+    </div>
+  );
+}
+
+function EditorButtons({ busy, onCancel, label, disabled }: { busy: boolean; onCancel: () => void; label: string; disabled?: boolean }) {
+  return (
+    <div className="flex gap-3">
+      <button type="button" onClick={onCancel} className="h-10 flex-1 rounded-md border border-graphite/20 text-xs uppercase tracking-widest2 text-ink md:h-11">
+        Back
+      </button>
+      <button
+        type="submit"
+        disabled={busy || disabled}
+        className="flex h-10 flex-[2] items-center justify-center gap-2 rounded-md bg-moss text-xs uppercase tracking-widest2 text-paper transition-[filter] hover:brightness-90 disabled:bg-graphite/40 md:h-11"
+      >
+        {busy && <Loader2 size={14} className="animate-spin" />}
+        {label}
+      </button>
+    </div>
   );
 }
 

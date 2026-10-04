@@ -12,6 +12,7 @@ import { ColorSelector } from "./ColorSelector";
 import { SizeSelector } from "./SizeSelector";
 import { QuantitySelector } from "./QuantitySelector";
 import { AccordionItem } from "./Accordion";
+import { track } from "@/lib/track";
 
 interface ProductInfoProps {
   product: Product;
@@ -138,6 +139,7 @@ export function ProductInfo({ product, variant, onColorChange }: ProductInfoProp
     onChange: (s: Size) => {
       setSize(s);
       setError(false);
+      track("size_select", { product: product.name, code: variant.code, size: s });
     },
   };
 
@@ -195,7 +197,13 @@ export function ProductInfo({ product, variant, onColorChange }: ProductInfoProp
 
       <div className="flex items-center gap-4">
         <span className="text-xs uppercase tracking-widest2 text-ash">Qty</span>
-        <QuantitySelector value={quantity} onChange={setQuantity} />
+        <QuantitySelector
+          value={quantity}
+          onChange={(q) => {
+            setQuantity(q);
+            track("quantity_change", { product: product.name, code: variant.code, quantity: q });
+          }}
+        />
       </div>
 
       {/* Phones: Buy Now + Add to Bag side by side (the pinned bar docks here). */}

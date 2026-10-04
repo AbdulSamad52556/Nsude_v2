@@ -5,6 +5,7 @@ import { toProduct } from "./products";
 import { syncProductListings } from "./listings";
 import { revalidateStorefront } from "./revalidate";
 import { findSuccessfulPayment } from "./razorpay";
+import { recordAudit, systemActor } from "./audit";
 import { priceFor, type Size } from "@/lib/types";
 import { randomCode } from "@/lib/codes";
 import { shippingFor, type OrderStatus } from "@/lib/checkout";
@@ -214,7 +215,22 @@ export async function markPaid(order: Order, razorpayPaymentId: string) {
     });
     if (taken.ok) await refreshCatalog(order.items.map((i) => i.productId));
   }
-  return db.order.findUniqueOrThrow({ where: { id: order.id } });
+  const updated = await db.order.findUniqueOrThrow({ where: { id: order.id } });
+  if (updated.paymentStatus === "paid" && order.paymentStatus !== "paid") {
+    await recordAudit({
+      actor: systemActor("Razorpay payment"),
+      entity: "order",
+      entityId: order.id,
+      entityLabel: order.number,
+      action: "Payment received",
+      changes: [
+        { field: "Status", from: order.status, to: updated.status },
+        { field: "Payment", from: order.paymentStatus, to: "paid" },
+        { field: "Razorpay payment", from: "—", to: razorpayPaymentId },
+      ],
+    });
+  }
+  return updated;
 }
 
 /** Cancels an order and returns its stock to the shop. */
@@ -233,6 +249,24 @@ export async function cancelOrder(order: Order, paymentStatus?: string) {
  * status, or null if Razorpay couldn't be reached (left for a later try).
  */
 export async function settleUnpaidOrder(order: Order): Promise<OrderStatus | null> {
+  const result = await settleUnpaidOrderInner(order);
+  if (result === "cancelled" && order.status === "pending_payment") {
+    await recordAudit({
+      actor: systemActor("Payment check"),
+      entity: "order",
+      entityId: order.id,
+      entityLabel: order.number,
+      action: "Unpaid order cancelled",
+      changes: [
+        { field: "Status", from: "Awaiting payment", to: "Cancelled" },
+        { field: "Stock", from: "held", to: "returned to shop" },
+      ],
+    });
+  }
+  return result;
+}
+
+async function settleUnpaidOrderInner(order: Order): Promise<OrderStatus | null> {
   if (order.status !== "pending_payment") return order.status as OrderStatus;
   if (order.razorpayOrderId) {
     try {

@@ -2,40 +2,58 @@ import Link from "next/link";
 import Image from "next/image";
 import { Pencil, Plus } from "lucide-react";
 import { db } from "@/lib/server/db";
+import { pageAdmin } from "@/lib/server/auth";
+import { can } from "@/lib/adminPermissions";
 import { formatPrice } from "@/lib/utils";
 import { priceRange, totalStock } from "@/lib/types";
 import { toProduct } from "@/lib/server/products";
 import { AdminPageHeader } from "@/components/admin/AdminShell";
+import { Pagination, readPaging } from "@/components/admin/Pagination";
 import { DeleteProductButton } from "@/components/admin/DeleteProductButton";
 
 export const metadata = { title: "Products" };
+export const dynamic = "force-dynamic";
 
-export default async function AdminProductsPage() {
-  const products = (await db.product.findMany({ orderBy: { createdAt: "desc" } })).map(toProduct);
+type Search = { page?: string; size?: string };
+
+function href(params: Search) {
+  const q = new URLSearchParams(Object.entries(params).filter(([, v]) => v) as [string, string][]);
+  const s = q.toString();
+  return `/admin/products${s ? `?${s}` : ""}`;
+}
+
+export default async function AdminProductsPage({ searchParams }: { searchParams: Search }) {
+  const admin = await pageAdmin("products.view");
+  const canManage = can(admin, "products.manage");
+  const total = await db.product.count();
+  const { page, pages, size, skip } = readPaging(searchParams, total);
+  const products = (await db.product.findMany({ orderBy: { createdAt: "desc" }, skip, take: size })).map(toProduct);
 
   return (
     <div>
       <AdminPageHeader
         title="Products"
-        subtitle={`${products.length} product${products.length === 1 ? "" : "s"} in the catalog.`}
+        subtitle={`${total} product${total === 1 ? "" : "s"} in the catalog.`}
         action={
-          <Link
-            href="/admin/products/new"
-            className="flex h-11 items-center gap-2 bg-ink px-5 text-xs uppercase tracking-widest2 text-paper hover:bg-graphite"
-          >
-            <Plus size={16} strokeWidth={1.5} /> New Product
-          </Link>
+          canManage && (
+            <Link
+              href="/admin/products/new"
+              className="rounded-md flex h-11 items-center gap-2 bg-moss px-5 text-xs uppercase tracking-widest2 text-paper hover:brightness-90"
+            >
+              <Plus size={16} strokeWidth={1.5} /> New Product
+            </Link>
+          )
         }
       />
 
       {products.length === 0 ? (
-        <p className="border border-graphite/15 p-8 text-center text-sm text-graphite">
+        <p className="rounded-lg border border-taupe/30 p-8 text-center text-sm text-graphite">
           No products yet. Create your first one.
         </p>
       ) : (
-        <div className="overflow-x-auto border border-graphite/15">
+        <div className="rounded-lg overflow-x-auto border border-taupe/30">
           <table className="w-full min-w-[720px] text-left text-sm">
-            <thead className="border-b border-graphite/15 text-[11px] uppercase tracking-widest2 text-ash">
+            <thead className="border-b border-taupe/30 bg-sand/30 text-[11px] uppercase tracking-widest2 text-ash">
               <tr>
                 <th className="p-3 font-normal">Product</th>
                 <th className="p-3 font-normal">Price</th>
@@ -46,12 +64,12 @@ export default async function AdminProductsPage() {
                 <th className="p-3 font-normal sr-only">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-graphite/10">
+            <tbody className="divide-y divide-taupe/20">
               {products.map((p) => (
-                <tr key={p.id} className="hover:bg-bone/60">
+                <tr key={p.id} className="hover:bg-sand/15">
                   <td className="p-3">
                     <Link href={`/admin/products/${p.id}`} className="flex items-center gap-3">
-                      <div className="relative h-14 w-11 shrink-0 overflow-hidden bg-bone">
+                      <div className="relative h-14 w-11 shrink-0 overflow-hidden bg-sand/25">
                         {p.variants[0]?.images[0] && (
                           <Image src={p.variants[0].images[0].src} alt="" fill sizes="44px" className="object-cover" />
                         )}
@@ -74,7 +92,7 @@ export default async function AdminProductsPage() {
                       {p.variants.map((v) => (
                         <span
                           key={v.code}
-                          className="h-3.5 w-3.5 rounded-full border border-graphite/20"
+                          className="h-3.5 w-3.5 rounded-full border border-taupe/50"
                           style={{ backgroundColor: v.hex }}
                         />
                       ))}
@@ -93,28 +111,30 @@ export default async function AdminProductsPage() {
                   <td className="p-3">
                     <div className="flex flex-wrap gap-1">
                       {p.featured && (
-                        <span className="border border-graphite/20 px-2 py-0.5 text-[10px] uppercase tracking-wide">
+                        <span className="border border-taupe/50 px-2 py-0.5 text-[10px] uppercase tracking-wide">
                           Featured
                         </span>
                       )}
                       {p.newArrival && (
-                        <span className="border border-graphite/20 px-2 py-0.5 text-[10px] uppercase tracking-wide">
+                        <span className="border border-taupe/50 px-2 py-0.5 text-[10px] uppercase tracking-wide">
                           New
                         </span>
                       )}
                     </div>
                   </td>
                   <td className="p-3">
-                    <div className="flex justify-end gap-1">
-                      <Link
-                        href={`/admin/products/${p.id}`}
-                        aria-label={`Edit ${p.name}`}
-                        className="p-2 text-ash hover:text-ink"
-                      >
-                        <Pencil size={16} strokeWidth={1.5} />
-                      </Link>
-                      <DeleteProductButton id={p.id} name={p.name} />
-                    </div>
+                    {canManage && (
+                      <div className="flex justify-end gap-1">
+                        <Link
+                          href={`/admin/products/${p.id}`}
+                          aria-label={`Edit ${p.name}`}
+                          className="p-2 text-ash hover:text-ink"
+                        >
+                          <Pencil size={16} strokeWidth={1.5} />
+                        </Link>
+                        <DeleteProductButton id={p.id} name={p.name} />
+                      </div>
+                    )}
                   </td>
                 </tr>
               ))}
@@ -122,6 +142,15 @@ export default async function AdminProductsPage() {
           </table>
         </div>
       )}
+
+      <Pagination
+        page={page}
+        pages={pages}
+        size={size}
+        total={total}
+        noun={total === 1 ? "product" : "products"}
+        href={href}
+      />
     </div>
   );
 }

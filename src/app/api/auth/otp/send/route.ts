@@ -1,9 +1,10 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { db } from "@/lib/server/db";
 import { OTP_TTL_MS, hashOtp, newOtpCode } from "@/lib/server/customer";
-import { SmsNotConfiguredError, otpDevMode, sendOtpSms } from "@/lib/server/sms";
+import { SmsNotConfiguredError, otpOnScreen, sendOtpSms } from "@/lib/server/sms";
 import { rateLimit } from "@/lib/server/rateLimit";
 import { OTP_RESEND_SECONDS, phoneSchema } from "@/lib/account";
+import { recordActivity } from "@/lib/server/activity";
 
 // Sends a one-time login code to a mobile number. The same code signs in an
 // existing customer or creates the account (see ../verify).
@@ -56,10 +57,11 @@ export async function POST(request: NextRequest) {
     data: { phone, codeHash: hashOtp(phone, code), expiresAt: new Date(Date.now() + OTP_TTL_MS) },
   });
 
+  await recordActivity("otp_requested");
   return NextResponse.json({
     ok: true,
     resendIn: OTP_RESEND_SECONDS,
-    // Development only (no SMS provider): show the code on screen.
-    ...(otpDevMode() ? { devCode: code } : {}),
+    // Until SMS is integrated, the code is shown on the login screen.
+    ...(otpOnScreen() ? { screenCode: code } : {}),
   });
 }

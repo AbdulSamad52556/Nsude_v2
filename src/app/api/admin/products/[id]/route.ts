@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { Prisma } from "@prisma/client";
 import { db } from "@/lib/server/db";
 import { requireAdmin } from "@/lib/server/auth";
+import { adminActor, recordAudit, productChanges } from "@/lib/server/audit";
 import { deleteImages } from "@/lib/server/cloudinary";
 import { assignVariantCodes, productImageIds, toProduct } from "@/lib/server/products";
 import { syncProductListings } from "@/lib/server/listings";
@@ -13,7 +14,7 @@ type Params = { params: { id: string } };
 const notFound = () => NextResponse.json({ error: "Product not found" }, { status: 404 });
 
 export async function GET(_request: NextRequest, { params }: Params) {
-  const { error } = await requireAdmin();
+  const { error } = await requireAdmin("products.view");
   if (error) return error;
   if (!isObjectId(params.id)) return notFound();
 
@@ -22,7 +23,7 @@ export async function GET(_request: NextRequest, { params }: Params) {
 }
 
 export async function PUT(request: NextRequest, { params }: Params) {
-  const { error } = await requireAdmin();
+  const { error, session } = await requireAdmin("products.manage");
   if (error) return error;
   if (!isObjectId(params.id)) return notFound();
 
@@ -61,11 +62,23 @@ export async function PUT(request: NextRequest, { params }: Params) {
 
   await syncProductListings(params.id);
   revalidateStorefront();
-  return NextResponse.json({ product: toProduct(updated) });
+  const product = toProduct(updated);
+  const changes = productChanges(toProduct(existing), product);
+  if (changes.length) {
+    await recordAudit({
+      actor: adminActor(session!.email),
+      entity: "product",
+      entityId: product.id,
+      entityLabel: product.name,
+      action: "Product updated",
+      changes,
+    });
+  }
+  return NextResponse.json({ product });
 }
 
 export async function DELETE(_request: NextRequest, { params }: Params) {
-  const { error } = await requireAdmin();
+  const { error, session } = await requireAdmin("products.manage");
   if (error) return error;
   if (!isObjectId(params.id)) return notFound();
 
@@ -84,5 +97,18 @@ export async function DELETE(_request: NextRequest, { params }: Params) {
   ]);
 
   revalidateStorefront();
+  await recordAudit({
+    actor: adminActor(session!.email),
+    entity: "product",
+    entityId: existing.id,
+    entityLabel: existing.name,
+    action: "Product deleted",
+    changes: [
+      { field: "Colors", from: existing.variants.map((v) => `${v.name} (${v.code})`).join(", "), to: "—" },
+      ...(existing.heroSlides.length
+        ? [{ field: "Hero slides removed", from: String(existing.heroSlides.length), to: "0" }]
+        : []),
+    ],
+  });
   return NextResponse.json({ ok: true, removedHeroSlides: existing.heroSlides.length });
 }

@@ -21,7 +21,8 @@ export function PhoneLogin({ onSignedIn }: { onSignedIn: (account: AccountData, 
   const [step, setStep] = useState<"phone" | "code">("phone");
   const [phone, setPhone] = useState("");
   const [code, setCode] = useState("");
-  const [devCode, setDevCode] = useState<string | null>(null);
+  // Shown on screen until SMS is integrated (null once codes go by SMS).
+  const [screenCode, setScreenCode] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [resendIn, setResendIn] = useState(0);
@@ -45,14 +46,14 @@ export function PhoneLogin({ onSignedIn }: { onSignedIn: (account: AccountData, 
     }
     setBusy(true);
     setError(null);
-    const res = await postJson<{ resendIn: number; devCode?: string }>("/api/auth/otp/send", { phone: normalized.data });
+    const res = await postJson<{ resendIn: number; screenCode?: string }>("/api/auth/otp/send", { phone: normalized.data });
     setBusy(false);
     if (!res.ok) {
       setError(res.data.error ?? "Couldn't send the code. Try again.");
       if (res.data.retryAfter) setResendIn(res.data.retryAfter);
       return;
     }
-    setDevCode(res.data.devCode ?? null);
+    setScreenCode(res.data.screenCode ?? null);
     setResendIn(res.data.resendIn);
     setCode("");
     setStep("code");
@@ -91,10 +92,12 @@ export function PhoneLogin({ onSignedIn }: { onSignedIn: (account: AccountData, 
       </h1>
       <p className="mt-2 max-w-xs text-[13px] leading-relaxed text-graphite md:text-sm">
         {step === "phone" ? (
-          "Use your mobile number — we'll text you a one-time code. No password needed."
+          "Use your mobile number to get a one-time login code. No password needed."
         ) : (
           <>
-            We sent a {OTP_LENGTH}-digit code to <span className="text-ink">+91 {normalized.success ? normalized.data : phone}</span>.{" "}
+            {screenCode ? "Your" : "We sent a"} {OTP_LENGTH}-digit code {screenCode ? "for" : "to"}{" "}
+            <span className="text-ink">+91 {normalized.success ? normalized.data : phone}</span>
+            {screenCode ? " is shown below." : "."}{" "}
             <button
               type="button"
               onClick={() => {
@@ -156,10 +159,24 @@ export function PhoneLogin({ onSignedIn }: { onSignedIn: (account: AccountData, 
             }}
             noValidate
           >
-            {devCode && (
-              <p className="mb-3 rounded-md bg-moss/10 px-3 py-2 text-[11px] text-moss">
-                Development mode (no SMS set up): your code is <span className="font-medium tracking-widest">{devCode}</span>
-              </p>
+            {screenCode && (
+              <div className="mb-4 flex items-center justify-between gap-3 rounded-md bg-moss/10 px-3 py-2.5">
+                <div>
+                  <p className="text-[10px] uppercase tracking-widest2 text-moss">Your login code</p>
+                  <p className="mt-0.5 text-lg font-medium tracking-[0.3em] text-ink">{screenCode}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCode(screenCode);
+                    verify(screenCode);
+                  }}
+                  disabled={busy}
+                  className="shrink-0 rounded-md bg-moss px-3 py-2 text-[10px] uppercase tracking-widest2 text-paper transition-[filter] hover:brightness-90 disabled:bg-graphite/40"
+                >
+                  Use this code
+                </button>
+              </div>
             )}
             <label htmlFor="login-code" className="mb-1.5 block text-[10px] uppercase tracking-widest text-ash md:text-[11px]">
               {OTP_LENGTH}-digit code
