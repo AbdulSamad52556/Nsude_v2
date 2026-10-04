@@ -2,17 +2,20 @@ import Link from "next/link";
 import type { Prisma } from "@prisma/client";
 import { Monitor, Smartphone, Tablet } from "lucide-react";
 import { db } from "@/lib/server/db";
+import { redirect } from "next/navigation";
 import { pageAdmin } from "@/lib/server/auth";
+import { can } from "@/lib/adminPermissions";
 import { cx } from "@/lib/utils";
 import { OUTCOME_LABEL, OUTCOME_TONE, visitOutcome, type VisitOutcome } from "@/lib/activity";
 import { RANGES, describeSource, formatDuration, rangeStart, type RangeKey } from "@/lib/server/activityView";
 import { AdminPageHeader } from "@/components/admin/AdminShell";
 import { Pagination, readPaging } from "@/components/admin/Pagination";
 import { auditTime } from "@/components/admin/AuditList";
+import { ActivityTabs, AdminVisits } from "./AdminVisits";
 
 export const metadata = { title: "Activity" };
 
-type Search = { range?: string; who?: string; outcome?: string; device?: string; visitor?: string; q?: string; page?: string; size?: string };
+type Search = { area?: string; user?: string; range?: string; who?: string; outcome?: string; device?: string; visitor?: string; q?: string; page?: string; size?: string };
 
 function href(params: Search) {
   const q = new URLSearchParams(Object.entries(params).filter(([, v]) => v) as [string, string][]);
@@ -37,7 +40,17 @@ const DEVICE_ICON = { mobile: Smartphone, desktop: Monitor, tablet: Tablet } as 
 
 /** Every storefront visit: who, from where, what they did, how it ended. */
 export default async function ActivityPage({ searchParams }: { searchParams: Search }) {
-  await pageAdmin("activity.view");
+  // Two tabs with separate permissions: shoppers' visits ("Customer
+  // activity") and admin users' sessions ("Admin user activity").
+  const admin = await pageAdmin();
+  const seeStore = can(admin, "activity.view");
+  const seeAdmin = can(admin, "admin_activity.view");
+  if (!seeStore && !seeAdmin) redirect("/admin/no-access");
+  if ((searchParams.area === "admin" || !seeStore) && seeAdmin) {
+    return <AdminVisits searchParams={searchParams} showTabs={seeStore} />;
+  }
+  if (!seeStore) redirect("/admin/no-access");
+  const showAdminTab = seeAdmin;
   const range: RangeKey = RANGES.some((r) => r.key === searchParams.range) ? (searchParams.range as RangeKey) : "7d";
   const who = WHO.some((w) => w.key && w.key === searchParams.who) ? searchParams.who : undefined;
   const outcome = OUTCOMES.some((o) => o.key && o.key === searchParams.outcome) ? (searchParams.outcome as VisitOutcome) : undefined;
@@ -60,6 +73,7 @@ export default async function ActivityPage({ searchParams }: { searchParams: Sea
   }
 
   const where: Prisma.VisitSessionWhereInput = {
+    area: "store",
     startedAt: { gte: since },
     ...(who === "customers" ? { customerId: { not: null } } : who === "guests" ? { customerId: null } : {}),
     ...(device ? { device } : {}),
@@ -83,7 +97,7 @@ export default async function ActivityPage({ searchParams }: { searchParams: Sea
     // Headline numbers for the whole period (ignoring the other filters).
     db.visitSession.aggregateRaw({
       pipeline: [
-        { $match: { startedAt: { $gte: { $date: since.toISOString() } } } },
+        { $match: { area: "store", startedAt: { $gte: { $date: since.toISOString() } } } },
         {
           $group: {
             _id: null,
@@ -118,6 +132,7 @@ export default async function ActivityPage({ searchParams }: { searchParams: Sea
   return (
     <div>
       <AdminPageHeader title="Activity" subtitle="Every visit to the store, from the first page to the last." />
+      {showAdminTab && <ActivityTabs area="store" />}
 
       <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-6">
         {[

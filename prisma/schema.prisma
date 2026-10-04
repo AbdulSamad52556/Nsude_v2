@@ -329,8 +329,8 @@ model AdminUser {
   updatedAt      DateTime  @updatedAt
 }
 
-/// One storefront visit: from the first page to the last, until 30 minutes
-/// without activity. Browsing before sign-in is linked to the customer once
+/// One visit: from the first page to the last, until 30 minutes without
+/// activity — a shopper on the storefront, or an admin user in the panel. Browsing before sign-in is linked to the customer once
 /// they sign in on the same device.
 model VisitSession {
   id            String    @id @default(auto()) @map("_id") @db.ObjectId
@@ -338,7 +338,11 @@ model VisitSession {
   key           String    @unique
   /// Random id per browser (1-year cookie); ties visits from one device.
   visitorId     String
+  /// "store" (shoppers) or "admin" (admin users in the admin panel).
+  area          String    @default("store")
   customerId    String?   @db.ObjectId
+  /// The admin user, for admin visits.
+  adminEmail    String?
   startedAt     DateTime  @default(now())
   lastSeenAt    DateTime  @default(now())
   landingPath   String
@@ -363,6 +367,8 @@ model VisitSession {
 
   @@index([visitorId, startedAt])
   @@index([customerId, startedAt])
+  @@index([area, startedAt])
+  @@index([adminEmail, startedAt])
   @@index([lastSeenAt])
 }
 
@@ -372,6 +378,8 @@ model ActivityEvent {
   id         String   @id @default(auto()) @map("_id") @db.ObjectId
   sessionKey String
   visitorId  String
+  /// "store" or "admin", as on the visit.
+  area       String   @default("store")
   customerId String?  @db.ObjectId
   at         DateTime @default(now())
   /// e.g. "page_view", "click", "add_to_bag", "order_placed"

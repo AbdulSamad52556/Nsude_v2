@@ -3,6 +3,7 @@ import { z } from "zod";
 import { db } from "@/lib/server/db";
 import { rateLimit } from "@/lib/server/rateLimit";
 import { peekCustomerId } from "@/lib/server/customer";
+import { getAdmin } from "@/lib/server/auth";
 import {
   describeAgent,
   ensureActivityTtl,
@@ -12,7 +13,7 @@ import {
   isBot,
   maskDigits,
 } from "@/lib/server/activity";
-import { ID_PATTERN } from "@/lib/activity";
+import { ID_PATTERN, areaOf } from "@/lib/activity";
 
 const value = z.union([z.string().max(300).transform(maskDigits), z.number().finite(), z.boolean()]);
 const pathSchema = z
@@ -23,6 +24,7 @@ const pathSchema = z
 const bodySchema = z.object({
   vid: z.string().regex(ID_PATTERN),
   sid: z.string().regex(ID_PATTERN),
+  area: z.enum(["store", "admin"]).default("store"),
   // Sent with the first batch of a visit.
   ctx: z
     .object({
@@ -65,11 +67,14 @@ const SERVER_ONLY = new Set([
   "order_edited",
   "order_cancelled",
   "otp_requested",
+  "sign_in_failed",
+  "audit",
 ]);
 
 /**
- * Receives a batch of storefront events (sent with fetch keepalive or
- * sendBeacon). Always answers 204 so tracking can never break the page.
+ * Receives a batch of events — a shopper's on the storefront, or a signed-in
+ * admin user's in the admin panel — sent with fetch keepalive or sendBeacon.
+ * Always answers 204 so tracking can never break the page.
  */
 export async function POST(request: NextRequest) {
   const done = new NextResponse(null, { status: 204 });
@@ -80,19 +85,24 @@ export async function POST(request: NextRequest) {
 
   const parsed = bodySchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return done;
-  const { vid, sid, ctx } = parsed.data;
-  const events = parsed.data.events.filter((e) => !SERVER_ONLY.has(e.type) && !e.path.startsWith("/admin"));
+  const { vid, sid, ctx, area } = parsed.data;
+  const events = parsed.data.events.filter((e) => !SERVER_ONLY.has(e.type) && areaOf(e.path) === area);
   if (events.length === 0) return done;
 
   try {
     void ensureActivityTtl();
-    const customerId = await peekCustomerId();
+    // Admin visits only count for a signed-in admin (the visit itself is
+    // started at sign-in); before that, nothing is stored.
+    const admin = area === "admin" ? await getAdmin() : null;
+    if (area === "admin" && !admin) return done;
+    const customerId = area === "store" ? await peekCustomerId() : null;
     const now = Date.now();
     // Browser clocks drift; keep times within the last hour and never ahead.
     const at = (t: number) => new Date(Math.min(now, Math.max(now - 60 * 60 * 1000, t)));
 
     let visit = await db.visitSession.findUnique({ where: { key: sid } });
-    if (visit && visit.visitorId !== vid) return done;
+    if (visit && (visit.visitorId !== vid || visit.area !== area)) return done;
+    if (visit && admin && visit.adminEmail !== admin.email) return done;
     if (!visit) {
       const first = events[0];
       visit = await db.visitSession
@@ -100,7 +110,9 @@ export async function POST(request: NextRequest) {
           data: {
             key: sid,
             visitorId: vid,
+            area,
             customerId,
+            adminEmail: admin?.email ?? null,
             startedAt: at(first.at),
             lastSeenAt: at(first.at),
             landingPath: ctx?.landing ?? first.path,
@@ -140,6 +152,7 @@ export async function POST(request: NextRequest) {
       data: events.map((e) => ({
         sessionKey: sid,
         visitorId: vid,
+        area,
         customerId: owner,
         at: at(e.at),
         type: e.type,

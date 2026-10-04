@@ -29,7 +29,12 @@ export const PERMISSION_AREAS = [
     manage: "Edit the hero slides",
   },
   { key: "customers", label: "Customers", view: "See customer accounts, contact details and saved addresses" },
-  { key: "activity", label: "Activity", view: "See visitor sessions and everything each visitor did in the store" },
+  { key: "activity", label: "Customer activity", view: "See shoppers' visits and everything they did in the store" },
+  {
+    key: "admin_activity",
+    label: "Admin user activity",
+    view: "See admin users' sessions: pages, clicks, changes saved and failed sign-ins",
+  },
   { key: "audit", label: "Audit", view: "See the edit history of the whole store" },
 ] as const satisfies readonly { key: string; label: string; view: string; manage?: string }[];
 
@@ -71,6 +76,7 @@ export const ADMIN_PAGES: { href: string; permission: Permission }[] = [
   { href: "/admin/hero", permission: "hero.view" },
   { href: "/admin/customers", permission: "customers.view" },
   { href: "/admin/activity", permission: "activity.view" },
+  { href: "/admin/activity?area=admin", permission: "admin_activity.view" },
   { href: "/admin/audit", permission: "audit.view" },
 ];
 

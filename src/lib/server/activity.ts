@@ -1,8 +1,9 @@
 import "server-only";
+import { randomBytes } from "crypto";
 import { cookies, headers } from "next/headers";
 import type { Prisma } from "@prisma/client";
 import { db } from "./db";
-import { ID_PATTERN, VISIT_COOKIE, VISITOR_COOKIE } from "@/lib/activity";
+import { ID_PATTERN, VISITOR_COOKIE, visitCookie, type ActivityArea } from "@/lib/activity";
 
 // Storefront activity: visits (VisitSession) and what happened in them
 // (ActivityEvent). The browser sends batches to /api/track; the server adds
@@ -103,17 +104,26 @@ export function flagUpdate(flags: Flags): Prisma.VisitSessionUpdateInput {
 export async function recordActivity(
   type: string,
   data: Record<string, string | number | boolean> = {},
-  opts: { customerId?: string | null; path?: string } = {}
+  opts: {
+    customerId?: string | null;
+    path?: string;
+    /** "admin" for admin-panel events (sign-in, sign-out, password). */
+    area?: ActivityArea;
+    adminEmail?: string;
+    /** A visit id just issued in this response (admin sign-in). */
+    sessionKey?: string;
+  } = {}
 ) {
   try {
+    const area = opts.area ?? "store";
     const store = cookies();
-    const sessionKey = store.get(VISIT_COOKIE)?.value;
+    const sessionKey = opts.sessionKey ?? store.get(visitCookie(area))?.value;
     const visitorId = store.get(VISITOR_COOKIE)?.value;
     if (!sessionKey || !visitorId || !ID_PATTERN.test(sessionKey) || !ID_PATTERN.test(visitorId)) return;
     const path = opts.path ?? new URL(headers().get("referer") ?? "http://x/").pathname;
     // The server can act before the browser's first batch arrives (e.g. a
-    // code requested in the first seconds): start the visit here; the batch
-    // fills in where it came from.
+    // code requested in the first seconds, or an admin signing in): start
+    // the visit here; the browser's batch fills in where it came from.
     const ua = headers().get("user-agent") ?? "";
     const visit =
       (await db.visitSession.findUnique({ where: { key: sessionKey } })) ??
@@ -124,7 +134,9 @@ export async function recordActivity(
               data: {
                 key: sessionKey,
                 visitorId,
+                area,
                 customerId: opts.customerId ?? null,
+                adminEmail: opts.adminEmail ?? null,
                 landingPath: path,
                 exitPath: path,
                 orderNumbers: [],
@@ -133,11 +145,12 @@ export async function recordActivity(
               },
             })
             .catch(() => db.visitSession.findUnique({ where: { key: sessionKey } })));
-    if (!visit || visit.visitorId !== visitorId) return;
+    if (!visit || visit.visitorId !== visitorId || visit.area !== area) return;
+    if (opts.adminEmail && visit.adminEmail && visit.adminEmail !== opts.adminEmail) return;
 
-    const customerId = opts.customerId ?? visit.customerId ?? null;
+    const customerId = area === "store" ? (opts.customerId ?? visit.customerId ?? null) : null;
     await db.activityEvent.create({
-      data: { sessionKey, visitorId, customerId, type, path, data, source: "server", expiresAt: expiresAt() },
+      data: { sessionKey, visitorId, area, customerId, type, path, data, source: "server", expiresAt: expiresAt() },
     });
     await db.visitSession.update({
       where: { key: sessionKey },
@@ -145,12 +158,18 @@ export async function recordActivity(
         lastSeenAt: new Date(),
         eventCount: { increment: 1 },
         ...(customerId && !visit.customerId ? { customerId } : {}),
+        ...(opts.adminEmail && !visit.adminEmail ? { adminEmail: opts.adminEmail } : {}),
         ...flagUpdate(flagsFor(type, path, data)),
       },
     });
   } catch (err) {
     console.error("Recording activity failed", err);
   }
+}
+
+/** A fresh admin visit id, so each sign-in starts its own visit. */
+export function newVisitKey() {
+  return randomBytes(18).toString("base64url");
 }
 
 /**
@@ -161,8 +180,8 @@ export async function linkVisitorToCustomer(customerId: string) {
   try {
     const visitorId = cookies().get(VISITOR_COOKIE)?.value;
     if (!visitorId || !ID_PATTERN.test(visitorId)) return;
-    await db.visitSession.updateMany({ where: { visitorId, customerId: null }, data: { customerId } });
-    await db.activityEvent.updateMany({ where: { visitorId, customerId: null }, data: { customerId } });
+    await db.visitSession.updateMany({ where: { visitorId, area: "store", customerId: null }, data: { customerId } });
+    await db.activityEvent.updateMany({ where: { visitorId, area: "store", customerId: null }, data: { customerId } });
   } catch (err) {
     console.error("Linking activity to customer failed", err);
   }

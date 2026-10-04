@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import {
   ArrowLeft,
   Circle,
@@ -23,17 +23,19 @@ import {
   User,
   UserPlus,
   XCircle,
+  History,
+  ShieldAlert,
   type LucideIcon,
 } from "lucide-react";
 import { db } from "@/lib/server/db";
-import { pageAdmin } from "@/lib/server/auth";
+import { pageAdmin, superadminEmail } from "@/lib/server/auth";
 import { isObjectId } from "@/lib/server/revalidate";
 import { can } from "@/lib/adminPermissions";
 import { cx } from "@/lib/utils";
 import { ACTIVITY_LABEL, KEY_EVENTS, OUTCOME_LABEL, OUTCOME_TONE, VISIT_IDLE_MINUTES, visitOutcome } from "@/lib/activity";
 import { describeEvent, describeSource, formatDuration, timeIST } from "@/lib/server/activityView";
 import { AdminPageHeader } from "@/components/admin/AdminShell";
-import { auditTime } from "@/components/admin/AuditList";
+import { auditTime, entityHref } from "@/components/admin/AuditList";
 
 export const metadata = { title: "Visit" };
 
@@ -65,6 +67,8 @@ const ICON: Record<string, LucideIcon> = {
   address_deleted: MapPin,
   order_edited: Pencil,
   order_cancelled: XCircle,
+  sign_in_failed: ShieldAlert,
+  audit: History,
 };
 
 const MAX_EVENTS = 2000;
@@ -77,57 +81,114 @@ export default async function VisitPage({
   params: { id: string };
   searchParams: { steps?: string };
 }) {
-  const admin = await pageAdmin("activity.view");
+  const admin = await pageAdmin();
   if (!isObjectId(params.id)) notFound();
   const visit = await db.visitSession.findUnique({ where: { id: params.id } });
   if (!visit) notFound();
 
+  // Shoppers' visits need Customer activity; admin users' sessions
+  // (the super admin's included) need Admin user activity.
+  const isAdminVisit = visit.area === "admin";
+  if (!can(admin, isAdminVisit ? "admin_activity.view" : "activity.view")) redirect("/admin/no-access");
+
   const keyOnly = searchParams.steps === "key";
-  const [events, customer, otherVisits] = await Promise.all([
+  const [events, customer, adminUser, otherVisits, saved] = await Promise.all([
     db.activityEvent.findMany({
       where: { sessionKey: visit.key, ...(keyOnly ? { type: { notIn: ["click", "page_leave"] } } : {}) },
       orderBy: { at: "asc" },
       take: MAX_EVENTS,
     }),
     visit.customerId ? db.customer.findUnique({ where: { id: visit.customerId } }) : null,
-    db.visitSession.count({ where: { visitorId: visit.visitorId, id: { not: visit.id } } }),
+    isAdminVisit && visit.adminEmail ? db.adminUser.findUnique({ where: { email: visit.adminEmail } }) : null,
+    db.visitSession.count({ where: { visitorId: visit.visitorId, area: visit.area, id: { not: visit.id } } }),
+    // An admin's saved changes during this session, from Audit.
+    isAdminVisit && visit.adminEmail
+      ? db.auditLog.findMany({
+          where: {
+            actorType: "admin",
+            actorLabel: visit.adminEmail,
+            at: { gte: visit.startedAt, lte: new Date(visit.lastSeenAt.getTime() + 5000) },
+          },
+          orderBy: { at: "asc" },
+        })
+      : [],
   ]);
 
+  // Steps, with the admin's saved changes (from Audit) merged in by time.
+  type Row = (typeof events)[number] & { href?: string | null };
+  const rows: Row[] = [
+    ...events,
+    ...saved.map((a) => ({
+      id: `audit-${a.id}`,
+      sessionKey: visit.key,
+      visitorId: visit.visitorId,
+      area: "admin",
+      customerId: null,
+      at: a.at,
+      type: "audit",
+      path: "",
+      data: { action: a.action, entity: a.entityLabel, fields: a.changes.length },
+      source: "server",
+      expiresAt: visit.expiresAt,
+      href: entityHref(a),
+    })),
+  ].sort((a, b) => a.at.getTime() - b.at.getTime());
+
   const durationMs = visit.lastSeenAt.getTime() - visit.startedAt.getTime();
-  const live = Date.now() - visit.lastSeenAt.getTime() < VISIT_IDLE_MINUTES * 60 * 1000;
+  // Signing out ends a session at once; otherwise it's over after 30 idle minutes.
+  const signedOut = events.some((e) => e.type === "signed_out");
+  const live = !signedOut && Date.now() - visit.lastSeenAt.getTime() < VISIT_IDLE_MINUTES * 60 * 1000;
   const outcome = visitOutcome(visit);
-  const who = customer ? customer.name || `+91 ${customer.phone}` : "Guest";
+  const who = isAdminVisit
+    ? (adminUser?.name ?? (visit.adminEmail === superadminEmail() ? "Super admin" : (visit.adminEmail ?? "Admin")))
+    : customer
+      ? customer.name || `+91 ${customer.phone}`
+      : "Guest";
+  const whoHref = isAdminVisit
+    ? adminUser
+      ? `/admin/users/${adminUser.id}`
+      : undefined
+    : customer && can(admin, "customers.view")
+      ? `/admin/customers/${customer.id}`
+      : undefined;
 
   const facts = [
-    { label: "Visitor", value: who, href: customer && can(admin, "customers.view") ? `/admin/customers/${customer.id}` : undefined },
+    { label: isAdminVisit ? "Admin user" : "Visitor", value: who, href: whoHref },
+    ...(isAdminVisit && visit.adminEmail ? [{ label: "Email", value: visit.adminEmail }] : []),
     { label: "Duration", value: formatDuration(durationMs) },
     { label: "Pages", value: String(visit.pageViews) },
     { label: "Actions", value: String(visit.eventCount) },
+    ...(isAdminVisit ? [{ label: "Changes saved", value: String(saved.length) }] : []),
     { label: "Device", value: `${visit.device} · ${visit.browser} · ${visit.os}${visit.screen ? ` · ${visit.screen}` : ""}` },
-    { label: "Source", value: describeSource(visit) },
+    ...(isAdminVisit ? [] : [{ label: "Source", value: describeSource(visit) }]),
     { label: "Entry page", value: visit.landingPath },
     { label: "Exit page", value: visit.exitPath },
   ];
 
   return (
     <div>
-      <Link href="/admin/activity" className="mb-6 inline-flex items-center gap-2 text-xs uppercase tracking-widest2 text-ash hover:text-ink">
-        <ArrowLeft size={14} strokeWidth={1.5} /> All visits
+      <Link
+        href={isAdminVisit ? "/admin/activity?area=admin" : "/admin/activity"}
+        className="mb-6 inline-flex items-center gap-2 text-xs uppercase tracking-widest2 text-ash hover:text-ink"
+      >
+        <ArrowLeft size={14} strokeWidth={1.5} /> {isAdminVisit ? "All admin sessions" : "All visits"}
       </Link>
       <AdminPageHeader
-        title={`Visit · ${who}`}
+        title={`${isAdminVisit ? "Session" : "Visit"} · ${who}`}
         subtitle={`${auditTime(visit.startedAt)} → ${timeIST(visit.lastSeenAt)}${visit.orderNumbers.length ? ` · ordered ${visit.orderNumbers.join(", ")}` : ""}`}
         action={
-          <span className={cx("inline-block rounded-full border px-3 py-1 text-[10px] uppercase tracking-wide", OUTCOME_TONE[outcome])}>
-            {OUTCOME_LABEL[outcome]}
-          </span>
+          isAdminVisit ? undefined : (
+            <span className={cx("inline-block rounded-full border px-3 py-1 text-[10px] uppercase tracking-wide", OUTCOME_TONE[outcome])}>
+              {OUTCOME_LABEL[outcome]}
+            </span>
+          )
         }
       />
 
       <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_300px]">
         <section className="min-w-0">
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-            <h2 className="text-xs uppercase tracking-widest2">Timeline · {events.length}</h2>
+            <h2 className="text-xs uppercase tracking-widest2">Timeline · {rows.length}</h2>
             <div className="flex rounded-md border border-taupe/50 p-0.5 text-[10px] uppercase tracking-widest2">
               <Link href={`/admin/activity/${visit.id}`} className={cx("rounded px-3 py-1.5", !keyOnly ? "bg-moss text-paper" : "text-graphite hover:bg-sand/30")}>
                 Everything
@@ -141,11 +202,11 @@ export default async function VisitPage({
             </div>
           </div>
 
-          {events.length === 0 ? (
+          {rows.length === 0 ? (
             <p className="rounded-lg border border-taupe/30 p-6 text-sm text-graphite">No steps recorded.</p>
           ) : (
             <ol className="relative overflow-hidden rounded-lg border border-taupe/30">
-              {events.map((e, i) => {
+              {rows.map((e, i) => {
                 const Icon = ICON[e.type] ?? Circle;
                 const key = KEY_EVENTS.has(e.type);
                 const offset = formatDuration(e.at.getTime() - visit.startedAt.getTime());
@@ -179,6 +240,14 @@ export default async function VisitPage({
                       </p>
                       <p className="break-all text-xs text-graphite">
                         {describeEvent(e)}
+                        {e.href && (
+                          <>
+                            {" · "}
+                            <Link href={e.href} className="text-moss underline underline-offset-2">
+                              open
+                            </Link>
+                          </>
+                        )}
                         {typeof order === "string" && can(admin, "orders.view") && (
                           <>
                             {" · "}
@@ -205,7 +274,7 @@ export default async function VisitPage({
                     <span className="font-medium">Still browsing</span>
                   ) : (
                     <>
-                      <span className="font-medium">Left the store</span>
+                      <span className="font-medium">{signedOut ? "Signed out" : isAdminVisit ? "Session ended" : "Left the store"}</span>
                       <span className="block text-xs text-graphite">from {visit.exitPath}</span>
                     </>
                   )}
@@ -237,9 +306,9 @@ export default async function VisitPage({
           <div className="rounded-lg bg-sand/25 p-4 text-xs text-graphite">
             <p className="font-mono text-[10px] text-ash">Browser {visit.visitorId.slice(0, 12)}</p>
             <p className="mt-1">
-              {otherVisits === 0 ? "First visit from this browser." : `${otherVisits} other visit${otherVisits === 1 ? "" : "s"} from this browser.`}
+              {otherVisits === 0 ? "First visit from this browser." : `${otherVisits} other ${isAdminVisit ? "session" : "visit"}${otherVisits === 1 ? "" : "s"} from this browser.`}
             </p>
-            {otherVisits > 0 && (
+            {otherVisits > 0 && !isAdminVisit && (
               <Link href={`/admin/activity?visitor=${visit.visitorId}&range=all`} className="mt-2 inline-block text-moss underline underline-offset-4">
                 See all visits
               </Link>

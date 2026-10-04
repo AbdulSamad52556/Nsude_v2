@@ -18,7 +18,7 @@ function labelOf(el: Element) {
 }
 
 /**
- * Tracks the whole storefront visit: every page (with time spent and how
+ * Tracks the whole visit (storefront, or admin panel for admin users): every page (with time spent and how
  * far it was scrolled), every click on a link or button, and the moment the
  * visitor leaves. Specific actions (add to bag, size picked…) are tracked
  * where they happen with `track()`.
@@ -38,7 +38,7 @@ export function ActivityTracker() {
     // Wait a tick so the new page's <title> is in place. (Not cancelled on
     // cleanup: the page is already recorded as current, so a re-run skips.)
     const path = page.current.path;
-    setTimeout(() => track("page_view", { title: document.title.replace(/ — NSUDE$/, "") }, path), 50);
+    setTimeout(() => track("page_view", { title: document.title.replace(/ — NSUDE( Admin)?$/, "") }, path), 50);
   }, [pathname]);
 
   // Scroll depth, clicks, and leaving (tab hidden, closed, or navigated away).
