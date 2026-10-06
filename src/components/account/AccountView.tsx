@@ -139,9 +139,9 @@ type OrderSummary = Omit<ServerOrderSummary, "status" | "address"> & {
 
 const STATUS_TONE: Record<OrderStatus, string> = {
   pending_payment: "bg-bone text-graphite",
-  placed: "bg-moss/10 text-moss",
-  shipped: "bg-moss/15 text-moss",
-  delivered: "bg-moss text-paper",
+  placed: "bg-ink/10 text-ink",
+  shipped: "bg-ink/15 text-ink",
+  delivered: "bg-ink text-paper",
   cancelled: "bg-bone text-ash line-through",
 };
 
@@ -170,14 +170,14 @@ function OrdersTab({ account }: { account: AccountData }) {
   if (orders.length === 0) {
     return (
       <div className={cx(CARD, "flex flex-col items-center px-5 py-10 text-center")}>
-        <span className="flex h-12 w-12 items-center justify-center rounded-full bg-moss/10 text-moss">
+        <span className="flex h-12 w-12 items-center justify-center rounded-full bg-ink/10 text-ink">
           <ShoppingBag size={20} strokeWidth={1.5} />
         </span>
         <p className="mt-4 text-sm text-ink">No orders yet</p>
         <p className="mt-1 text-[13px] text-graphite">Orders you place will show up here.</p>
         <Link
           href="/shop"
-          className="mt-5 flex h-10 items-center gap-2 rounded-md bg-moss px-6 text-xs uppercase tracking-widest2 text-paper hover:brightness-90"
+          className="mt-5 flex h-10 items-center gap-2 rounded-md bg-ink px-6 text-xs uppercase tracking-widest2 text-paper hover:bg-graphite"
         >
           Shop now <ArrowRight size={14} strokeWidth={1.5} />
         </Link>
@@ -265,7 +265,7 @@ function OrderDetails({
   }
 
   const actionBtn =
-    "rounded-md border border-graphite/20 px-3 py-2 text-[10px] uppercase tracking-widest2 text-ink transition-colors hover:border-moss md:text-[11px]";
+    "rounded-md border border-graphite/20 px-3 py-2 text-[10px] uppercase tracking-widest2 text-ink transition-colors hover:border-ink md:text-[11px]";
 
   return (
     <div className="border-t border-graphite/10">
@@ -300,13 +300,13 @@ function OrderDetails({
             {o.shipping === 0 ? "Free" : formatPrice(o.shipping)}
           </p>
           <p className="mt-1 text-sm text-ink">Total {formatPrice(o.total)}</p>
-          {o.paymentStatus === "refund_due" && <p className="mt-1 text-[11px] text-moss">Refund in progress</p>}
+          {o.paymentStatus === "refund_due" && <p className="mt-1 text-[11px] text-ink">Refund in progress</p>}
         </div>
       </div>
 
       {(o.editable || notice) && (
         <div className="border-t border-graphite/10 p-4 md:p-5">
-          {notice && <p className="mb-3 rounded-md bg-moss/10 px-3 py-2 text-[12px] text-moss">{notice}</p>}
+          {notice && <p className="mb-3 rounded-md bg-ink/10 px-3 py-2 text-[12px] text-ink">{notice}</p>}
           {error && <p className="mb-3 rounded-md border border-rust/30 px-3 py-2 text-[12px] text-rust">{error}</p>}
 
           {o.editable && mode === null && (
@@ -392,7 +392,7 @@ function AddressEditor({
               onClick={() => setStart({ key: a.id, address: a })}
               className={cx(
                 "max-w-full truncate rounded-md border px-3 py-1.5 text-left text-[11px]",
-                start.key === a.id ? "border-moss text-ink" : "border-graphite/20 text-graphite hover:border-moss"
+                start.key === a.id ? "border-ink text-ink" : "border-graphite/20 text-graphite hover:border-ink"
               )}
             >
               Use: {a.line1}, {a.city}
@@ -495,7 +495,7 @@ function ItemsEditor({
               <p className="text-[11px] text-ash">{l.color}</p>
             </div>
             {l.removed ? (
-              <button type="button" onClick={() => update(index, { removed: false })} className="text-[11px] uppercase tracking-widest2 text-moss underline">
+              <button type="button" onClick={() => update(index, { removed: false })} className="text-[11px] uppercase tracking-widest2 text-ink underline">
                 Undo
               </button>
             ) : (
@@ -569,7 +569,7 @@ function EditorButtons({ busy, onCancel, label, disabled }: { busy: boolean; onC
       <button
         type="submit"
         disabled={busy || disabled}
-        className="flex h-10 flex-[2] items-center justify-center gap-2 rounded-md bg-moss text-xs uppercase tracking-widest2 text-paper transition-[filter] hover:brightness-90 disabled:bg-graphite/40 md:h-11"
+        className="flex h-10 flex-[2] items-center justify-center gap-2 rounded-md bg-ink text-xs uppercase tracking-widest2 text-paper transition-colors hover:bg-graphite disabled:bg-ash/50 md:h-11"
       >
         {busy && <Loader2 size={14} className="animate-spin" />}
         {label}
@@ -620,7 +620,7 @@ function AddressesTab({ account, onChange }: { account: AccountData; onChange: (
             <div className="flex items-start justify-between gap-3">
               <p className="text-[13px] leading-relaxed text-ink md:text-sm">{formatAddress(a)}</p>
               {account.defaultAddressId === a.id && (
-                <span className="shrink-0 rounded-full bg-moss/10 px-2.5 py-1 text-[10px] uppercase tracking-wide text-moss">Default</span>
+                <span className="shrink-0 rounded-full bg-ink/10 px-2.5 py-1 text-[10px] uppercase tracking-wide text-ink">Default</span>
               )}
             </div>
             <div className="mt-3 flex flex-wrap gap-x-4 gap-y-2 text-[11px] uppercase tracking-widest2">
@@ -649,7 +649,7 @@ function AddressesTab({ account, onChange }: { account: AccountData; onChange: (
         <button
           type="button"
           onClick={() => setEditing("new")}
-          className="flex h-10 items-center justify-center gap-2 rounded-md border border-dashed border-graphite/30 text-xs uppercase tracking-widest2 text-ink hover:border-moss md:h-11"
+          className="flex h-10 items-center justify-center gap-2 rounded-md border border-dashed border-graphite/30 text-xs uppercase tracking-widest2 text-ink hover:border-ink md:h-11"
         >
           <Plus size={14} strokeWidth={1.5} /> Add address
         </button>
@@ -696,7 +696,7 @@ function ProfileTab({ account, onChange }: { account: AccountData; onChange: (a:
   return (
     <form onSubmit={save} noValidate className={cx(CARD, "flex flex-col gap-4 p-4 md:p-5")}>
       {!account.name && (
-        <p className="rounded-md bg-moss/10 px-3 py-2 text-[12px] text-moss">Add your name so we can address your orders properly.</p>
+        <p className="rounded-md bg-ink/10 px-3 py-2 text-[12px] text-ink">Add your name so we can address your orders properly.</p>
       )}
       <div>
         <label htmlFor="profile-name" className="mb-1.5 block text-[10px] uppercase tracking-widest text-ash md:text-[11px]">
@@ -742,7 +742,7 @@ function ProfileTab({ account, onChange }: { account: AccountData; onChange: (a:
       <button
         type="submit"
         disabled={status === "saving"}
-        className="flex h-10 items-center justify-center gap-2 rounded-md bg-moss text-xs uppercase tracking-widest2 text-paper transition-[filter] hover:brightness-90 disabled:bg-graphite/40 md:h-11"
+        className="flex h-10 items-center justify-center gap-2 rounded-md bg-ink text-xs uppercase tracking-widest2 text-paper transition-colors hover:bg-graphite disabled:bg-ash/50 md:h-11"
       >
         {status === "saving" && <Loader2 size={14} className="animate-spin" />}
         {status === "saved" ? "Saved ✓" : "Save changes"}

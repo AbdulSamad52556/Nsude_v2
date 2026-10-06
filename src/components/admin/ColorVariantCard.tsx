@@ -34,7 +34,7 @@ export interface VariantDraft {
 }
 
 const inputClass =
-  "rounded-md h-11 w-full border border-taupe/50 bg-transparent px-3 text-sm focus:border-moss focus:outline-none";
+  "rounded-md h-11 w-full border border-taupe/50 bg-transparent px-3 text-sm focus:border-ink focus:outline-none";
 const labelClass = "mb-2 block text-[11px] uppercase tracking-widest2 text-ash";
 
 function FieldError({ message }: { message?: string }) {
@@ -188,7 +188,7 @@ export function ColorVariantCard({
         </div>
         <div className="flex items-center gap-1 pt-1.5">
           {index === 0 && (
-            <span className="mr-1 rounded-sm bg-moss px-2 py-0.5 text-[10px] uppercase tracking-wide text-paper" title="Shown first in the shop and on the product page">
+            <span className="mr-1 rounded-sm bg-ink px-2 py-0.5 text-[10px] uppercase tracking-wide text-paper" title="Shown first in the shop and on the product page">
               Default
             </span>
           )}
@@ -354,7 +354,7 @@ export function ColorVariantCard({
                   }}
                   className={cx(
                     "flex h-8 items-center gap-2 px-3 text-[10px] uppercase tracking-widest2 transition-colors",
-                    addMode === key ? "bg-moss text-paper" : "text-ash hover:text-ink"
+                    addMode === key ? "bg-ink text-paper" : "text-ash hover:text-ink"
                   )}
                 >
                   <Icon size={13} strokeWidth={1.5} />
@@ -389,7 +389,7 @@ export function ColorVariantCard({
                 type="button"
                 onClick={addFromUrl}
                 disabled={uploading > 0 || !imageUrl.trim()}
-                className="rounded-md flex h-11 shrink-0 items-center gap-2 bg-moss px-5 text-xs uppercase tracking-widest2 text-paper hover:brightness-90 disabled:opacity-50"
+                className="rounded-md flex h-11 shrink-0 items-center gap-2 bg-ink px-5 text-xs uppercase tracking-widest2 text-paper hover:bg-graphite disabled:opacity-50"
               >
                 {uploading > 0 ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
                 Add
@@ -403,7 +403,7 @@ export function ColorVariantCard({
                 <div className="relative aspect-[4/5] overflow-hidden bg-sand/25">
                   <Image src={img.src} alt={img.alt} fill sizes="160px" className="object-cover" />
                   {i === 0 && (
-                    <span className="absolute left-1.5 top-1.5 rounded-sm bg-moss px-1.5 py-0.5 text-[9px] uppercase tracking-wide text-paper">
+                    <span className="absolute left-1.5 top-1.5 rounded-sm bg-ink px-1.5 py-0.5 text-[9px] uppercase tracking-wide text-paper">
                       Main
                     </span>
                   )}
@@ -419,7 +419,7 @@ export function ColorVariantCard({
                 <input
                   aria-label={`Alt text for photo ${i + 1}`}
                   placeholder="Alt text"
-                  className="rounded-md h-8 w-full border border-taupe/50 bg-transparent px-2 text-[11px] focus:border-moss focus:outline-none"
+                  className="rounded-md h-8 w-full border border-taupe/50 bg-transparent px-2 text-[11px] focus:border-ink focus:outline-none"
                   value={img.alt}
                   onChange={(e) =>
                     onChange({ images: variant.images.map((m, j) => (j === i ? { ...m, alt: e.target.value } : m)) })
@@ -440,7 +440,7 @@ export function ColorVariantCard({
                 type="button"
                 onClick={() => fileInput.current?.click()}
                 disabled={uploading > 0}
-                className="flex aspect-[4/5] flex-col items-center justify-center gap-2 border border-dashed border-graphite/30 text-[10px] uppercase tracking-widest2 text-ash hover:border-moss hover:text-ink disabled:opacity-60"
+                className="flex aspect-[4/5] flex-col items-center justify-center gap-2 border border-dashed border-graphite/30 text-[10px] uppercase tracking-widest2 text-ash hover:border-ink hover:text-ink disabled:opacity-60"
               >
                 {uploading > 0 ? (
                   <>

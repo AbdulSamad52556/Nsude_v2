@@ -38,7 +38,7 @@ export default async function AdminProductsPage({ searchParams }: { searchParams
           canManage && (
             <Link
               href="/admin/products/new"
-              className="rounded-md flex h-11 items-center gap-2 bg-moss px-5 text-xs uppercase tracking-widest2 text-paper hover:brightness-90"
+              className="rounded-md flex h-11 items-center gap-2 bg-ink px-5 text-xs uppercase tracking-widest2 text-paper hover:bg-graphite"
             >
               <Plus size={16} strokeWidth={1.5} /> New Product
             </Link>

@@ -17,7 +17,7 @@ export function ShopChrome({ children }: { children: React.ReactNode }) {
       <CustomCursor />
       <Preloader />
       <Navbar />
-      <div className="relative mx-auto max-w-[1440px] overflow-x-clip bg-paper">
+      <div className="relative overflow-x-clip bg-paper">
         <main id="main-content">{children}</main>
         <Footer />
       </div>

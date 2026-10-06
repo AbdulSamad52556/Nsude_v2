@@ -6,8 +6,8 @@ import { redirect } from "next/navigation";
 import { pageAdmin } from "@/lib/server/auth";
 import { can } from "@/lib/adminPermissions";
 import { cx } from "@/lib/utils";
-import { OUTCOME_LABEL, OUTCOME_TONE, visitOutcome, type VisitOutcome } from "@/lib/activity";
-import { RANGES, describeSource, formatDuration, rangeStart, type RangeKey } from "@/lib/server/activityView";
+import { ACTIVE_MINUTES, OUTCOME_LABEL, OUTCOME_TONE, isActive, visitOutcome, type VisitOutcome } from "@/lib/activity";
+import { RANGES, describeSource, formatDuration, rangeStart, whenShort, type RangeKey } from "@/lib/server/activityView";
 import { AdminPageHeader } from "@/components/admin/AdminShell";
 import { Pagination, readPaging } from "@/components/admin/Pagination";
 import { auditTime } from "@/components/admin/AuditList";
@@ -15,7 +15,7 @@ import { ActivityTabs, AdminVisits } from "./AdminVisits";
 
 export const metadata = { title: "Activity" };
 
-type Search = { area?: string; user?: string; range?: string; who?: string; outcome?: string; device?: string; visitor?: string; q?: string; page?: string; size?: string };
+type Search = { area?: string; user?: string; live?: string; range?: string; who?: string; outcome?: string; device?: string; visitor?: string; q?: string; page?: string; size?: string };
 
 function href(params: Search) {
   const q = new URLSearchParams(Object.entries(params).filter(([, v]) => v) as [string, string][]);
@@ -72,8 +72,12 @@ export default async function ActivityPage({ searchParams }: { searchParams: Sea
     searchIds = customers.map((c) => c.id);
   }
 
+  // "Active now": seen in the last few minutes (pages, clicks or "still here").
+  const live = searchParams.live === "1";
+  const activeSince = new Date(Date.now() - ACTIVE_MINUTES * 60 * 1000);
   const where: Prisma.VisitSessionWhereInput = {
     area: "store",
+    ...(live ? { lastSeenAt: { gte: activeSince } } : {}),
     startedAt: { gte: since },
     ...(who === "customers" ? { customerId: { not: null } } : who === "guests" ? { customerId: null } : {}),
     ...(device ? { device } : {}),
@@ -90,7 +94,10 @@ export default async function ActivityPage({ searchParams }: { searchParams: Sea
     ...(searchIds ? { OR: [{ customerId: { in: searchIds } }, { orderNumbers: { has: q.toUpperCase() } }] } : {}),
   };
 
-  const total = await db.visitSession.count({ where });
+  const [total, onlineNow] = await Promise.all([
+    db.visitSession.count({ where }),
+    db.visitSession.count({ where: { area: "store", lastSeenAt: { gte: activeSince } } }),
+  ]);
   const { page, pages, size, skip } = readPaging(searchParams, total);
   const [visits, statsRaw] = await Promise.all([
     db.visitSession.findMany({ where, orderBy: { startedAt: "desc" }, skip, take: size }),
@@ -121,11 +128,11 @@ export default async function ActivityPage({ searchParams }: { searchParams: Sea
     (await db.customer.findMany({ where: { id: { in: customerIds } }, select: { id: true, name: true, phone: true } })).map((c) => [c.id, c])
   );
 
-  const base = { range, who, outcome, device, visitor, q, size: searchParams.size };
+  const base = { range, who, outcome, device, visitor, q, live: live ? "1" : undefined, size: searchParams.size };
   const chip = (active: boolean) =>
     cx(
       "rounded-md border px-3 py-1.5 text-[11px] uppercase tracking-widest2",
-      active ? "border-moss bg-moss text-paper" : "border-taupe/50 text-graphite hover:border-moss"
+      active ? "border-ink bg-ink text-paper" : "border-taupe/50 text-graphite hover:border-ink"
     );
   const rangeLabel = RANGES.find((r) => r.key === range)!.label;
 
@@ -134,7 +141,21 @@ export default async function ActivityPage({ searchParams }: { searchParams: Sea
       <AdminPageHeader title="Activity" subtitle="Every visit to the store, from the first page to the last." />
       {showAdminTab && <ActivityTabs area="store" />}
 
-      <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-6">
+      <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4 xl:grid-cols-7">
+        <Link
+          href={href({ ...base, live: live ? undefined : "1", range: undefined })}
+          className="col-span-2 flex flex-col justify-between rounded-lg bg-ink p-4 text-paper transition-colors hover:bg-graphite sm:col-span-1"
+        >
+          <p className="flex items-center gap-2 text-[10px] uppercase tracking-widest2 text-paper/70">
+            <span className="relative flex h-2 w-2">
+              {onlineNow > 0 && <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-sand opacity-75" />}
+              <span className={cx("relative inline-flex h-2 w-2 rounded-full", onlineNow > 0 ? "bg-sand" : "bg-paper/30")} />
+            </span>
+            Online now
+          </p>
+          <p className="mt-2 text-2xl font-medium">{onlineNow}</p>
+          <p className="mt-0.5 text-[10px] text-paper/60">{live ? "Showing them · tap to clear" : `Shoppers in the last ${ACTIVE_MINUTES} min`}</p>
+        </Link>
         {[
           { label: "Visits", value: stats.visits ?? 0 },
           { label: "Visitors", value: stats.visitors ?? 0 },
@@ -166,14 +187,19 @@ export default async function ActivityPage({ searchParams }: { searchParams: Sea
               name="q"
               defaultValue={q}
               placeholder="Order no., phone or name"
-              className="h-10 w-60 rounded-md border border-taupe/50 bg-transparent px-3 text-sm focus:border-moss focus:outline-none"
+              className="h-10 w-60 rounded-md border border-taupe/50 bg-transparent px-3 text-sm focus:border-ink focus:outline-none"
             />
-            <button type="submit" className="h-10 rounded-md bg-moss px-4 text-xs uppercase tracking-widest2 text-paper hover:brightness-90">
+            <button type="submit" className="h-10 rounded-md bg-ink px-4 text-xs uppercase tracking-widest2 text-paper hover:bg-graphite">
               Search
             </button>
           </form>
         </div>
         <div className="flex flex-wrap gap-2">
+          <Link href={href({ ...base, live: live ? undefined : "1" })} className={chip(live)}>
+            <span className="mr-1.5 inline-block h-1.5 w-1.5 rounded-full bg-current align-middle" />
+            Active now
+          </Link>
+          <span className="mx-1 hidden w-px bg-taupe/30 sm:block" />
           {WHO.map((w) => (
             <Link key={w.label} href={href({ ...base, who: w.key || undefined })} className={chip((who ?? "") === w.key)}>
               {w.label}
@@ -195,7 +221,7 @@ export default async function ActivityPage({ searchParams }: { searchParams: Sea
         {visitor && (
           <p className="text-xs text-graphite">
             Showing visits from one browser.{" "}
-            <Link href={href({ ...base, visitor: undefined })} className="underline underline-offset-4 hover:text-moss">
+            <Link href={href({ ...base, visitor: undefined })} className="underline underline-offset-4 hover:text-ink">
               Show everyone
             </Link>
           </p>
@@ -206,7 +232,7 @@ export default async function ActivityPage({ searchParams }: { searchParams: Sea
         <p className="rounded-lg border border-taupe/30 p-8 text-center text-sm text-graphite">No visits match.</p>
       ) : (
         <div className="overflow-x-auto rounded-lg border border-taupe/30">
-          <table className="w-full min-w-[960px] text-left text-sm">
+          <table className="w-full min-w-[1060px] text-left text-sm">
             <thead className="border-b border-taupe/30 bg-sand/30 text-[11px] uppercase tracking-widest2 text-ash">
               <tr>
                 <th className="p-3 font-normal">Started</th>
@@ -217,6 +243,7 @@ export default async function ActivityPage({ searchParams }: { searchParams: Sea
                 <th className="p-3 font-normal">Pages</th>
                 <th className="p-3 font-normal">Time</th>
                 <th className="p-3 font-normal">Outcome</th>
+                <th className="p-3 font-normal">Status</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-taupe/20">
@@ -261,6 +288,15 @@ export default async function ActivityPage({ searchParams }: { searchParams: Sea
                       <span className={cx("inline-block whitespace-nowrap rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-wide", OUTCOME_TONE[o])}>
                         {OUTCOME_LABEL[o]}
                       </span>
+                    </td>
+                    <td className="whitespace-nowrap p-3">
+                      {isActive(v.lastSeenAt) ? (
+                        <span className="inline-flex items-center gap-1.5 rounded-full bg-ink px-2 py-0.5 text-[10px] uppercase tracking-wide text-paper">
+                          <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-sand" /> Active now
+                        </span>
+                      ) : (
+                        <span className="text-xs text-ash">Left · {whenShort(v.lastSeenAt)}</span>
+                      )}
                     </td>
                   </tr>
                 );

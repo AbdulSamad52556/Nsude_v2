@@ -66,7 +66,7 @@ function OptionList<T>({
           type="button"
           onClick={() => setExpanded((e) => !e)}
           aria-expanded={expanded}
-          className="mt-3 text-[11px] uppercase tracking-widest2 text-moss underline decoration-moss/40 underline-offset-4 hover:decoration-moss"
+          className="mt-3 text-[11px] uppercase tracking-widest2 text-ink underline decoration-ink/40 underline-offset-4 hover:decoration-ink"
         >
           {expanded ? "Show less" : `Show more (+${hiddenCount})`}
         </button>
@@ -99,10 +99,10 @@ export function FilterPanel({ facets, filters, onChange }: Props) {
                 <span
                   className={cx(
                     "flex h-4 w-4 shrink-0 items-center justify-center rounded-full border transition-colors",
-                    on ? "border-moss" : "border-graphite/30"
+                    on ? "border-ink" : "border-graphite/30"
                   )}
                 >
-                  {on && <span className="h-2 w-2 rounded-full bg-moss" />}
+                  {on && <span className="h-2 w-2 rounded-full bg-ink" />}
                 </span>
                 <input
                   type="radio"
@@ -137,7 +137,7 @@ export function FilterPanel({ facets, filters, onChange }: Props) {
                 <span
                   className={cx(
                     "flex h-4 w-4 shrink-0 items-center justify-center border transition-colors",
-                    on ? "border-moss bg-moss text-paper" : "border-graphite/30"
+                    on ? "border-ink bg-ink text-paper" : "border-graphite/30"
                   )}
                 >
                   {on && <Check size={11} strokeWidth={2.5} />}
@@ -172,8 +172,8 @@ export function FilterPanel({ facets, filters, onChange }: Props) {
                 className={cx(
                   "h-10 rounded-md border text-xs uppercase tracking-wide transition-colors",
                   on
-                    ? "border-moss bg-moss text-paper"
-                    : "border-graphite/20 text-ink hover:border-moss disabled:border-graphite/10 disabled:text-mist disabled:hover:border-graphite/10"
+                    ? "border-ink bg-ink text-paper"
+                    : "border-graphite/20 text-ink hover:border-ink disabled:border-graphite/10 disabled:text-mist disabled:hover:border-graphite/10"
                 )}
               >
                 {size}
@@ -204,7 +204,7 @@ export function FilterPanel({ facets, filters, onChange }: Props) {
                 <span
                   className={cx(
                     "flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-full border-[1.5px] transition-colors",
-                    on ? "border-moss" : "border-transparent"
+                    on ? "border-ink" : "border-transparent"
                   )}
                 >
                   <span
@@ -239,10 +239,10 @@ export function FilterPanel({ facets, filters, onChange }: Props) {
                   <span
                     className={cx(
                       "flex h-4 w-4 shrink-0 items-center justify-center rounded-full border transition-colors",
-                      on ? "border-moss" : "border-graphite/30"
+                      on ? "border-ink" : "border-graphite/30"
                     )}
                   >
-                    {on && <span className="h-2 w-2 rounded-full bg-moss" />}
+                    {on && <span className="h-2 w-2 rounded-full bg-ink" />}
                   </span>
                   <input
                     type="checkbox"
@@ -273,7 +273,7 @@ export function FilterPanel({ facets, filters, onChange }: Props) {
           <span
             className={cx(
               "relative h-5 w-9 shrink-0 rounded-full transition-colors",
-              filters.inStock ? "bg-moss" : "bg-graphite/20"
+              filters.inStock ? "bg-ink" : "bg-ash/20"
             )}
           >
             <span

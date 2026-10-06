@@ -12,7 +12,7 @@ export const Select = forwardRef<HTMLSelectElement, SelectHTMLAttributes<HTMLSel
           ref={ref}
           {...props}
           className={cx(
-            "rounded-md h-11 w-full cursor-pointer appearance-none border border-taupe/50 bg-transparent pl-3 pr-11 text-sm focus:border-moss focus:outline-none",
+            "rounded-md h-11 w-full cursor-pointer appearance-none border border-taupe/50 bg-transparent pl-3 pr-11 text-sm focus:border-ink focus:outline-none",
             className
           )}
         >

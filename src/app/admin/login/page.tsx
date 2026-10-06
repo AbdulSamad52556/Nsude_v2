@@ -9,7 +9,7 @@ import { cx } from "@/lib/utils";
 import { ActivityTracker } from "@/components/layout/ActivityTracker";
 
 const inputClass =
-  "h-11 w-full rounded-md border border-graphite/20 bg-transparent px-3 text-sm text-ink placeholder:text-ash/60 transition-colors focus:border-moss focus:outline-none focus:ring-2 focus:ring-moss/15";
+  "h-11 w-full rounded-md border border-graphite/20 bg-transparent px-3 text-sm text-ink placeholder:text-ash/60 transition-colors focus:border-ink focus:outline-none focus:ring-2 focus:ring-ink/15";
 
 function LoginForm() {
   const router = useRouter();
@@ -80,7 +80,7 @@ function LoginForm() {
             onClick={() => setShowPassword((v) => !v)}
             aria-label={showPassword ? "Hide password" : "Show password"}
             aria-pressed={showPassword}
-            className="absolute right-1 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-md text-ash transition-colors hover:text-moss"
+            className="absolute right-1 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-md text-ash transition-colors hover:text-ink"
           >
             {showPassword ? <EyeOff size={16} strokeWidth={1.5} /> : <Eye size={16} strokeWidth={1.5} />}
           </button>
@@ -97,7 +97,7 @@ function LoginForm() {
       <button
         type="submit"
         disabled={submitting}
-        className="group mt-2 flex h-11 w-full items-center justify-center gap-2 rounded-md bg-moss text-xs uppercase tracking-widest2 text-paper transition-[filter] hover:brightness-90 disabled:cursor-not-allowed disabled:bg-graphite/40"
+        className="group mt-2 flex h-11 w-full items-center justify-center gap-2 rounded-md bg-ink text-xs uppercase tracking-widest2 text-paper transition-colors hover:bg-graphite disabled:cursor-not-allowed disabled:bg-ash/50"
       >
         {submitting ? (
           <>
@@ -116,9 +116,9 @@ function LoginForm() {
 
 export default function AdminLoginPage() {
   return (
-    <main id="main-content" className="flex min-h-[100svh] flex-col items-center justify-center bg-moss px-5 py-12">
+    <main id="main-content" className="flex min-h-[100svh] flex-col items-center justify-center bg-ink px-5 py-12">
       {/* Starts the admin visit, so the sign-in (or failed attempts) is part of it. */}
-      <ActivityTracker />
+      <ActivityTracker keepAlive={false} />
       <Image
         src="/brand/nsude-logo-light.png"
         alt="NSUDE"
@@ -130,7 +130,7 @@ export default function AdminLoginPage() {
 
       <div className="w-full max-w-sm rounded-lg bg-paper p-6 shadow-[0_12px_40px_rgba(10,10,10,0.25)] md:p-8">
         <div className="mb-6 flex items-center gap-3">
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-moss/10 text-moss">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-ink/10 text-ink">
             <Lock size={17} strokeWidth={1.5} />
           </span>
           <div>

@@ -11,7 +11,7 @@ export default async function AdminNotFound() {
 
   return (
     <div className="mx-auto mt-16 flex max-w-md flex-col items-center text-center">
-      <span className="flex h-14 w-14 items-center justify-center rounded-full bg-sand/50 text-moss">
+      <span className="flex h-14 w-14 items-center justify-center rounded-full bg-sand/50 text-ink">
         <SearchX size={22} strokeWidth={1.5} />
       </span>
       <p className="mt-5 text-[11px] uppercase tracking-widest2 text-ash">Error 404</p>
@@ -22,7 +22,7 @@ export default async function AdminNotFound() {
       {home && (
         <Link
           href={home}
-          className="mt-6 flex h-10 items-center gap-2 rounded-md bg-moss px-5 text-xs uppercase tracking-widest2 text-paper hover:brightness-90"
+          className="mt-6 flex h-10 items-center gap-2 rounded-md bg-ink px-5 text-xs uppercase tracking-widest2 text-paper hover:bg-graphite"
         >
           <ArrowLeft size={14} strokeWidth={1.5} />
           {home === "/admin" ? "Back to dashboard" : "Go back"}

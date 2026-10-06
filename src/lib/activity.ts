@@ -11,7 +11,16 @@ export const ADMIN_VISIT_COOKIE = "nsude_asid";
 export type ActivityArea = "store" | "admin";
 export const areaOf = (path: string): ActivityArea => (path.startsWith("/admin") ? "admin" : "store");
 export const visitCookie = (area: ActivityArea) => (area === "admin" ? ADMIN_VISIT_COOKIE : VISIT_COOKIE);
+/** A shopper's visit ends after 30 idle minutes (the usual analytics rule). */
 export const VISIT_IDLE_MINUTES = 30;
+/** An admin session ends after 10 minutes with no activity or check-in. */
+export const ADMIN_VISIT_IDLE_MINUTES = 10;
+/** While a tab is visible, a quiet "still here" every 5 minutes (shop and admin). */
+export const HEARTBEAT_MINUTES = 5;
+/** "Active now": seen within this long (check-in interval + slack). */
+export const ACTIVE_MINUTES = 7;
+export const isActive = (lastSeenAt: Date) => Date.now() - lastSeenAt.getTime() < ACTIVE_MINUTES * 60 * 1000;
+export const visitIdleMinutes = (area: ActivityArea) => (area === "admin" ? ADMIN_VISIT_IDLE_MINUTES : VISIT_IDLE_MINUTES);
 
 export const ID_PATTERN = /^[A-Za-z0-9_-]{16,64}$/;
 
@@ -70,7 +79,7 @@ export const OUTCOME_LABEL: Record<VisitOutcome, string> = {
   browsed: "Browsed",
 };
 export const OUTCOME_TONE: Record<VisitOutcome, string> = {
-  ordered: "border-moss bg-moss text-paper",
+  ordered: "border-ink bg-ink text-paper",
   checkout: "border-sand bg-sand/50 text-ink",
   bag: "border-taupe bg-taupe/20 text-ink",
   browsed: "border-taupe/50 text-ash",

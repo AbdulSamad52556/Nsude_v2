@@ -230,7 +230,7 @@ export function HeroEditor({
           type="button"
           onClick={save}
           disabled={saving || uploadingKey !== null || !dirty}
-          className="rounded-md flex h-11 items-center gap-2 bg-moss px-6 text-xs uppercase tracking-widest2 text-paper hover:brightness-90 disabled:opacity-50"
+          className="rounded-md flex h-11 items-center gap-2 bg-ink px-6 text-xs uppercase tracking-widest2 text-paper hover:bg-graphite disabled:opacity-50"
         >
           {saving && <Loader2 size={16} className="animate-spin" />}
           Save carousel

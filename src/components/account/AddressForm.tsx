@@ -110,7 +110,7 @@ export function AddressForm({
 
       {!initial && (
         <label className="col-span-2 flex cursor-pointer items-center gap-2 text-[13px] text-graphite">
-          <input type="checkbox" checked={makeDefault} onChange={(e) => setMakeDefault(e.target.checked)} className="h-4 w-4 accent-moss" />
+          <input type="checkbox" checked={makeDefault} onChange={(e) => setMakeDefault(e.target.checked)} className="h-4 w-4 accent-ink" />
           Make this my default address
         </label>
       )}
@@ -127,7 +127,7 @@ export function AddressForm({
         <button
           type="submit"
           disabled={busy}
-          className="flex h-10 flex-[2] items-center justify-center gap-2 rounded-md bg-moss text-xs uppercase tracking-widest2 text-paper transition-[filter] hover:brightness-90 disabled:bg-graphite/40 md:h-11"
+          className="flex h-10 flex-[2] items-center justify-center gap-2 rounded-md bg-ink text-xs uppercase tracking-widest2 text-paper transition-colors hover:bg-graphite disabled:bg-ash/50 md:h-11"
         >
           {busy && <Loader2 size={14} className="animate-spin" />}
           {submitLabel}

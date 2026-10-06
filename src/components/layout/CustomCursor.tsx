@@ -1,18 +1,24 @@
 "use client";
 
-import { motion, useMotionValue, useReducedMotion, useSpring } from "framer-motion";
-import { useEffect, useState } from "react";
+import { useReducedMotion } from "framer-motion";
+import { useEffect, useRef, useState } from "react";
 
+/**
+ * Small dot that replaces the mouse pointer, growing into a labelled circle
+ * over elements with `data-cursor` (e.g. "View" on product photos).
+ *
+ * It follows the mouse exactly — positioned straight from each mousemove,
+ * with no easing or React render — so it never trails behind. Only the
+ * size / label change goes through React, and only when it actually changes.
+ */
 export function CustomCursor() {
   const [enabled, setEnabled] = useState(false);
   const [label, setLabel] = useState("");
   const [visible, setVisible] = useState(false);
   const shouldReduceMotion = useReducedMotion();
-
-  const x = useMotionValue(-100);
-  const y = useMotionValue(-100);
-  const springX = useSpring(x, { damping: 30, stiffness: 400, mass: 0.4 });
-  const springY = useSpring(y, { damping: 30, stiffness: 400, mass: 0.4 });
+  const dot = useRef<HTMLDivElement>(null);
+  const labelRef = useRef("");
+  const visibleRef = useRef(false);
 
   useEffect(() => {
     const isFinePointer = window.matchMedia("(pointer: fine)").matches;
@@ -21,52 +27,55 @@ export function CustomCursor() {
     document.documentElement.classList.add("custom-cursor-active");
 
     function handleMove(e: MouseEvent) {
-      x.set(e.clientX);
-      y.set(e.clientY);
-      if (!visible) setVisible(true);
-      const target = (e.target as HTMLElement)?.closest<HTMLElement>("[data-cursor]");
-      setLabel(target?.dataset.cursor ?? "");
+      const el = dot.current;
+      if (el) el.style.transform = `translate3d(${e.clientX}px, ${e.clientY}px, 0) translate(-50%, -50%)`;
+      if (!visibleRef.current) {
+        visibleRef.current = true;
+        setVisible(true);
+      }
+      const next = (e.target as HTMLElement | null)?.closest?.<HTMLElement>("[data-cursor]")?.dataset.cursor ?? "";
+      if (next !== labelRef.current) {
+        labelRef.current = next;
+        setLabel(next);
+      }
     }
-
     function handleLeave() {
+      visibleRef.current = false;
       setVisible(false);
     }
 
-    window.addEventListener("mousemove", handleMove);
+    window.addEventListener("mousemove", handleMove, { passive: true });
     document.addEventListener("mouseleave", handleLeave);
     return () => {
       window.removeEventListener("mousemove", handleMove);
       document.removeEventListener("mouseleave", handleLeave);
       document.documentElement.classList.remove("custom-cursor-active");
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [shouldReduceMotion]);
 
   if (!enabled) return null;
 
+  const size = label ? 84 : 10;
   return (
-    <motion.div
+    <div
+      ref={dot}
       aria-hidden
-      className="pointer-events-none fixed left-0 top-0 z-[90] flex items-center justify-center rounded-full mix-blend-difference"
-      style={{
-        x: springX,
-        y: springY,
-        translateX: "-50%",
-        translateY: "-50%",
-      }}
-      animate={{
-        width: label ? 84 : 10,
-        height: label ? 84 : 10,
-        opacity: visible ? 1 : 0,
-        backgroundColor: "#f8f6f1",
-      }}
-      transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+      className="pointer-events-none fixed left-0 top-0 z-[90] mix-blend-difference will-change-transform"
+      style={{ transform: "translate3d(-100px, -100px, 0)" }}
     >
-      {label && (
-        <span className="text-[10px] font-medium uppercase tracking-widest2 text-ink">
-          {label}
-        </span>
-      )}
-    </motion.div>
+      {/* Size and fade animate here, separate from the position above, so
+          moving the mouse never waits on a transition. */}
+      <div
+        className="flex items-center justify-center rounded-full bg-paper"
+        style={{
+          width: size,
+          height: size,
+          opacity: visible ? 1 : 0,
+          transition: "width 300ms cubic-bezier(0.16,1,0.3,1), height 300ms cubic-bezier(0.16,1,0.3,1), opacity 200ms ease",
+        }}
+      >
+        {label && <span className="text-[10px] font-medium uppercase tracking-widest2 text-ink">{label}</span>}
+      </div>
+    </div>
   );
 }

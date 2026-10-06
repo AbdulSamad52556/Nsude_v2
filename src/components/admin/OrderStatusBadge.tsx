@@ -5,7 +5,7 @@ const TONE: Record<OrderStatus, string> = {
   pending_payment: "border-taupe/60 text-ash",
   placed: "border-sand bg-sand/40 text-ink",
   shipped: "border-taupe bg-taupe/20 text-ink",
-  delivered: "border-moss bg-moss text-paper",
+  delivered: "border-ink bg-ink text-paper",
   cancelled: "border-ash/30 text-ash line-through",
 };
 

@@ -72,6 +72,6 @@ export function Field({
 }
 
 export const inputClass =
-  "h-11 w-full rounded-md border border-taupe/50 bg-transparent px-3 text-sm focus:border-moss focus:outline-none";
+  "h-11 w-full rounded-md border border-taupe/50 bg-transparent px-3 text-sm focus:border-ink focus:outline-none";
 export const primaryButton =
-  "flex h-11 items-center justify-center gap-2 rounded-md bg-moss px-6 text-xs uppercase tracking-widest2 text-paper hover:brightness-90 disabled:opacity-60";
+  "flex h-11 items-center justify-center gap-2 rounded-md bg-ink px-6 text-xs uppercase tracking-widest2 text-paper hover:bg-graphite disabled:opacity-60";

@@ -32,7 +32,7 @@ import { pageAdmin, superadminEmail } from "@/lib/server/auth";
 import { isObjectId } from "@/lib/server/revalidate";
 import { can } from "@/lib/adminPermissions";
 import { cx } from "@/lib/utils";
-import { ACTIVITY_LABEL, KEY_EVENTS, OUTCOME_LABEL, OUTCOME_TONE, VISIT_IDLE_MINUTES, visitOutcome } from "@/lib/activity";
+import { ACTIVITY_LABEL, KEY_EVENTS, OUTCOME_LABEL, OUTCOME_TONE, isActive, visitOutcome } from "@/lib/activity";
 import { describeEvent, describeSource, formatDuration, timeIST } from "@/lib/server/activityView";
 import { AdminPageHeader } from "@/components/admin/AdminShell";
 import { auditTime, entityHref } from "@/components/admin/AuditList";
@@ -137,7 +137,7 @@ export default async function VisitPage({
   const durationMs = visit.lastSeenAt.getTime() - visit.startedAt.getTime();
   // Signing out ends a session at once; otherwise it's over after 30 idle minutes.
   const signedOut = events.some((e) => e.type === "signed_out");
-  const live = !signedOut && Date.now() - visit.lastSeenAt.getTime() < VISIT_IDLE_MINUTES * 60 * 1000;
+  const live = !signedOut && isActive(visit.lastSeenAt);
   const outcome = visitOutcome(visit);
   const who = isAdminVisit
     ? (adminUser?.name ?? (visit.adminEmail === superadminEmail() ? "Super admin" : (visit.adminEmail ?? "Admin")))
@@ -190,12 +190,12 @@ export default async function VisitPage({
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
             <h2 className="text-xs uppercase tracking-widest2">Timeline · {rows.length}</h2>
             <div className="flex rounded-md border border-taupe/50 p-0.5 text-[10px] uppercase tracking-widest2">
-              <Link href={`/admin/activity/${visit.id}`} className={cx("rounded px-3 py-1.5", !keyOnly ? "bg-moss text-paper" : "text-graphite hover:bg-sand/30")}>
+              <Link href={`/admin/activity/${visit.id}`} className={cx("rounded px-3 py-1.5", !keyOnly ? "bg-ink text-paper" : "text-graphite hover:bg-sand/30")}>
                 Everything
               </Link>
               <Link
                 href={`/admin/activity/${visit.id}?steps=key`}
-                className={cx("rounded px-3 py-1.5", keyOnly ? "bg-moss text-paper" : "text-graphite hover:bg-sand/30")}
+                className={cx("rounded px-3 py-1.5", keyOnly ? "bg-ink text-paper" : "text-graphite hover:bg-sand/30")}
               >
                 Without clicks
               </Link>
@@ -224,7 +224,7 @@ export default async function VisitPage({
                     <span
                       className={cx(
                         "mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full",
-                        key ? "bg-moss text-paper" : e.type === "page_view" ? "bg-sand/60 text-ink" : "bg-taupe/15 text-graphite"
+                        key ? "bg-ink text-paper" : e.type === "page_view" ? "bg-sand/60 text-ink" : "bg-taupe/15 text-graphite"
                       )}
                     >
                       <Icon size={12} strokeWidth={1.75} />
@@ -233,7 +233,7 @@ export default async function VisitPage({
                       <p className="flex flex-wrap items-baseline gap-x-2">
                         <span className={cx(key || e.type === "page_view" ? "font-medium" : "")}>{ACTIVITY_LABEL[e.type] ?? e.type}</span>
                         {e.source === "server" && (
-                          <span className="rounded-full bg-moss/10 px-1.5 text-[9px] uppercase tracking-wide text-moss" title="Confirmed by the server">
+                          <span className="rounded-full bg-ink/10 px-1.5 text-[9px] uppercase tracking-wide text-ink" title="Confirmed by the server">
                             confirmed
                           </span>
                         )}
@@ -243,7 +243,7 @@ export default async function VisitPage({
                         {e.href && (
                           <>
                             {" · "}
-                            <Link href={e.href} className="text-moss underline underline-offset-2">
+                            <Link href={e.href} className="text-ink underline underline-offset-2">
                               open
                             </Link>
                           </>
@@ -251,7 +251,7 @@ export default async function VisitPage({
                         {typeof order === "string" && can(admin, "orders.view") && (
                           <>
                             {" · "}
-                            <Link href={`/admin/orders?q=${encodeURIComponent(order)}`} className="text-moss underline underline-offset-2">
+                            <Link href={`/admin/orders?q=${encodeURIComponent(order)}`} className="text-ink underline underline-offset-2">
                               open order
                             </Link>
                           </>
@@ -309,7 +309,7 @@ export default async function VisitPage({
               {otherVisits === 0 ? "First visit from this browser." : `${otherVisits} other ${isAdminVisit ? "session" : "visit"}${otherVisits === 1 ? "" : "s"} from this browser.`}
             </p>
             {otherVisits > 0 && !isAdminVisit && (
-              <Link href={`/admin/activity?visitor=${visit.visitorId}&range=all`} className="mt-2 inline-block text-moss underline underline-offset-4">
+              <Link href={`/admin/activity?visitor=${visit.visitorId}&range=all`} className="mt-2 inline-block text-ink underline underline-offset-4">
                 See all visits
               </Link>
             )}

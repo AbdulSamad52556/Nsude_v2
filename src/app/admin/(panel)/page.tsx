@@ -52,7 +52,7 @@ export default async function AdminDashboard() {
           can(admin, "products.manage") && (
             <Link
               href="/admin/products/new"
-              className="rounded-md flex h-11 items-center gap-2 bg-moss px-5 text-xs uppercase tracking-widest2 text-paper hover:brightness-90"
+              className="rounded-md flex h-11 items-center gap-2 bg-ink px-5 text-xs uppercase tracking-widest2 text-paper hover:bg-graphite"
             >
               <Plus size={16} strokeWidth={1.5} /> New Product
             </Link>
@@ -70,7 +70,7 @@ export default async function AdminDashboard() {
           <Link
             key={s.label}
             href={s.href}
-            className="rounded-lg border border-taupe/30 p-5 transition-colors hover:border-moss"
+            className="rounded-lg border border-taupe/30 p-5 transition-colors hover:border-ink"
           >
             <p className="text-[11px] uppercase tracking-widest2 text-ash">{s.label}</p>
             <p className="mt-3 text-3xl font-medium">{s.value}</p>

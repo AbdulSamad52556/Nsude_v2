@@ -32,6 +32,14 @@ export function formatDuration(ms: number) {
   return `${Math.floor(m / 60)}h ${m % 60}m`;
 }
 
+/** "7:50 pm" today, "5 Oct, 7:50 pm" before that (India time). */
+export function whenShort(d: Date) {
+  const opts = { timeZone: "Asia/Kolkata" } as const;
+  const time = d.toLocaleTimeString("en-IN", { ...opts, hour: "numeric", minute: "2-digit" });
+  const day = (x: Date) => x.toLocaleDateString("en-IN", opts);
+  return day(d) === day(new Date()) ? time : `${d.toLocaleDateString("en-IN", { ...opts, day: "numeric", month: "short" })}, ${time}`;
+}
+
 export const timeIST = (d: Date) =>
   d.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", second: "2-digit", timeZone: "Asia/Kolkata" });
 

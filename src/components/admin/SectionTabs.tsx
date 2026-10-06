@@ -12,7 +12,7 @@ export function SectionTabs({ tabs, active }: { tabs: { href: string; label: str
           aria-current={active === t.href ? "page" : undefined}
           className={cx(
             "whitespace-nowrap rounded px-4 py-2 text-[11px] uppercase tracking-widest2 transition-colors",
-            active === t.href ? "bg-moss text-paper" : "text-graphite hover:bg-sand/30"
+            active === t.href ? "bg-ink text-paper" : "text-graphite hover:bg-sand/30"
           )}
         >
           {t.label}

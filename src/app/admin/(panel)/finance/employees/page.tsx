@@ -97,7 +97,7 @@ export default async function FinanceEmployeesPage() {
                       <span
                         className={cx(
                           "inline-block whitespace-nowrap rounded-full border px-2 py-0.5 text-xs",
-                          b.owes > 0 ? "border-rust/40 text-rust" : "border-moss bg-moss text-paper"
+                          b.owes > 0 ? "border-rust/40 text-rust" : "border-ink bg-ink text-paper"
                         )}
                       >
                         {b.owes > 0 ? `Owes ${formatPaise(b.owes)}` : `Owed ${formatPaise(-b.owes)}`}

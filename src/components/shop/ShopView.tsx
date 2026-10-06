@@ -266,7 +266,7 @@ export function ShopView({ initialFilters, initialPage }: { initialFilters: Filt
   }, [drawerOpen]);
 
   return (
-    <div className="mx-auto max-w-content px-5 pb-24 pt-24 md:px-10 md:pt-32">
+    <div className="px-5 pb-24 pt-24 md:px-10 md:pt-32">
       {/* Compact header: just the breadcrumb */}
       {/* Breadcrumb on larger screens only. */}
       <nav aria-label="Breadcrumb" className="mb-4 hidden text-[11px] uppercase tracking-widest2 text-ash md:block">
@@ -388,7 +388,7 @@ export function ShopView({ initialFilters, initialPage }: { initialFilters: Filt
                 >
                   <ArrowDownUp size={15} strokeWidth={1.5} />
                   Sort
-                  {filters.sort !== "featured" && <span className="h-1.5 w-1.5 rounded-full bg-moss" aria-label="(changed)" />}
+                  {filters.sort !== "featured" && <span className="h-1.5 w-1.5 rounded-full bg-ink" aria-label="(changed)" />}
                 </button>
               </div>
             </div>
@@ -441,10 +441,10 @@ export function ShopView({ initialFilters, initialPage }: { initialFilters: Filt
                                 aria-hidden
                                 className={cx(
                                   "flex h-4 w-4 items-center justify-center rounded-full border",
-                                  on ? "border-moss" : "border-graphite/30"
+                                  on ? "border-ink" : "border-graphite/30"
                                 )}
                               >
-                                {on && <span className="h-2 w-2 rounded-full bg-moss" />}
+                                {on && <span className="h-2 w-2 rounded-full bg-ink" />}
                               </span>
                             </button>
                           </li>

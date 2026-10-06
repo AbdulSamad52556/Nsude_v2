@@ -33,7 +33,7 @@ const columns = [
 export function Footer() {
   return (
     <footer className="bg-ink text-paper">
-      <div className="mx-auto max-w-content px-5 pb-10 pt-20 md:px-10">
+      <div className="px-5 pb-10 pt-20 md:px-10">
         <div className="grid grid-cols-1 gap-16 border-b border-graphite pb-16 md:grid-cols-[1.4fr_1fr_1fr_1.2fr]">
           <div className="flex flex-col justify-between gap-10">
             <div className="w-fit">

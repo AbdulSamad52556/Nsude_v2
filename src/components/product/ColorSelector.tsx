@@ -36,7 +36,7 @@ export function ColorSelector({ variants, selected, onChange }: ColorSelectorPro
               title={soldOut ? `${variant.name} — sold out` : variant.name}
               className={cx(
                 "relative aspect-[4/5] w-16 shrink-0 overflow-hidden rounded-md border-2 bg-bone transition-colors duration-300 md:w-[72px]",
-                isSelected ? "border-moss" : "border-transparent hover:border-graphite/30"
+                isSelected ? "border-ink" : "border-transparent hover:border-graphite/30"
               )}
             >
               {photo ? (
@@ -58,7 +58,7 @@ export function ColorSelector({ variants, selected, onChange }: ColorSelectorPro
               {soldOut && (
                 <span
                   aria-hidden
-                  className="absolute left-1/2 top-1/2 h-px w-[130%] -translate-x-1/2 -translate-y-1/2 -rotate-[52deg] bg-graphite/60"
+                  className="absolute left-1/2 top-1/2 h-px w-[130%] -translate-x-1/2 -translate-y-1/2 -rotate-[52deg] bg-ash/70"
                 />
               )}
             </button>

@@ -13,7 +13,16 @@ import { track } from "@/lib/track";
  * that color's code with replaceState — no page load, no extra history
  * entry — so the URL is always shareable and a reload keeps the color.
  */
-export function ProductView({ product, initialCode }: { product: Product; initialCode: string }) {
+export function ProductView({
+  product,
+  initialCode,
+  breadcrumb,
+}: {
+  product: Product;
+  initialCode: string;
+  /** Shown above the photos on large screens, starting where they start. */
+  breadcrumb?: React.ReactNode;
+}) {
   const [code, setCode] = useState(initialCode);
   const variant = findVariant(product, code);
 
@@ -41,14 +50,22 @@ export function ProductView({ product, initialCode }: { product: Product; initia
   );
 
   return (
-    <div className="mx-auto grid max-w-content grid-cols-1 gap-10 md:grid-cols-2 md:gap-16">
-      {/* Keyed by color so the gallery restarts on that color's first photo. */}
-      <ProductGallery
-        key={variant.code}
-        images={variant.images}
-        badge={variant.stock === 0 ? "sold-out" : product.newArrival ? "new" : null}
-      />
-      <div className="md:sticky md:top-28 md:h-fit">
+    <div className="mx-auto grid grid-cols-1 gap-10 md:grid-cols-2 md:gap-16">
+      {/* Large screens: the photos are capped to the screen height and sit
+          against the details; the breadcrumb lines up with them. */}
+      <div className="md:ml-auto md:w-full md:max-w-[calc((100svh-14rem)*0.8+6rem)]">
+        {breadcrumb && <div className="mb-8 hidden h-4 md:block">{breadcrumb}</div>}
+        {/* Keyed by color so the gallery restarts on that color's first photo. */}
+        <ProductGallery
+          key={variant.code}
+          images={variant.images}
+          badge={variant.stock === 0 ? "sold-out" : product.newArrival ? "new" : null}
+        />
+      </div>
+      {/* Pushed down by the breadcrumb's height so the name lines up with the
+          photo, and as wide as the photo column at most — so the space left of
+          the photos matches the space right of the details. */}
+      <div className="md:sticky md:top-28 md:h-fit md:w-full md:max-w-[calc((100svh-14rem)*0.8+6rem)] md:pt-12">
         <ProductInfo product={product} variant={variant} onColorChange={changeColor} />
       </div>
     </div>

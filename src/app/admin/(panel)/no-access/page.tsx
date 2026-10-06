@@ -10,7 +10,7 @@ export default async function NoAccessPage() {
   const home = firstAllowedPage(await pageAdmin());
   return (
     <div className="mx-auto mt-16 flex max-w-sm flex-col items-center text-center">
-      <span className="flex h-12 w-12 items-center justify-center rounded-full bg-sand/50 text-moss">
+      <span className="flex h-12 w-12 items-center justify-center rounded-full bg-sand/50 text-ink">
         <Lock size={20} strokeWidth={1.5} />
       </span>
       <h1 className="mt-5 text-xl font-medium uppercase tracking-tighter">No access</h1>
@@ -20,7 +20,7 @@ export default async function NoAccessPage() {
       {home && (
         <Link
           href={home}
-          className="mt-6 flex h-10 items-center rounded-md bg-moss px-5 text-xs uppercase tracking-widest2 text-paper hover:brightness-90"
+          className="mt-6 flex h-10 items-center rounded-md bg-ink px-5 text-xs uppercase tracking-widest2 text-paper hover:bg-graphite"
         >
           Go back
         </Link>

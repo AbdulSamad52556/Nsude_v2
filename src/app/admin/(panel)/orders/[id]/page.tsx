@@ -119,7 +119,7 @@ export default async function AdminOrderPage({ params }: { params: { id: string 
             )}
             {/* Money in / back out, entered in Finance. */}
             {order.moneyInAt && (
-              <p className="mt-2 text-xs text-moss">
+              <p className="mt-2 text-xs text-ink">
                 {formatPaise(order.total * 100)} in Finance
                 {can(admin, "finance.view") && (
                   <>

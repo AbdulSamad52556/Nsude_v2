@@ -33,7 +33,7 @@ export default function AboutPage() {
       </section>
 
       <section className="bg-paper px-5 py-28 md:px-10 md:py-36">
-        <div className="mx-auto grid max-w-content grid-cols-1 gap-12 md:grid-cols-12">
+        <div className="mx-auto grid grid-cols-1 gap-12 md:grid-cols-12">
           <Reveal className="md:col-span-5">
             <span className="text-xs uppercase tracking-widest2 text-ash">
               The Manifesto

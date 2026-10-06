@@ -86,7 +86,7 @@ function toFormState(p?: Product): FormState {
 const num = (v: string) => (v.trim() === "" ? NaN : Number(v));
 
 const inputClass =
-  "rounded-md h-11 w-full border border-taupe/50 bg-transparent px-3 text-sm focus:border-moss focus:outline-none";
+  "rounded-md h-11 w-full border border-taupe/50 bg-transparent px-3 text-sm focus:border-ink focus:outline-none";
 const labelClass = "mb-2 block text-[11px] uppercase tracking-widest2 text-ash";
 
 function FieldError({ message }: { message?: string }) {
@@ -276,7 +276,7 @@ export function ProductForm({ product }: { product?: Product }) {
                 set("variants", [...form.variants, { ...blankVariant("", "#8a8a84"), sizePrices: { ...form.variants[0]?.sizePrices } }])
               }
               disabled={form.variants.length >= 20}
-              className="mt-4 flex h-11 items-center gap-2 border border-dashed border-graphite/30 px-5 text-xs uppercase tracking-widest2 text-ash hover:border-moss hover:text-ink disabled:opacity-40"
+              className="mt-4 flex h-11 items-center gap-2 border border-dashed border-graphite/30 px-5 text-xs uppercase tracking-widest2 text-ash hover:border-ink hover:text-ink disabled:opacity-40"
             >
               <Plus size={14} /> Add color
             </button>
@@ -295,7 +295,7 @@ export function ProductForm({ product }: { product?: Product }) {
                       type="button"
                       aria-pressed={on}
                       onClick={() => set("sizes", on ? form.sizes.filter((x) => x !== s) : SIZES.filter((x) => x === s || form.sizes.includes(x)))}
-                      className={cx("h-10 w-12 border text-xs", on ? "border-moss bg-moss text-paper" : "border-taupe/50 hover:border-moss")}
+                      className={cx("h-10 w-12 border text-xs", on ? "border-ink bg-ink text-paper" : "border-taupe/50 hover:border-ink")}
                     >
                       {s}
                     </button>
@@ -324,7 +324,7 @@ export function ProductForm({ product }: { product?: Product }) {
                       <td className="py-1 pr-2">
                         <input
                           aria-label={`Measurement ${i + 1} label`}
-                          className="rounded-md h-9 w-full border border-taupe/50 bg-transparent px-2 focus:border-moss focus:outline-none"
+                          className="rounded-md h-9 w-full border border-taupe/50 bg-transparent px-2 focus:border-ink focus:outline-none"
                           value={m.label}
                           onChange={(e) => set("measurements", form.measurements.map((x, j) => (j === i ? { ...x, label: e.target.value } : x)))}
                         />
@@ -333,7 +333,7 @@ export function ProductForm({ product }: { product?: Product }) {
                         <td key={s} className="py-1 pr-2">
                           <input
                             aria-label={`${m.label || "Measurement"} ${s}`}
-                            className="rounded-md h-9 w-full min-w-[56px] border border-taupe/50 bg-transparent px-2 focus:border-moss focus:outline-none"
+                            className="rounded-md h-9 w-full min-w-[56px] border border-taupe/50 bg-transparent px-2 focus:border-ink focus:outline-none"
                             value={m.values[s]}
                             onChange={(e) =>
                               set("measurements", form.measurements.map((x, j) => (j === i ? { ...x, values: { ...x.values, [s]: e.target.value } } : x)))
@@ -454,7 +454,7 @@ export function ProductForm({ product }: { product?: Product }) {
           <button
             type="submit"
             disabled={saving || uploading > 0}
-            className="rounded-md flex h-11 items-center gap-2 bg-moss px-6 text-xs uppercase tracking-widest2 text-paper hover:brightness-90 disabled:opacity-60"
+            className="rounded-md flex h-11 items-center gap-2 bg-ink px-6 text-xs uppercase tracking-widest2 text-paper hover:bg-graphite disabled:opacity-60"
           >
             {saving && <Loader2 size={16} className="animate-spin" />}
             {isEdit ? "Save changes" : "Create product"}

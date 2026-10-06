@@ -116,8 +116,8 @@ export function FinanceEntryButton({
         }}
         className={
           variant === "primary"
-            ? "flex h-11 items-center gap-2 rounded-md bg-moss px-5 text-xs uppercase tracking-widest2 text-paper hover:brightness-90"
-            : "flex h-10 items-center gap-2 rounded-md border border-taupe/50 px-4 text-[11px] uppercase tracking-widest2 text-graphite hover:border-moss hover:text-moss"
+            ? "flex h-11 items-center gap-2 rounded-md bg-ink px-5 text-xs uppercase tracking-widest2 text-paper hover:bg-graphite"
+            : "flex h-10 items-center gap-2 rounded-md border border-taupe/50 px-4 text-[11px] uppercase tracking-widest2 text-graphite hover:border-ink hover:text-ink"
         }
       >
         <Plus size={15} strokeWidth={1.5} /> {label ?? "New entry"}
@@ -143,7 +143,7 @@ export function FinanceEntryButton({
                   }}
                   className={cx(
                     "rounded-md border px-3 py-1.5 text-[11px] uppercase tracking-widest2",
-                    type === t ? "border-moss bg-moss text-paper" : "border-taupe/50 text-graphite hover:border-moss"
+                    type === t ? "border-ink bg-ink text-paper" : "border-taupe/50 text-graphite hover:border-ink"
                   )}
                 >
                   {TAB_LABEL[t]}

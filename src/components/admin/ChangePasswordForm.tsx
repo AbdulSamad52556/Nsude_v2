@@ -7,7 +7,7 @@ import { ADMIN_MIN_PASSWORD } from "@/lib/adminPermissions";
 import { ApiError, apiFetch } from "./api";
 
 const inputClass =
-  "h-10 w-full rounded-md border border-taupe/50 bg-transparent px-3 pr-10 text-sm focus:border-moss focus:outline-none";
+  "h-10 w-full rounded-md border border-taupe/50 bg-transparent px-3 pr-10 text-sm focus:border-ink focus:outline-none";
 
 /** An admin user changes their own password (current one required). */
 export function ChangePasswordForm() {
@@ -68,7 +68,7 @@ export function ChangePasswordForm() {
             type="button"
             onClick={() => setShow((v) => !v)}
             aria-label={show ? "Hide passwords" : "Show passwords"}
-            className="absolute right-1 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center text-ash hover:text-moss"
+            className="absolute right-1 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center text-ash hover:text-ink"
           >
             {show ? <EyeOff size={15} strokeWidth={1.5} /> : <Eye size={15} strokeWidth={1.5} />}
           </button>
@@ -91,13 +91,13 @@ export function ChangePasswordForm() {
         <button
           type="submit"
           disabled={busy}
-          className="flex h-11 items-center gap-2 rounded-md bg-moss px-6 text-xs uppercase tracking-widest2 text-paper hover:brightness-90 disabled:opacity-60"
+          className="flex h-11 items-center gap-2 rounded-md bg-ink px-6 text-xs uppercase tracking-widest2 text-paper hover:bg-graphite disabled:opacity-60"
         >
           {busy && <Loader2 size={15} className="animate-spin" />}
           Change password
         </button>
         {message && (
-          <p role="status" className={cx("flex items-center gap-1.5 text-xs", message.tone === "ok" ? "text-moss" : "text-rust")}>
+          <p role="status" className={cx("flex items-center gap-1.5 text-xs", message.tone === "ok" ? "text-ink" : "text-rust")}>
             {message.tone === "ok" && <Check size={14} strokeWidth={2} />}
             {message.text}
           </p>

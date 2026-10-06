@@ -84,7 +84,7 @@ export function Pagination({
       {pages > 1 && (
         <nav aria-label="Pagination" className="flex items-center gap-1">
           {page > 1 ? (
-            <Link href={link(page - 1)} aria-label="Previous page" className={cx(step, "hover:border-moss hover:text-moss")}>
+            <Link href={link(page - 1)} aria-label="Previous page" className={cx(step, "hover:border-ink hover:text-ink")}>
               <ChevronLeft size={15} strokeWidth={1.5} />
             </Link>
           ) : (
@@ -105,7 +105,7 @@ export function Pagination({
                 aria-current={p === page ? "page" : undefined}
                 className={cx(
                   "flex h-8 min-w-[2rem] items-center justify-center rounded-md px-2 transition-colors",
-                  p === page ? "bg-moss text-paper" : "text-graphite hover:bg-sand/30 hover:text-ink"
+                  p === page ? "bg-ink text-paper" : "text-graphite hover:bg-sand/30 hover:text-ink"
                 )}
               >
                 {p}
@@ -113,7 +113,7 @@ export function Pagination({
             )
           )}
           {page < pages ? (
-            <Link href={link(page + 1)} aria-label="Next page" className={cx(step, "hover:border-moss hover:text-moss")}>
+            <Link href={link(page + 1)} aria-label="Next page" className={cx(step, "hover:border-ink hover:text-ink")}>
               <ChevronRight size={15} strokeWidth={1.5} />
             </Link>
           ) : (

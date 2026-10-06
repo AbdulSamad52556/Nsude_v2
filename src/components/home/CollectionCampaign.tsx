@@ -46,7 +46,7 @@ export function CollectionCampaign() {
           <MagneticButton>
             <Link
               href="/shop"
-              className="group inline-flex items-center gap-3 border-b border-paper pb-1 text-sm uppercase tracking-widest2 text-paper"
+              className="group inline-flex h-12 items-center gap-3 rounded-md bg-paper px-7 text-xs uppercase tracking-widest2 text-ink transition-colors hover:bg-sand"
             >
               Explore Collection
               <ArrowRight

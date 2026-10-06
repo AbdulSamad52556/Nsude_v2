@@ -26,7 +26,7 @@ export default function CartPage() {
 
   if (lines.length === 0) {
     return (
-      <div className="mx-auto flex max-w-content flex-col items-center gap-6 px-5 pb-24 pt-32 text-center md:pt-40">
+      <div className="mx-auto flex flex-col items-center gap-6 px-5 pb-24 pt-32 text-center md:pt-40">
         <ShoppingBag size={40} strokeWidth={1} className="text-ash" />
         <h1 className="text-display-md font-medium uppercase tracking-tighter text-ink">
           Your Bag
@@ -47,7 +47,7 @@ export default function CartPage() {
   }
 
   return (
-    <div className="mx-auto max-w-content px-5 pb-24 pt-32 md:px-10 md:pt-40">
+    <div className="px-5 pb-24 pt-32 md:px-10 md:pt-40">
       <h1 className="mb-14 text-display-lg font-medium uppercase tracking-tighter text-ink">
         Your Bag
       </h1>
@@ -165,7 +165,7 @@ export default function CartPage() {
 
           <Link
             href="/checkout"
-            className="group flex h-10 w-full items-center justify-center gap-2 rounded-md bg-moss md:h-14 text-sm uppercase tracking-widest2 text-paper transition-[filter] hover:brightness-90"
+            className="group flex h-10 w-full items-center justify-center gap-2 rounded-md bg-ink md:h-14 text-sm uppercase tracking-widest2 text-paper transition-colors hover:bg-graphite"
           >
             Checkout
             <ArrowRight size={16} strokeWidth={1.5} className="transition-transform duration-300 group-hover:translate-x-1" />

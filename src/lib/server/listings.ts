@@ -284,6 +284,33 @@ export async function getFeaturedCards(limit = 4) {
   return rows.map(toCard);
 }
 
+/** Newest products (one card each, default colour), "New" ones first. */
+export async function getNewArrivalCards(limit = 8) {
+  const rows = await db.listing.findMany({
+    where: { position: 0 },
+    orderBy: [{ newArrival: "desc" }, { productCreatedAt: "desc" }],
+    take: limit,
+    select: CARD_SELECT,
+  });
+  return rows.map(toCard);
+}
+
+/** Each category with how many products it has and a photo for its tile. */
+export async function getCategoryTiles() {
+  const groups = await db.listing.groupBy({ by: ["category"], where: { position: 0 }, _count: { _all: true } });
+  const tiles = await Promise.all(
+    groups.map(async (g) => {
+      const cover = await db.listing.findFirst({
+        where: { category: g.category, position: 0 },
+        orderBy: [{ featured: "desc" }, { productCreatedAt: "asc" }],
+        select: { images: true, productName: true },
+      });
+      return { category: g.category, count: g._count._all, image: cover?.images[0]?.src ?? null, alt: cover?.productName ?? g.category };
+    })
+  );
+  return tiles.sort((a, b) => b.count - a.count);
+}
+
 /** Default colorway of up to `limit` products with this fit. */
 export async function getCardsByFit(fit: string, limit = 3) {
   const rows = await db.listing.findMany({

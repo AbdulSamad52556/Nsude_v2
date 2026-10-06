@@ -54,7 +54,7 @@ export function ProductCard({
           </span>
         ) : (
           card.newArrival && (
-            <span className="absolute left-4 top-4 bg-moss px-2.5 py-1 text-[10px] uppercase tracking-widest2 text-paper">
+            <span className="absolute left-4 top-4 bg-ink px-2.5 py-1 text-[10px] uppercase tracking-widest2 text-paper">
               New
             </span>
           )

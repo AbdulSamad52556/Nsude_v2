@@ -69,7 +69,7 @@ export default async function FinanceLedgerPage({ searchParams }: { searchParams
   const chip = (active: boolean) =>
     cx(
       "rounded-md border px-3 py-1.5 text-[11px] uppercase tracking-widest2",
-      active ? "border-moss bg-moss text-paper" : "border-taupe/50 text-graphite hover:border-moss"
+      active ? "border-ink bg-ink text-paper" : "border-taupe/50 text-graphite hover:border-ink"
     );
 
   return (
@@ -83,7 +83,7 @@ export default async function FinanceLedgerPage({ searchParams }: { searchParams
 
       <div className="mb-6 grid grid-cols-3 gap-3">
         {[
-          { label: "Money in", value: formatPaise(moneyIn), tone: "text-moss" },
+          { label: "Money in", value: formatPaise(moneyIn), tone: "text-ink" },
           { label: "Money out", value: formatPaise(moneyOut), tone: "text-rust" },
           { label: "Net", value: formatPaise(moneyIn + moneyOut, { sign: true }) },
         ].map((s) => (
@@ -112,9 +112,9 @@ export default async function FinanceLedgerPage({ searchParams }: { searchParams
               name="q"
               defaultValue={q}
               placeholder="Details, order no., reference"
-              className="h-10 w-56 rounded-md border border-taupe/50 bg-transparent px-3 text-sm focus:border-moss focus:outline-none"
+              className="h-10 w-56 rounded-md border border-taupe/50 bg-transparent px-3 text-sm focus:border-ink focus:outline-none"
             />
-            <button type="submit" className="h-10 rounded-md bg-moss px-4 text-xs uppercase tracking-widest2 text-paper hover:brightness-90">
+            <button type="submit" className="h-10 rounded-md bg-ink px-4 text-xs uppercase tracking-widest2 text-paper hover:bg-graphite">
               Search
             </button>
           </form>
@@ -132,7 +132,7 @@ export default async function FinanceLedgerPage({ searchParams }: { searchParams
         {(employee || entryId) && (
           <p className="text-xs text-graphite">
             {entryId ? "Showing one entry." : `Showing ${employees.find((e) => e.email === employee)?.name}'s entries.`}{" "}
-            <Link href={href({ ...base, employee: undefined })} className="underline underline-offset-4 hover:text-moss">
+            <Link href={href({ ...base, employee: undefined })} className="underline underline-offset-4 hover:text-ink">
               Show all
             </Link>
           </p>
@@ -175,7 +175,7 @@ export default async function FinanceLedgerPage({ searchParams }: { searchParams
                           .filter(Boolean)
                           .join(" · ")}
                         {e.orderNumber && e.orderId && (
-                          <Link href={`/admin/orders/${e.orderId}`} className="font-mono text-moss underline underline-offset-2">
+                          <Link href={`/admin/orders/${e.orderId}`} className="font-mono text-ink underline underline-offset-2">
                             {e.orderNumber}
                           </Link>
                         )}
@@ -193,7 +193,7 @@ export default async function FinanceLedgerPage({ searchParams }: { searchParams
                     <td
                       className={cx(
                         "whitespace-nowrap p-3 text-right font-medium",
-                        e.voidedAt ? "line-through" : e.amount >= 0 ? "text-moss" : "text-rust"
+                        e.voidedAt ? "line-through" : e.amount >= 0 ? "text-ink" : "text-rust"
                       )}
                     >
                       {formatPaise(e.amount, { sign: true })}
