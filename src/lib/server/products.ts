@@ -34,6 +34,7 @@ export function toProduct(p: DbProduct): Product {
     })),
     sizes: p.sizes as Size[],
     category: p.category as Category,
+    subcategory: p.subcategory ?? null,
     material: p.material,
     fit: p.fit as Fit,
     weight: p.weight,

@@ -1,7 +1,7 @@
 // Input schemas shared by the admin forms (client) and admin API (server),
 // so both sides agree on what a valid product / hero slide looks like.
 import { z } from "zod";
-import { CATEGORIES, FITS, SIZES } from "./types";
+import { FITS, SIZES } from "./types";
 import { CODE_PATTERN } from "./codes";
 
 const imageSchema = z.object({
@@ -51,7 +51,8 @@ export const productInputSchema = z
     story: z.string().trim().max(2000).default(""),
     variants: z.array(variantSchema).min(1, "Add at least one color").max(20),
     sizes: z.array(z.enum(SIZES)).min(1, "Select at least one size"),
-    category: z.enum(CATEGORIES),
+    category: z.string().trim().min(1, "Choose a category").max(40),
+    subcategory: z.string().trim().max(40).nullable().optional(),
     material: z.string().trim().max(120).default(""),
     fit: z.enum(FITS),
     weight: z.string().trim().max(40).default(""),

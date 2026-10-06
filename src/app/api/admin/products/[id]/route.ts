@@ -9,6 +9,7 @@ import { syncProductListings } from "@/lib/server/listings";
 import { isObjectId, revalidateStorefront } from "@/lib/server/revalidate";
 import { fieldErrors, productInputSchema, withDerivedPrice } from "@/lib/validation";
 import { logStockChange } from "@/lib/server/stockLedger";
+import { checkProductCategory } from "@/lib/server/productCategories";
 
 type Params = { params: { id: string } };
 
@@ -39,7 +40,14 @@ export async function PUT(request: NextRequest, { params }: Params) {
     );
   }
 
-  const input = withDerivedPrice(parsed.data);
+  const badCategory = await checkProductCategory(parsed.data.category, parsed.data.subcategory, existing);
+  if (badCategory) {
+    return NextResponse.json(
+      { error: "Please fix the highlighted fields", fields: { [badCategory.field]: badCategory.message } },
+      { status: 400 }
+    );
+  }
+  const input = withDerivedPrice({ ...parsed.data, subcategory: parsed.data.subcategory || null });
 
   // Existing colors keep their product codes; new colors get fresh ones.
   // (Retry on the rare race where another save took a new code first.)

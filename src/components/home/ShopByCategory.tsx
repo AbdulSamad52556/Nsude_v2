@@ -3,9 +3,14 @@ import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
 import { Reveal } from "@/components/ui/Reveal";
 
-type Tile = { category: string; count: number; image: string | null; alt: string };
-
-const slug = (v: string) => v.toLowerCase().replace(/\s+/g, "-");
+type Tile = {
+  category: string;
+  key: string;
+  count: number;
+  image: string | null;
+  alt: string;
+  subcategories: { name: string; key: string }[];
+};
 
 /** One tile per category, with a photo and how many pieces it has. */
 export function ShopByCategory({ tiles }: { tiles: Tile[] }) {
@@ -20,7 +25,7 @@ export function ShopByCategory({ tiles }: { tiles: Tile[] }) {
         {tiles.map((t, i) => (
           <Reveal key={t.category} delay={i * 0.08}>
             <Link
-              href={`/shop?category=${slug(t.category)}`}
+              href={`/shop?category=${t.key}`}
               data-cursor="Shop"
               className="group relative block aspect-[4/3] overflow-hidden rounded-md bg-sand/40 md:aspect-[16/10]"
             >
@@ -46,6 +51,20 @@ export function ShopByCategory({ tiles }: { tiles: Tile[] }) {
                 </span>
               </div>
             </Link>
+            {/* Straight to a sub-category. */}
+            {t.subcategories.length > 0 && (
+              <div className="mt-3 flex flex-wrap gap-2">
+                {t.subcategories.map((s) => (
+                  <Link
+                    key={s.key}
+                    href={`/shop?category=${t.key}&sub=${s.key}`}
+                    className="rounded-full border border-taupe/50 px-3.5 py-1.5 text-[11px] uppercase tracking-widest2 text-graphite transition-colors hover:border-ink hover:bg-ink hover:text-paper"
+                  >
+                    {s.name}
+                  </Link>
+                ))}
+              </div>
+            )}
           </Reveal>
         ))}
       </div>

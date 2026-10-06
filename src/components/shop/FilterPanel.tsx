@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Check } from "lucide-react";
-import { CATEGORIES, FITS, SIZES } from "@/lib/types";
+import { FITS, SIZES, type CategoryTreeNode } from "@/lib/types";
 import type { ShopFacets } from "@/lib/server/listings";
 import { cx } from "@/lib/utils";
 import { PRICE_BANDS, type Filters } from "./filters";
@@ -10,6 +10,8 @@ import { PRICE_BANDS, type Filters } from "./filters";
 interface Props {
   /** Option counts from the server for the current filters. */
   facets: ShopFacets;
+  /** Shown categories (admin order) with their sub-categories. */
+  categories: CategoryTreeNode[];
   filters: Filters;
   onChange: (next: Filters) => void;
 }
@@ -81,39 +83,69 @@ function OptionList<T>({
  * active filter (so counts never read 0 just because of the same group).
  * The counts are computed in the database and arrive with each result page.
  */
-export function FilterPanel({ facets, filters, onChange }: Props) {
+export function FilterPanel({ facets, categories, filters, onChange }: Props) {
   const allCategories = Object.values(facets.category).reduce((a, b) => a + b, 0);
 
   return (
     <div>
       <Group title="Category">
         <OptionList
-          items={[null, ...CATEGORIES]}
-          itemKey={(category) => category ?? "all"}
-          isSelected={(category) => filters.category === category}
-          render={(category) => {
-            const on = filters.category === category;
-            const n = category === null ? allCategories : facets.category[category] ?? 0;
+          items={[null, ...categories]}
+          itemKey={(c) => c?.key ?? "all"}
+          isSelected={(c) => filters.category === (c?.key ?? null)}
+          render={(c) => {
+            const key = c?.key ?? null;
+            const on = filters.category === key;
+            const n = c === null ? allCategories : facets.category[c.key] ?? 0;
+            const subs = on && c ? c.children : [];
             return (
-              <label className="flex cursor-pointer items-center gap-3 text-sm text-graphite hover:text-ink">
-                <span
-                  className={cx(
-                    "flex h-4 w-4 shrink-0 items-center justify-center rounded-full border transition-colors",
-                    on ? "border-ink" : "border-graphite/30"
-                  )}
-                >
-                  {on && <span className="h-2 w-2 rounded-full bg-ink" />}
-                </span>
-                <input
-                  type="radio"
-                  name="shop-category"
-                  className="sr-only"
-                  checked={on}
-                  onChange={() => onChange({ ...filters, category })}
-                />
-                <span className={cx("flex-1", on && "text-ink")}>{category ?? "All"}</span>
-                <span className="text-xs text-ash">{n}</span>
-              </label>
+              <div>
+                <label className="flex cursor-pointer items-center gap-3 text-sm text-graphite hover:text-ink">
+                  <span
+                    className={cx(
+                      "flex h-4 w-4 shrink-0 items-center justify-center rounded-full border transition-colors",
+                      on ? "border-ink" : "border-graphite/30"
+                    )}
+                  >
+                    {on && <span className="h-2 w-2 rounded-full bg-ink" />}
+                  </span>
+                  <input
+                    type="radio"
+                    name="shop-category"
+                    className="sr-only"
+                    checked={on}
+                    onChange={() => onChange({ ...filters, category: key, subcategory: null })}
+                  />
+                  <span className={cx("flex-1", on && "text-ink")}>{c?.name ?? "All"}</span>
+                  <span className="text-xs text-ash">{n}</span>
+                </label>
+                {/* The chosen category's sub-categories, indented under it. */}
+                {subs.length > 0 && (
+                  <ul className="ml-[7px] mt-2 flex flex-col gap-2 border-l border-taupe/40 pl-4">
+                    {[null, ...subs].map((s) => {
+                      const subOn = filters.subcategory === (s?.key ?? null);
+                      const count = s === null ? n : facets.subcategory[s.key] ?? 0;
+                      return (
+                        <li key={s?.key ?? "all-sub"}>
+                          <button
+                            type="button"
+                            onClick={() => onChange({ ...filters, subcategory: s?.key ?? null })}
+                            aria-pressed={subOn}
+                            className={cx(
+                              "flex w-full items-center gap-2 text-left text-[13px] transition-colors",
+                              subOn ? "text-ink" : "text-graphite hover:text-ink"
+                            )}
+                          >
+                            <span className={cx("h-1.5 w-1.5 rounded-full", subOn ? "bg-ink" : "bg-transparent")} />
+                            <span className="flex-1">{s?.name ?? `All ${c!.name.toLowerCase()}`}</span>
+                            <span className="text-xs text-ash">{count}</span>
+                          </button>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+              </div>
             );
           }}
         />

@@ -4,24 +4,75 @@ import { db } from "@/lib/server/db";
 import { requireAdmin } from "@/lib/server/auth";
 import { adminActor, recordAudit } from "@/lib/server/audit";
 import { isObjectId } from "@/lib/server/revalidate";
+import { deleteAsset } from "@/lib/server/cloudinary";
+import { MAX_ATTACHMENTS, attachmentSchema } from "@/lib/server/finance";
 import { FINANCE_TYPES, formatPaise, type FinanceType } from "@/lib/finance";
 
-const schema = z.object({ voidReason: z.string().trim().min(3, "Say why").max(200) });
+const schema = z.union([
+  /** Void an entry made by mistake. */
+  z.object({ voidReason: z.string().trim().min(3, "Say why").max(200) }),
+  /** Attach bills / receipts later. */
+  z.object({ attach: z.array(attachmentSchema).min(1).max(MAX_ATTACHMENTS) }),
+  /** Remove one attached bill (wrong file). */
+  z.object({ removeAttachment: z.string().max(300) }),
+]);
 
 /**
- * Voids an entry made by mistake: it stays in the ledger, crossed out, but
- * no longer counts. COD cash, admin-order payments and refunds go back to
- * "to collect" / "due" on their order so they can be entered again.
+ * Changes to an entry after it's saved: void it (it stays in the ledger,
+ * crossed out, but no longer counts — COD cash, admin-order payments and
+ * refunds go back to "to collect" / "due" on their order so they can be
+ * entered again), or add / remove its bills.
  */
 export async function PATCH(request: NextRequest, { params }: { params: { id: string } }) {
   const { error, admin } = await requireAdmin("finance.manage");
   if (error) return error;
   if (!isObjectId(params.id)) return NextResponse.json({ error: "Entry not found" }, { status: 404 });
   const parsed = schema.safeParse(await request.json().catch(() => null));
-  if (!parsed.success) return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "Say why" }, { status: 400 });
+  if (!parsed.success) return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "Invalid request" }, { status: 400 });
 
   const entry = await db.financeEntry.findUnique({ where: { id: params.id } });
   if (!entry) return NextResponse.json({ error: "Entry not found" }, { status: 404 });
+  const label = `${FINANCE_TYPES[entry.type as FinanceType]?.label ?? entry.type} · ${formatPaise(entry.amount, { sign: true })}`;
+  const actor = adminActor(admin.email);
+  const body = parsed.data;
+
+  // --- bills ---------------------------------------------------------------
+  if ("attach" in body) {
+    const attachments = entry.attachments ?? [];
+    if (attachments.length + body.attach.length > MAX_ATTACHMENTS) {
+      return NextResponse.json({ error: `Up to ${MAX_ATTACHMENTS} files per entry.` }, { status: 400 });
+    }
+    await db.financeEntry.update({ where: { id: entry.id }, data: { attachments: [...attachments, ...body.attach] } });
+    await recordAudit({
+      actor,
+      entity: "finance",
+      entityId: entry.id,
+      entityLabel: label,
+      action: body.attach.length === 1 ? "Bill attached" : "Bills attached",
+      changes: body.attach.map((a) => ({ field: "Bill", from: "—", to: a.name })),
+    });
+    return NextResponse.json({ ok: true });
+  }
+  if ("removeAttachment" in body) {
+    const file = (entry.attachments ?? []).find((a) => a.publicId === body.removeAttachment);
+    if (!file) return NextResponse.json({ error: "File not found" }, { status: 404 });
+    await db.financeEntry.update({
+      where: { id: entry.id },
+      data: { attachments: entry.attachments.filter((a) => a.publicId !== file.publicId) },
+    });
+    await deleteAsset(file.publicId, file.resourceType);
+    await recordAudit({
+      actor,
+      entity: "finance",
+      entityId: entry.id,
+      entityLabel: label,
+      action: "Bill removed",
+      changes: [{ field: "Bill", from: file.name, to: "—" }],
+    });
+    return NextResponse.json({ ok: true });
+  }
+
+  // --- void ----------------------------------------------------------------
   if (entry.voidedAt) return NextResponse.json({ error: "Already voided." }, { status: 409 });
   if (entry.type === "order_payment") {
     return NextResponse.json(
@@ -29,10 +80,9 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
       { status: 400 }
     );
   }
-
   await db.financeEntry.update({
     where: { id: entry.id },
-    data: { voidedAt: new Date(), voidedBy: admin.email, voidReason: parsed.data.voidReason },
+    data: { voidedAt: new Date(), voidedBy: admin.email, voidReason: body.voidReason },
   });
   if (entry.orderId && (entry.type === "cod_received" || entry.type === "order_received")) {
     await db.order.update({
@@ -43,17 +93,15 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
   if (entry.orderId && entry.type === "refund") {
     await db.order.update({ where: { id: entry.orderId }, data: { refundedAt: null, paymentStatus: "refund_due" } });
   }
-
-  const label = FINANCE_TYPES[entry.type as FinanceType]?.label ?? entry.type;
   await recordAudit({
-    actor: adminActor(admin.email),
+    actor,
     entity: "finance",
     entityId: entry.id,
-    entityLabel: `${label} · ${formatPaise(entry.amount, { sign: true })}`,
+    entityLabel: label,
     action: "Entry voided",
     changes: [
       { field: "Status", from: "Counted", to: "Voided" },
-      { field: "Reason", from: "—", to: parsed.data.voidReason },
+      { field: "Reason", from: "—", to: body.voidReason },
     ],
   });
   return NextResponse.json({ ok: true });

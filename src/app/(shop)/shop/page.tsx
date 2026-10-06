@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { ShopView } from "@/components/shop/ShopView";
 import { getShopPage } from "@/lib/server/listings";
+import { productCategoryTree } from "@/lib/server/productCategories";
 import { parseFilters } from "@/components/shop/filters";
 
 export const metadata: Metadata = {
@@ -19,9 +20,9 @@ export default async function ShopPage({ searchParams }: { searchParams: SearchP
     Object.entries(searchParams).flatMap(([k, v]) => (typeof v === "string" ? [[k, v]] : []))
   );
   const filters = parseFilters(params);
-  const initialPage = await getShopPage(filters, 1);
+  const [initialPage, categories] = await Promise.all([getShopPage(filters, 1), productCategoryTree({ activeOnly: true })]);
 
   // Keyed by the filters so a client-side navigation to a different shop
   // URL starts fresh instead of keeping the old results.
-  return <ShopView key={params.toString()} initialFilters={filters} initialPage={initialPage} />;
+  return <ShopView key={params.toString()} initialFilters={filters} initialPage={initialPage} categories={categories} />;
 }

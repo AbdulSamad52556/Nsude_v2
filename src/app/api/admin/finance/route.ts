@@ -3,8 +3,9 @@ import { z } from "zod";
 import { db } from "@/lib/server/db";
 import { requireAdmin } from "@/lib/server/auth";
 import { adminActor } from "@/lib/server/audit";
-import { LIVE, auditEntry, entryDate, financeEmployees } from "@/lib/server/finance";
-import { EXPENSE_CATEGORIES, FINANCE_TYPES, MANUAL_TYPES, parseRupees } from "@/lib/finance";
+import { isObjectId } from "@/lib/server/revalidate";
+import { LIVE, MAX_ATTACHMENTS, attachmentSchema, auditEntry, entryDate, financeEmployees } from "@/lib/server/finance";
+import { FINANCE_TYPES, MANUAL_TYPES, parseRupees } from "@/lib/finance";
 import { fieldErrors } from "@/lib/validation";
 
 const schema = z.object({
@@ -14,10 +15,15 @@ const schema = z.object({
   direction: z.enum(["in", "out"]).default("in"),
   date: z.string().max(10).optional(),
   method: z.string().max(20).optional(),
-  category: z.string().max(40).optional(),
+  /** Expense category (and optional sub-category), by id. */
+  categoryId: z.string().optional(),
+  subcategoryId: z.string().optional(),
+  /** Who was paid / who paid us. */
+  vendor: z.string().trim().max(100).optional(),
   description: z.string().trim().max(300).optional(),
   employeeEmail: z.string().trim().toLowerCase().max(200).optional(),
   reference: z.string().trim().max(100).optional(),
+  attachments: z.array(attachmentSchema).max(MAX_ATTACHMENTS).default([]),
 });
 
 /** Adds a money entry by hand: opening balance, expense, employee money, other income or a correction. */
@@ -39,8 +45,19 @@ export async function POST(request: NextRequest) {
     employee = (await financeEmployees()).find((e) => e.email === b.employeeEmail);
     if (!employee) fields.employeeEmail = "Choose who took or added the money";
   }
+
+  // Expenses: a shown category, and optionally one of its shown sub-categories.
+  let category: { id: string; name: string } | null = null;
+  let subcategory: { id: string; name: string } | null = null;
   if (b.type === "expense") {
-    if (!b.category || !(EXPENSE_CATEGORIES as readonly string[]).includes(b.category)) fields.category = "Choose a category";
+    const cat = b.categoryId && isObjectId(b.categoryId) ? await db.expenseCategory.findUnique({ where: { id: b.categoryId } }) : null;
+    if (!cat || cat.parentId || !cat.active) fields.categoryId = "Choose a category";
+    else category = cat;
+    if (cat && b.subcategoryId) {
+      const sub = isObjectId(b.subcategoryId) ? await db.expenseCategory.findUnique({ where: { id: b.subcategoryId } }) : null;
+      if (!sub || sub.parentId !== cat.id || !sub.active) fields.subcategoryId = "Choose a sub-category";
+      else subcategory = sub;
+    }
     if (!b.description) fields.description = "What was it for?";
   }
   if ((b.type === "income" || b.type === "adjustment") && !b.description) fields.description = "Add a short note";
@@ -63,11 +80,16 @@ export async function POST(request: NextRequest) {
       type: b.type,
       amount: sign * paise!,
       method: b.method || null,
-      category: b.type === "expense" ? b.category! : null,
+      category: category?.name ?? null,
+      categoryId: category?.id ?? null,
+      subcategory: subcategory?.name ?? null,
+      subcategoryId: subcategory?.id ?? null,
+      vendor: b.vendor || null,
       description,
       employeeEmail: employee?.email ?? null,
       employeeName: employee?.name ?? null,
       reference: b.reference || null,
+      attachments: b.attachments,
       createdBy: admin.email,
     },
   });

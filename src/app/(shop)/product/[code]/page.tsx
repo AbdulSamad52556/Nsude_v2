@@ -7,7 +7,7 @@ import { db } from "@/lib/server/db";
 import { ProductView } from "@/components/product/ProductView";
 import { ProductGrid } from "@/components/product/ProductGrid";
 import { SectionHeading } from "@/components/ui/SectionHeading";
-import { priceRange, productHref, totalStock } from "@/lib/types";
+import { categoryKey, priceRange, productHref, totalStock } from "@/lib/types";
 
 /** How many product pages to pre-render at build time. */
 const PRERENDER_LIMIT = 200;
@@ -100,6 +100,21 @@ export default async function ProductPage({ params }: { params: { code: string }
               Shop
             </Link>
             <span className="mx-2">/</span>
+            <Link href={`/shop?category=${categoryKey(product.category)}`} className="hover:text-ink">
+              {product.category}
+            </Link>
+            <span className="mx-2">/</span>
+            {product.subcategory && (
+              <>
+                <Link
+                  href={`/shop?category=${categoryKey(product.category)}&sub=${categoryKey(product.subcategory)}`}
+                  className="hover:text-ink"
+                >
+                  {product.subcategory}
+                </Link>
+                <span className="mx-2">/</span>
+              </>
+            )}
             <span className="text-ink">{product.name}</span>
           </nav>
         }

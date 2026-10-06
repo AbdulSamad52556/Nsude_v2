@@ -8,6 +8,7 @@ import { FINANCE_TABS, FINANCE_TYPES, formatPaise, type FinanceType } from "@/li
 import { LIVE, codToCollectWhere, employeeBalances, financeEmployees, refundsDueWhere, sumPaise } from "@/lib/server/finance";
 import { AdminPageHeader } from "@/components/admin/AdminShell";
 import { SectionTabs } from "@/components/admin/SectionTabs";
+import { expenseCategoryTree, knownVendors } from "@/lib/server/expenseCategories";
 import { FinanceEntryButton } from "@/components/admin/FinanceEntryButton";
 import { OrderMoneyButton } from "@/components/admin/FinanceActions";
 import { auditTime } from "@/components/admin/AuditList";
@@ -55,13 +56,14 @@ export default async function FinancePage() {
   const maxCat = Math.max(1, ...categories.map((c) => c.paise));
   const monthName = new Date().toLocaleDateString("en-IN", { month: "long", timeZone: "Asia/Kolkata" });
   const people = employees.map((e) => ({ email: e.email, name: e.name }));
+  const [categoryTree, vendors] = canManage ? await Promise.all([expenseCategoryTree(), knownVendors()]) : [[], []];
 
   return (
     <div>
       <AdminPageHeader
         title="Finance"
         subtitle="Everything that moves the company's money: orders, refunds, expenses and employees."
-        action={canManage && hasOpening > 0 ? <FinanceEntryButton employees={people} /> : undefined}
+        action={canManage && hasOpening > 0 ? <FinanceEntryButton employees={people} categories={categoryTree} vendors={vendors} /> : undefined}
       />
       <SectionTabs tabs={FINANCE_TABS} active="/admin/finance" />
 

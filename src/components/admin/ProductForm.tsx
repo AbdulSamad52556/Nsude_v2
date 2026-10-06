@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
 import { Loader2, Plus, X } from "lucide-react";
-import { CATEGORIES, FITS, SIZES, type Product, type Size } from "@/lib/types";
+import { FITS, SIZES, type CategoryTreeNode, type Product, type Size } from "@/lib/types";
 import { fieldErrors, productInputSchema } from "@/lib/validation";
 import { cx } from "@/lib/utils";
 import { ApiError, apiFetch } from "./api";
@@ -31,6 +31,8 @@ interface FormState {
   variants: VariantDraft[];
   sizes: Size[];
   category: Product["category"];
+  /** "" = none. */
+  subcategory: string;
   material: string;
   fit: Product["fit"];
   weight: string;
@@ -73,7 +75,8 @@ function toFormState(p?: Product): FormState {
         }))
       : [blankVariant("Black")],
     sizes: p?.sizes ?? [...SIZES],
-    category: p?.category ?? "T-Shirts",
+    category: p?.category ?? "",
+    subcategory: p?.subcategory ?? "",
     material: p?.material ?? "",
     fit: p?.fit ?? "Regular",
     weight: p?.weight ?? "",
@@ -103,7 +106,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   );
 }
 
-export function ProductForm({ product }: { product?: Product }) {
+export function ProductForm({ product, categories }: { product?: Product; categories: CategoryTreeNode[] }) {
   const router = useRouter();
   const isEdit = Boolean(product);
   const [form, setForm] = useState<FormState>(() => toFormState(product));
@@ -171,6 +174,7 @@ export function ProductForm({ product }: { product?: Product }) {
         ),
       })),
       measurements: form.measurements.filter((m) => m.label.trim()),
+      subcategory: form.subcategory || null,
     };
 
     const parsed = productInputSchema.safeParse(payload);
@@ -413,10 +417,45 @@ export function ProductForm({ product }: { product?: Product }) {
             <div className="flex flex-col gap-4">
               <div>
                 <label htmlFor="category" className={labelClass}>Category</label>
-                <Select id="category" value={form.category} onChange={(e) => set("category", e.target.value as FormState["category"])}>
-                  {CATEGORIES.map((c) => <option key={c}>{c}</option>)}
+                <Select
+                  id="category"
+                  value={form.category}
+                  onChange={(e) => setForm((f) => ({ ...f, category: e.target.value, subcategory: "" }))}
+                >
+                  <option value="">Choose…</option>
+                  {/* Hidden categories only show if this product is already in one. */}
+                  {categories
+                    .filter((c) => c.active || c.name === product?.category)
+                    .map((c) => (
+                      <option key={c.id} value={c.name}>
+                        {c.name}
+                        {!c.active ? " (hidden)" : ""}
+                      </option>
+                    ))}
                 </Select>
+                {err("category") && <p className="mt-1 text-xs text-rust">{err("category")}</p>}
               </div>
+              {(() => {
+                const subs = (categories.find((c) => c.name === form.category)?.children ?? []).filter(
+                  (s) => s.active || s.name === product?.subcategory
+                );
+                if (subs.length === 0) return null;
+                return (
+                  <div>
+                    <label htmlFor="subcategory" className={labelClass}>Sub-category (optional)</label>
+                    <Select id="subcategory" value={form.subcategory} onChange={(e) => set("subcategory", e.target.value)}>
+                      <option value="">None</option>
+                      {subs.map((s) => (
+                        <option key={s.id} value={s.name}>
+                          {s.name}
+                          {!s.active ? " (hidden)" : ""}
+                        </option>
+                      ))}
+                    </Select>
+                    {err("subcategory") && <p className="mt-1 text-xs text-rust">{err("subcategory")}</p>}
+                  </div>
+                );
+              })()}
               <div>
                 <label htmlFor="fit" className={labelClass}>Fit</label>
                 <Select id="fit" value={form.fit} onChange={(e) => set("fit", e.target.value as FormState["fit"])}>

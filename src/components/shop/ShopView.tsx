@@ -12,6 +12,7 @@ import { ProductGrid } from "@/components/product/ProductGrid";
 import { cx } from "@/lib/utils";
 import { FilterPanel } from "./FilterPanel";
 import { track } from "@/lib/track";
+import type { CategoryTreeNode } from "@/lib/types";
 import {
   EMPTY_FILTERS,
   PRICE_BANDS,
@@ -100,7 +101,16 @@ function SortMenu({ value, onChange }: { value: Filters["sort"]; onChange: (v: F
  * filters and the cards loaded so far. The server renders the first page,
  * so the initial HTML is complete and fast.
  */
-export function ShopView({ initialFilters, initialPage }: { initialFilters: Filters; initialPage: ShopPage }) {
+export function ShopView({
+  initialFilters,
+  initialPage,
+  categories,
+}: {
+  initialFilters: Filters;
+  initialPage: ShopPage;
+  /** Shown categories with their sub-categories (admin-managed). */
+  categories: CategoryTreeNode[];
+}) {
   const pathname = usePathname();
 
   // The filters are mirrored into the URL (replaceState: no navigation, no
@@ -198,11 +208,15 @@ export function ShopView({ initialFilters, initialPage }: { initialFilters: Filt
   const activeCount = activeFilterCount(filters);
   const clearAll = () => setFilters({ ...EMPTY_FILTERS, sort: filters.sort });
 
+  const currentCategory = categories.find((c) => c.key === filters.category) ?? null;
+  const currentSub = currentCategory?.children.find((s) => s.key === filters.subcategory) ?? null;
+
   // Removable chips for every active filter.
   const chips: { label: string; remove: () => void }[] = [
-    ...(filters.category
-      ? [{ label: filters.category, remove: () => setFilters({ ...filters, category: null }) }]
+    ...(currentCategory
+      ? [{ label: currentCategory.name, remove: () => setFilters({ ...filters, category: null, subcategory: null }) }]
       : []),
+    ...(currentSub ? [{ label: currentSub.name, remove: () => setFilters({ ...filters, subcategory: null }) }] : []),
     ...filters.fits.map((fit) => ({
       label: fit,
       remove: () => setFilters({ ...filters, fits: filters.fits.filter((f) => f !== fit) }),
@@ -276,7 +290,9 @@ export function ShopView({ initialFilters, initialPage }: { initialFilters: Filt
       </nav>
       {/* No visible heading or counts (by design); the title stays for
           screen readers and search engines. */}
-      <h1 className="sr-only">{filters.category ?? "Shop all T-shirts"}</h1>
+      <h1 className="sr-only">
+        {currentSub ? `${currentCategory!.name} · ${currentSub.name}` : currentCategory?.name ?? "Shop all T-shirts"}
+      </h1>
 
       <div className="grid grid-cols-1 gap-10 md:mt-8 lg:grid-cols-[220px_1fr] xl:grid-cols-[240px_1fr]">
         {/* Desktop: sticky filter sidebar */}
@@ -291,11 +307,37 @@ export function ShopView({ initialFilters, initialPage }: { initialFilters: Filt
                 </button>
               )}
             </div>
-            <FilterPanel facets={facets} filters={filters} onChange={setFilters} />
+            <FilterPanel facets={facets} categories={categories} filters={filters} onChange={setFilters} />
           </div>
         </aside>
 
         <div className="min-w-0">
+          {/* In a category with sub-categories: quick chips to narrow it down. */}
+          {currentCategory && currentCategory.children.length > 0 && (
+            <div className="-mx-5 mb-6 flex items-center gap-2 overflow-x-auto px-5 [scrollbar-width:none] md:-mx-10 md:px-10 lg:mx-0 lg:flex-wrap lg:overflow-visible lg:px-0 [&::-webkit-scrollbar]:hidden">
+              <span className="mr-1 shrink-0 text-[11px] uppercase tracking-widest2 text-ink">{currentCategory.name}</span>
+              {[null, ...currentCategory.children].map((s) => {
+                const on = filters.subcategory === (s?.key ?? null);
+                const n = s ? facets.subcategory[s.key] ?? 0 : undefined;
+                return (
+                  <button
+                    key={s?.key ?? "all"}
+                    type="button"
+                    onClick={() => setFilters({ ...filters, subcategory: s?.key ?? null })}
+                    aria-pressed={on}
+                    className={cx(
+                      "shrink-0 whitespace-nowrap rounded-full border px-4 py-1.5 text-[11px] uppercase tracking-widest2 transition-colors",
+                      on ? "border-ink bg-ink text-paper" : "border-taupe/50 text-graphite hover:border-ink hover:text-ink"
+                    )}
+                  >
+                    {s?.name ?? "All"}
+                    {n !== undefined && <span className={cx("ml-1.5", on ? "text-paper/60" : "text-ash")}>{n}</span>}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
           {/* Desktop toolbar: active chips + sort. (Phones use the bottom bar.) */}
           <div className="mb-8 hidden items-center justify-between gap-4 lg:flex">
             <div className="flex flex-wrap items-center gap-2">{chipButtons}</div>
@@ -481,7 +523,7 @@ export function ShopView({ initialFilters, initialPage }: { initialFilters: Filt
                 </button>
               </div>
               <div className="flex-1 overflow-y-auto px-5 py-6">
-                <FilterPanel facets={facets} filters={filters} onChange={setFilters} />
+                <FilterPanel facets={facets} categories={categories} filters={filters} onChange={setFilters} />
               </div>
               <div className="border-t border-graphite/10 p-4">
                 <button

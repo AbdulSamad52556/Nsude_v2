@@ -10,13 +10,25 @@ import { RANGES, rangeStart, type RangeKey } from "@/lib/server/activityView";
 import { AdminPageHeader } from "@/components/admin/AdminShell";
 import { Pagination, readPaging } from "@/components/admin/Pagination";
 import { SectionTabs } from "@/components/admin/SectionTabs";
+import { expenseCategoryTree, knownVendors } from "@/lib/server/expenseCategories";
 import { FinanceEntryButton } from "@/components/admin/FinanceEntryButton";
+import { EntryBills, type Attachment } from "@/components/admin/FinanceAttachments";
 import { VoidEntryButton } from "@/components/admin/FinanceActions";
 import { auditTime } from "@/components/admin/AuditList";
 
 export const metadata = { title: "Finance ledger" };
 
-type Search = { type?: string; employee?: string; range?: string; q?: string; entry?: string; page?: string; size?: string };
+type Search = {
+  type?: string;
+  employee?: string;
+  vendor?: string;
+  category?: string;
+  range?: string;
+  q?: string;
+  entry?: string;
+  page?: string;
+  size?: string;
+};
 
 function href(params: Search) {
   const q = new URLSearchParams(Object.entries(params).filter(([, v]) => v) as [string, string][]);
@@ -32,7 +44,11 @@ export default async function FinanceLedgerPage({ searchParams }: { searchParams
   const canManage = can(admin, "finance.manage");
   const type = searchParams.type && searchParams.type in FINANCE_TYPES ? (searchParams.type as FinanceType) : undefined;
   const range: RangeKey = RANGES.some((r) => r.key === searchParams.range) ? (searchParams.range as RangeKey) : "all";
-  const employees = await financeEmployees();
+  const [employees, categoryTree, vendors] = await Promise.all([financeEmployees(), expenseCategoryTree(), knownVendors()]);
+  const vendor = searchParams.vendor ? searchParams.vendor.slice(0, 100) : undefined;
+  // A category id, or a sub-category id (matches entries in it either way).
+  const allCats = categoryTree.flatMap((c) => [{ id: c.id, label: c.name }, ...c.children.map((s) => ({ id: s.id, label: `${c.name} › ${s.name}` }))]);
+  const category = allCats.find((c) => c.id === searchParams.category);
   const employee = employees.find((e) => e.email === searchParams.employee)?.email;
   const q = (searchParams.q ?? "").trim().slice(0, 60);
   const entryId = searchParams.entry && /^[a-f0-9]{24}$/.test(searchParams.entry) ? searchParams.entry : undefined;
@@ -44,6 +60,8 @@ export default async function FinanceLedgerPage({ searchParams }: { searchParams
         at: { gte: rangeStart(range) },
         ...(type ? { type } : {}),
         ...(employee ? { employeeEmail: employee } : {}),
+        ...(vendor ? { vendor } : {}),
+        ...(category ? { OR: [{ categoryId: category.id }, { subcategoryId: category.id }] } : {}),
         ...(q
           ? {
               OR: [
@@ -51,6 +69,8 @@ export default async function FinanceLedgerPage({ searchParams }: { searchParams
                 { orderNumber: { equals: q.toUpperCase() } },
                 { reference: { contains: safe, mode: "insensitive" } },
                 { category: { contains: safe, mode: "insensitive" } },
+                { subcategory: { contains: safe, mode: "insensitive" } },
+                { vendor: { contains: safe, mode: "insensitive" } },
               ],
             }
           : {}),
@@ -65,7 +85,15 @@ export default async function FinanceLedgerPage({ searchParams }: { searchParams
   ]);
   const voided = await db.financeEntry.count({ where: { AND: [where, { NOT: LIVE }] } });
 
-  const base = { type, employee, range: range === "all" ? undefined : range, q: q || undefined, size: searchParams.size };
+  const base = {
+    type,
+    employee,
+    vendor,
+    category: category?.id,
+    range: range === "all" ? undefined : range,
+    q: q || undefined,
+    size: searchParams.size,
+  };
   const chip = (active: boolean) =>
     cx(
       "rounded-md border px-3 py-1.5 text-[11px] uppercase tracking-widest2",
@@ -77,7 +105,7 @@ export default async function FinanceLedgerPage({ searchParams }: { searchParams
       <AdminPageHeader
         title="Finance"
         subtitle="Every amount in and out of the company, newest first."
-        action={canManage ? <FinanceEntryButton employees={employees} /> : undefined}
+        action={canManage ? <FinanceEntryButton employees={employees} categories={categoryTree} vendors={vendors} /> : undefined}
       />
       <SectionTabs tabs={FINANCE_TABS} active="/admin/finance/ledger" />
 
@@ -129,10 +157,44 @@ export default async function FinanceLedgerPage({ searchParams }: { searchParams
             </Link>
           ))}
         </nav>
-        {(employee || entryId) && (
+        {/* Category filter (expenses). */}
+        {allCats.length > 0 && (
+          <form action="/admin/finance/ledger" className="flex flex-wrap items-center gap-2">
+            {Object.entries(base).map(([k, v]) => (k !== "category" && v ? <input key={k} type="hidden" name={k} value={v} /> : null))}
+            <label htmlFor="ledger-category" className="text-[11px] uppercase tracking-widest2 text-ash">
+              Category
+            </label>
+            <select
+              id="ledger-category"
+              name="category"
+              defaultValue={category?.id ?? ""}
+              className="h-9 rounded-md border border-taupe/50 bg-transparent px-2 text-sm focus:border-ink focus:outline-none"
+            >
+              <option value="">All categories</option>
+              {allCats.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.label}
+                </option>
+              ))}
+            </select>
+            <button type="submit" className="h-9 rounded-md border border-taupe/50 px-3 text-[11px] uppercase tracking-widest2 hover:border-ink">
+              Apply
+            </button>
+          </form>
+        )}
+        {(employee || entryId || vendor || category) && (
           <p className="text-xs text-graphite">
-            {entryId ? "Showing one entry." : `Showing ${employees.find((e) => e.email === employee)?.name}'s entries.`}{" "}
-            <Link href={href({ ...base, employee: undefined })} className="underline underline-offset-4 hover:text-ink">
+            {entryId
+              ? "Showing one entry."
+              : vendor
+                ? `Showing everything with ${vendor}: ${formatPaise(moneyIn + moneyOut, { sign: true })} in total.`
+                : category
+                  ? `Showing ${category.label}.`
+                  : `Showing ${employees.find((e) => e.email === employee)?.name}'s entries.`}{" "}
+            <Link
+              href={href({ ...base, employee: undefined, vendor: undefined, category: undefined })}
+              className="underline underline-offset-4 hover:text-ink"
+            >
               Show all
             </Link>
           </p>
@@ -143,13 +205,14 @@ export default async function FinanceLedgerPage({ searchParams }: { searchParams
         <p className="rounded-lg border border-taupe/30 p-8 text-center text-sm text-graphite">No entries match.</p>
       ) : (
         <div className="overflow-x-auto rounded-lg border border-taupe/30">
-          <table className="w-full min-w-[940px] text-left text-sm">
+          <table className="w-full min-w-[1040px] text-left text-sm">
             <thead className="border-b border-taupe/30 bg-sand/30 text-[11px] uppercase tracking-widest2 text-ash">
               <tr>
                 <th className="p-3 font-normal">Date</th>
                 <th className="p-3 font-normal">Type</th>
                 <th className="p-3 font-normal">Details</th>
                 <th className="p-3 font-normal">Method · ref</th>
+                <th className="p-3 font-normal">Bills</th>
                 <th className="p-3 text-right font-normal">Amount</th>
                 <th className="p-3 font-normal">Entered by</th>
                 <th className="relative p-3 font-normal">
@@ -168,12 +231,15 @@ export default async function FinanceLedgerPage({ searchParams }: { searchParams
                     <td className="max-w-[320px] p-3">
                       <p className={cx(e.voidedAt && "line-through")}>{e.description}</p>
                       <p className="text-xs text-ash">
-                        {[
-                          e.category,
-                          e.employeeName,
-                        ]
-                          .filter(Boolean)
-                          .join(" · ")}
+                        {e.vendor && (
+                          <>
+                            <Link href={href({ ...base, vendor: e.vendor, page: undefined })} className="text-graphite underline-offset-2 hover:underline">
+                              {e.vendor}
+                            </Link>
+                            {(e.category || e.employeeName) && " · "}
+                          </>
+                        )}
+                        {[e.subcategory ? `${e.category} › ${e.subcategory}` : e.category, e.employeeName].filter(Boolean).join(" · ")}
                         {e.orderNumber && e.orderId && (
                           <Link href={`/admin/orders/${e.orderId}`} className="font-mono text-ink underline underline-offset-2">
                             {e.orderNumber}
@@ -189,6 +255,9 @@ export default async function FinanceLedgerPage({ searchParams }: { searchParams
                     <td className="p-3 text-xs text-graphite">
                       {e.method ? METHOD[e.method] ?? e.method : "—"}
                       {e.reference && <p className="break-all text-ash">{e.reference}</p>}
+                    </td>
+                    <td className="p-3">
+                      <EntryBills entryId={e.id} files={(e.attachments ?? []) as Attachment[]} canManage={canManage && !e.voidedAt} />
                     </td>
                     <td
                       className={cx(

@@ -2,7 +2,7 @@
 // query (server): the filter shape and how it maps to/from the URL.
 // Matching, sorting and counting happen in the database — see
 // src/lib/server/listings.ts.
-import { CATEGORIES, FITS, SIZES, type Category, type Fit, type Size } from "@/lib/types";
+import { FITS, SIZES, type Fit, type Size } from "@/lib/types";
 
 export type SortKey = "featured" | "newest" | "price-asc" | "price-desc";
 export type PriceBand = "under-1700" | "1700-2000" | "above-2000";
@@ -22,7 +22,10 @@ export const PRICE_BANDS: { key: PriceBand; label: string }[] = [
 ];
 
 export interface Filters {
-  category: Category | null;
+  /** Category URL key, e.g. "t-shirts" (see categoryKey). */
+  category: string | null;
+  /** Sub-category URL key within it, e.g. "graphic". */
+  subcategory: string | null;
   fits: Fit[];
   sizes: Size[];
   /** Color keys (see colorKey), e.g. "off-white". */
@@ -34,6 +37,7 @@ export interface Filters {
 
 export const EMPTY_FILTERS: Filters = {
   category: null,
+  subcategory: null,
   fits: [],
   sizes: [],
   colors: [],
@@ -52,13 +56,17 @@ type ParamSource = { get(name: string): string | null };
 /** Read filters from the URL, ignoring anything unknown. */
 export function parseFilters(params: ParamSource): Filters {
   const list = (key: string) => (params.get(key) ?? "").split(",").map((s) => s.trim()).filter(Boolean);
-  const category = CATEGORIES.find((c) => slug(c) === params.get("category")) ?? null;
+  // Keys only (categories are managed in admin, so any well-formed key).
+  const key = (v: string | null) => (v && /^[a-z0-9-]{1,60}$/.test(v) ? v : null);
+  const category = key(params.get("category"));
+  const subcategory = category ? key(params.get("sub")) : null;
   const fits = FITS.filter((f) => list("fit").includes(slug(f)));
   const sizes = SIZES.filter((s) => list("size").includes(s.toLowerCase()));
   const price = PRICE_BANDS.find((b) => b.key === params.get("price"))?.key ?? null;
   const sort = SORT_OPTIONS.find((o) => o.key === params.get("sort"))?.key ?? "featured";
   return {
     category,
+    subcategory,
     fits,
     sizes,
     // Keys only — lowercase letters, digits and hyphens; at most 20.
@@ -72,7 +80,8 @@ export function parseFilters(params: ParamSource): Filters {
 /** Filters → query string (empty values omitted, so the URL stays short). */
 export function filtersToQuery(f: Filters) {
   const q = new URLSearchParams();
-  if (f.category) q.set("category", slug(f.category));
+  if (f.category) q.set("category", f.category);
+  if (f.category && f.subcategory) q.set("sub", f.subcategory);
   if (f.fits.length) q.set("fit", f.fits.map(slug).join(","));
   if (f.sizes.length) q.set("size", f.sizes.map((s) => s.toLowerCase()).join(","));
   if (f.colors.length) q.set("color", f.colors.join(","));
@@ -86,6 +95,7 @@ export function filtersToQuery(f: Filters) {
 export function activeFilterCount(f: Filters) {
   return (
     (f.category ? 1 : 0) +
+    (f.subcategory ? 1 : 0) +
     f.fits.length +
     f.sizes.length +
     f.colors.length +

@@ -8,6 +8,7 @@ import { syncProductListings } from "@/lib/server/listings";
 import { revalidateStorefront } from "@/lib/server/revalidate";
 import { fieldErrors, productInputSchema, withDerivedPrice } from "@/lib/validation";
 import { logStockChange } from "@/lib/server/stockLedger";
+import { checkProductCategory } from "@/lib/server/productCategories";
 
 export async function GET() {
   const { error } = await requireAdmin("products.view");
@@ -29,7 +30,14 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const input = withDerivedPrice(parsed.data);
+  const badCategory = await checkProductCategory(parsed.data.category, parsed.data.subcategory);
+  if (badCategory) {
+    return NextResponse.json(
+      { error: "Please fix the highlighted fields", fields: { [badCategory.field]: badCategory.message } },
+      { status: 400 }
+    );
+  }
+  const input = withDerivedPrice({ ...parsed.data, subcategory: parsed.data.subcategory || null });
 
   // Every color of a new product gets a fresh product code. The unique
   // index is the final guard; on the (very unlikely) race where another
