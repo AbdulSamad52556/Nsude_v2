@@ -96,8 +96,8 @@ export function SearchOverlay() {
           exit={{ opacity: 0 }}
           transition={{ duration: 0.3 }}
         >
-          <div className="mx-auto flex h-full w-full max-w-[1440px] flex-col bg-paper">
-          <div className="mx-auto flex w-full max-w-content flex-1 flex-col overflow-y-auto px-6 pb-16 pt-24 md:px-10">
+          <div className="flex h-full w-full flex-col bg-paper">
+          <div className="mx-auto flex w-full flex-1 flex-col overflow-y-auto px-6 pb-16 pt-24 md:px-10">
             <div className="flex items-start justify-between">
               <span className="text-xs uppercase tracking-widest2 text-ash">
                 Search NSUDE

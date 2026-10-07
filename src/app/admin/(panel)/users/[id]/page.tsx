@@ -13,7 +13,7 @@ import { ReadOnly } from "@/components/admin/ReadOnly";
 import { employeeBalances } from "@/lib/server/finance";
 import { formatPaise } from "@/lib/finance";
 import { formatDuration } from "@/lib/server/activityView";
-import { VISIT_IDLE_MINUTES } from "@/lib/activity";
+import { isActive } from "@/lib/activity";
 
 export const metadata = { title: "User" };
 
@@ -51,7 +51,7 @@ export default async function UserPage({ params }: { params: { id: string } }) {
       {balance && balance.owes !== 0 && (
         <p className="mb-6 rounded-md border border-taupe/40 px-3 py-2 text-xs text-graphite">
           {balance.owes > 0 ? `Owes the company ${formatPaise(balance.owes)}` : `The company owes them ${formatPaise(-balance.owes)}`} ·{" "}
-          <Link href={`/admin/finance/ledger?employee=${encodeURIComponent(user.email)}`} className="text-moss underline underline-offset-2">
+          <Link href={`/admin/finance/ledger?employee=${encodeURIComponent(user.email)}`} className="text-ink underline underline-offset-2">
             see entries
           </Link>
         </p>
@@ -66,7 +66,7 @@ export default async function UserPage({ params }: { params: { id: string } }) {
             <h2 className="text-xs uppercase tracking-widest2">Recent sessions</h2>
             <Link
               href={`/admin/activity?area=admin&user=${encodeURIComponent(user.email)}&range=all`}
-              className="text-[11px] uppercase tracking-widest2 text-ash hover:text-moss"
+              className="text-[11px] uppercase tracking-widest2 text-ash hover:text-ink"
             >
               All sessions
             </Link>
@@ -83,8 +83,8 @@ export default async function UserPage({ params }: { params: { id: string } }) {
                       {v.pageViews} page{v.pageViews === 1 ? "" : "s"} · {formatDuration(v.lastSeenAt.getTime() - v.startedAt.getTime())} · {v.device} ·{" "}
                       {v.browser}
                     </span>
-                    {Date.now() - v.lastSeenAt.getTime() < VISIT_IDLE_MINUTES * 60 * 1000 && (
-                      <span className="ml-auto rounded-full border border-moss bg-moss px-2 py-0.5 text-[10px] uppercase tracking-wide text-paper">
+                    {isActive(v.lastSeenAt) && (
+                      <span className="ml-auto rounded-full border border-ink bg-ink px-2 py-0.5 text-[10px] uppercase tracking-wide text-paper">
                         Active now
                       </span>
                     )}

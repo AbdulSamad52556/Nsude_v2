@@ -1,7 +1,7 @@
 // Input schemas shared by the admin forms (client) and admin API (server),
 // so both sides agree on what a valid product / hero slide looks like.
 import { z } from "zod";
-import { CATEGORIES, FITS, SIZES } from "./types";
+import { FITS, SIZES } from "./types";
 import { CODE_PATTERN } from "./codes";
 
 const imageSchema = z.object({
@@ -51,7 +51,8 @@ export const productInputSchema = z
     story: z.string().trim().max(2000).default(""),
     variants: z.array(variantSchema).min(1, "Add at least one color").max(20),
     sizes: z.array(z.enum(SIZES)).min(1, "Select at least one size"),
-    category: z.enum(CATEGORIES),
+    category: z.string().trim().min(1, "Choose a category").max(40),
+    subcategory: z.string().trim().max(40).nullable().optional(),
     material: z.string().trim().max(120).default(""),
     fit: z.enum(FITS),
     weight: z.string().trim().max(40).default(""),
@@ -143,6 +144,27 @@ export const heroInputSchema = z.object({
 });
 
 export type HeroInput = z.infer<typeof heroInputSchema>;
+
+export const collectionInputSchema = z.object({
+  name: z.string().trim().min(1, "Enter a name").max(60),
+  slug: z
+    .string()
+    .trim()
+    .min(1, "Enter a web address")
+    .max(60)
+    .regex(/^[a-z0-9]+(-[a-z0-9]+)*$/, "Use lowercase letters, numbers and single dashes"),
+  tagline: z.string().trim().max(120).default(""),
+  description: z.string().trim().max(1000).default(""),
+  image: imageSchema.nullable(),
+  productIds: z
+    .array(z.string().regex(/^[a-f0-9]{24}$/))
+    .max(200, "Up to 200 products")
+    .refine((ids) => new Set(ids).size === ids.length, "A product is listed twice"),
+  active: z.boolean(),
+  featured: z.boolean(),
+});
+
+export type CollectionInput = z.infer<typeof collectionInputSchema>;
 
 /** Flatten zod issues into { "field.path": "message" } for form display. */
 export function fieldErrors(error: z.ZodError) {

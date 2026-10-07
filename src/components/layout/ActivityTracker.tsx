@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { usePathname } from "next/navigation";
-import { flushTracking, track } from "@/lib/track";
+import { flushTracking, heartbeat, track } from "@/lib/track";
 
 const CLICKABLE = "a, button, [role=button], [role=tab], [role=switch], [role=radio], [role=option], summary";
 
@@ -23,7 +23,7 @@ function labelOf(el: Element) {
  * visitor leaves. Specific actions (add to bag, size picked…) are tracked
  * where they happen with `track()`.
  */
-export function ActivityTracker() {
+export function ActivityTracker({ keepAlive = true }: { keepAlive?: boolean } = {}) {
   const pathname = usePathname();
   const page = useRef<{ path: string; start: number; scroll: number } | null>(null);
 
@@ -40,6 +40,19 @@ export function ActivityTracker() {
     const path = page.current.path;
     setTimeout(() => track("page_view", { title: document.title.replace(/ — NSUDE( Admin)?$/, "") }, path), 50);
   }, [pathname]);
+
+  // Quiet "still here" while the tab is on screen: checked every minute,
+  // sent at most every 5, and right away on coming back to the tab.
+  useEffect(() => {
+    if (!keepAlive) return;
+    const timer = setInterval(heartbeat, 60 * 1000);
+    const onVisible = () => document.visibilityState === "visible" && heartbeat();
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      clearInterval(timer);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+  }, [keepAlive]);
 
   // Scroll depth, clicks, and leaving (tab hidden, closed, or navigated away).
   useEffect(() => {

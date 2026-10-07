@@ -62,7 +62,7 @@ export default async function AuditPage({ searchParams }: { searchParams: Search
   const chip = (active: boolean) =>
     cx(
       "border px-3 py-1.5 text-[11px] uppercase tracking-widest2",
-      active ? "border-moss bg-moss text-paper" : "border-taupe/50 text-graphite hover:border-moss"
+      active ? "border-ink bg-ink text-paper" : "border-taupe/50 text-graphite hover:border-ink"
     );
 
   return (
@@ -89,9 +89,9 @@ export default async function AuditPage({ searchParams }: { searchParams: Search
               name="q"
               defaultValue={q}
               placeholder="Product, order no., phone, admin…"
-              className="rounded-md h-10 w-64 border border-taupe/50 bg-transparent px-3 text-sm focus:border-moss focus:outline-none"
+              className="rounded-md h-10 w-64 border border-taupe/50 bg-transparent px-3 text-sm focus:border-ink focus:outline-none"
             />
-            <button type="submit" className="rounded-md h-10 bg-moss px-4 text-xs uppercase tracking-widest2 text-paper hover:brightness-90">
+            <button type="submit" className="rounded-md h-10 bg-ink px-4 text-xs uppercase tracking-widest2 text-paper hover:bg-graphite">
               Search
             </button>
           </form>

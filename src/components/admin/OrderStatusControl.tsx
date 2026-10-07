@@ -60,7 +60,7 @@ export function OrderStatusControl({ id, status, next }: { id: string; status: O
             "flex h-10 items-center justify-center gap-2 text-xs uppercase tracking-widest2 disabled:opacity-50",
             to === "cancelled"
               ? "border border-taupe/50 text-rust hover:border-rust"
-              : "rounded-md bg-moss text-paper hover:brightness-90"
+              : "rounded-md bg-ink text-paper hover:bg-graphite"
           )}
         >
           {busy === to && <Loader2 size={14} className="animate-spin" />}

@@ -8,7 +8,8 @@ function unsplash(id: string, w = 1400, q = 80) {
 
 export const campaignImages = {
   brandStatementBg: unsplash("1550246140-29f40b909e5a", 1800),
-  collectionCampaign: unsplash("1519638399535-1b036603ac77", 2000),
+  /** Folded NSUDE tees on a table (home page collection banner). */
+  collectionCampaign: "/campaign/collection-folded-tees.webp",
   aboutHero: unsplash("1509631179647-0177331693ae", 1800),
   aboutSecondary: unsplash("1560243563-062bfc001d68", 1400),
   philosophy: unsplash("1594633313593-bab3825d0caf", 1400),

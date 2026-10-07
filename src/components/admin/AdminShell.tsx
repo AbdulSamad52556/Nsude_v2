@@ -51,6 +51,7 @@ export function AdminShell({ admin, children }: { admin: AdminIdentity; children
   const [pending, setPending] = useState<string | null>(null);
   useEffect(() => setPending(null), [pathname]);
 
+
   async function logout() {
     await fetch("/api/admin/logout", { method: "POST" });
     router.replace("/admin/login");
@@ -143,10 +144,10 @@ export function AdminShell({ admin, children }: { admin: AdminIdentity; children
       <Suspense fallback={null}>
         <NavigationProgress />
       </Suspense>
-      <aside className="sticky top-0 hidden h-screen w-60 shrink-0 bg-moss md:block">{sidebar("desktop")}</aside>
+      <aside className="sticky top-0 hidden h-screen w-60 shrink-0 bg-ink md:block">{sidebar("desktop")}</aside>
 
       {/* Mobile: top bar + slide-over sidebar */}
-      <div className="sticky top-0 z-30 flex items-center justify-between border-b border-paper/10 bg-moss px-5 py-3 md:hidden">
+      <div className="sticky top-0 z-30 flex items-center justify-between border-b border-paper/10 bg-ink px-5 py-3 md:hidden">
         <Image src="/brand/nsude-logo-light.png" alt="NSUDE" width={482} height={172} className="h-5 w-auto" />
         <button type="button" onClick={() => setOpen(true)} aria-label="Open menu" className="text-paper">
           <Menu size={22} strokeWidth={1.5} />
@@ -155,7 +156,7 @@ export function AdminShell({ admin, children }: { admin: AdminIdentity; children
       {open && (
         <div className="fixed inset-0 z-40 md:hidden">
           <div className="absolute inset-0 bg-ink/50" onClick={() => setOpen(false)} aria-hidden />
-          <aside className="absolute inset-y-0 left-0 w-64 bg-moss">
+          <aside className="absolute inset-y-0 left-0 w-64 bg-ink">
             <button
               type="button"
               onClick={() => setOpen(false)}

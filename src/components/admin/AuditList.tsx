@@ -4,7 +4,7 @@ import { cx } from "@/lib/utils";
 
 const ACTOR_TONE: Record<string, string> = {
   admin: "bg-ink text-paper",
-  customer: "bg-moss/10 text-moss",
+  customer: "bg-ink/10 text-ink",
   system: "bg-sand/50 text-ink",
 };
 const ACTOR_LABEL: Record<string, string> = { admin: "Admin", customer: "Customer", system: "System" };

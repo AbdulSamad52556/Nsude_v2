@@ -7,7 +7,7 @@ import { db } from "@/lib/server/db";
 import { ProductView } from "@/components/product/ProductView";
 import { ProductGrid } from "@/components/product/ProductGrid";
 import { SectionHeading } from "@/components/ui/SectionHeading";
-import { priceRange, productHref, totalStock } from "@/lib/types";
+import { categoryKey, priceRange, productHref, totalStock } from "@/lib/types";
 
 /** How many product pages to pre-render at build time. */
 const PRERENDER_LIMIT = 200;
@@ -90,19 +90,38 @@ export default async function ProductPage({ params }: { params: { code: string }
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
 
-      {/* Breadcrumb on larger screens (phones have a back arrow in the header). */}
-      <nav aria-label="Breadcrumb" className="mx-auto mb-8 hidden max-w-content text-xs uppercase tracking-wide text-ash md:block">
-        <Link href="/shop" className="hover:text-ink">
-          Shop
-        </Link>
-        <span className="mx-2">/</span>
-        <span className="text-ink">{product.name}</span>
-      </nav>
-
-      <ProductView product={product} initialCode={variant.code} />
+      <ProductView
+        product={product}
+        initialCode={variant.code}
+        breadcrumb={
+          // Larger screens only (phones have a back arrow in the header).
+          <nav aria-label="Breadcrumb" className="text-xs uppercase tracking-wide text-ash">
+            <Link href="/shop" className="hover:text-ink">
+              Shop
+            </Link>
+            <span className="mx-2">/</span>
+            <Link href={`/shop?category=${categoryKey(product.category)}`} className="hover:text-ink">
+              {product.category}
+            </Link>
+            <span className="mx-2">/</span>
+            {product.subcategory && (
+              <>
+                <Link
+                  href={`/shop?category=${categoryKey(product.category)}&sub=${categoryKey(product.subcategory)}`}
+                  className="hover:text-ink"
+                >
+                  {product.subcategory}
+                </Link>
+                <span className="mx-2">/</span>
+              </>
+            )}
+            <span className="text-ink">{product.name}</span>
+          </nav>
+        }
+      />
 
       {related.length > 0 && (
-        <div className="mx-auto mt-28 max-w-content md:mt-36">
+        <div className="mx-auto mt-28 md:mt-36">
           <SectionHeading title="You May Also Like" className="mb-12" />
           <ProductGrid cards={related} />
         </div>

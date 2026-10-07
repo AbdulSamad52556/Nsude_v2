@@ -6,9 +6,11 @@ import { adminActor, recordAudit, productChanges } from "@/lib/server/audit";
 import { deleteImages } from "@/lib/server/cloudinary";
 import { assignVariantCodes, productImageIds, toProduct } from "@/lib/server/products";
 import { syncProductListings } from "@/lib/server/listings";
+import { removeProductFromCollections } from "@/lib/server/collections";
 import { isObjectId, revalidateStorefront } from "@/lib/server/revalidate";
 import { fieldErrors, productInputSchema, withDerivedPrice } from "@/lib/validation";
 import { logStockChange } from "@/lib/server/stockLedger";
+import { checkProductCategory } from "@/lib/server/productCategories";
 
 type Params = { params: { id: string } };
 
@@ -39,7 +41,14 @@ export async function PUT(request: NextRequest, { params }: Params) {
     );
   }
 
-  const input = withDerivedPrice(parsed.data);
+  const badCategory = await checkProductCategory(parsed.data.category, parsed.data.subcategory, existing);
+  if (badCategory) {
+    return NextResponse.json(
+      { error: "Please fix the highlighted fields", fields: { [badCategory.field]: badCategory.message } },
+      { status: 400 }
+    );
+  }
+  const input = withDerivedPrice({ ...parsed.data, subcategory: parsed.data.subcategory || null });
 
   // Existing colors keep their product codes; new colors get fresh ones.
   // (Retry on the rare race where another save took a new code first.)
@@ -106,6 +115,7 @@ export async function DELETE(_request: NextRequest, { params }: Params) {
   // Hero slides pointing at this product are deleted with it (cascade).
   await db.product.delete({ where: { id: params.id } });
   await syncProductListings(params.id); // removes its listings
+  await removeProductFromCollections(params.id);
   await deleteImages([
     ...productImageIds(existing),
     ...existing.heroSlides.map((s) => s.image.publicId),

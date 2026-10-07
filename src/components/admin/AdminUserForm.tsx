@@ -11,7 +11,7 @@ import { ApiError, apiFetch } from "./api";
 type Level = "none" | "view" | "manage";
 
 const inputClass =
-  "h-10 w-full rounded-md border border-taupe/50 bg-transparent px-3 text-sm focus:border-moss focus:outline-none";
+  "h-10 w-full rounded-md border border-taupe/50 bg-transparent px-3 text-sm focus:border-ink focus:outline-none";
 
 function levelOf(perms: Permission[], area: string): Level {
   if (perms.includes(`${area}.manage` as Permission)) return "manage";
@@ -135,7 +135,7 @@ export function AdminUserForm({
                 type="button"
                 onClick={() => setShowPassword((v) => !v)}
                 aria-label={showPassword ? "Hide password" : "Show password"}
-                className="absolute right-1 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center text-ash hover:text-moss"
+                className="absolute right-1 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center text-ash hover:text-ink"
               >
                 {showPassword ? <EyeOff size={15} strokeWidth={1.5} /> : <Eye size={15} strokeWidth={1.5} />}
               </button>
@@ -146,7 +146,7 @@ export function AdminUserForm({
                 setPassword(generatePassword());
                 setShowPassword(true);
               }}
-              className="flex h-10 items-center gap-1.5 rounded-md border border-taupe/50 px-3 text-[11px] uppercase tracking-widest2 text-graphite hover:border-moss hover:text-moss"
+              className="flex h-10 items-center gap-1.5 rounded-md border border-taupe/50 px-3 text-[11px] uppercase tracking-widest2 text-graphite hover:border-ink hover:text-ink"
             >
               <RefreshCw size={13} strokeWidth={1.5} /> Generate
             </button>
@@ -164,7 +164,7 @@ export function AdminUserForm({
             aria-checked={active}
             aria-label="Can sign in"
             onClick={() => setActive((v) => !v)}
-            className={cx("relative h-6 w-11 shrink-0 rounded-full transition-colors", active ? "bg-moss" : "bg-taupe/60")}
+            className={cx("relative h-6 w-11 shrink-0 rounded-full transition-colors", active ? "bg-ink" : "bg-taupe/60")}
           >
             <span
               className={cx(
@@ -209,7 +209,7 @@ export function AdminUserForm({
                         level === l
                           ? l === "none"
                             ? "bg-taupe/30 text-ink"
-                            : "bg-moss text-paper"
+                            : "bg-ink text-paper"
                           : "text-graphite hover:bg-sand/30"
                       )}
                     >
@@ -227,7 +227,7 @@ export function AdminUserForm({
         <button
           type="submit"
           disabled={busy !== null}
-          className="flex h-11 items-center gap-2 rounded-md bg-moss px-6 text-xs uppercase tracking-widest2 text-paper hover:brightness-90 disabled:opacity-60"
+          className="flex h-11 items-center gap-2 rounded-md bg-ink px-6 text-xs uppercase tracking-widest2 text-paper hover:bg-graphite disabled:opacity-60"
         >
           {busy === "save" && <Loader2 size={15} className="animate-spin" />}
           {editing ? "Save changes" : "Create user"}
@@ -244,7 +244,7 @@ export function AdminUserForm({
           </button>
         )}
         {message && (
-          <p role="status" className={cx("text-xs", message.tone === "ok" ? "text-moss" : "text-rust")}>
+          <p role="status" className={cx("text-xs", message.tone === "ok" ? "text-ink" : "text-rust")}>
             {message.text}
           </p>
         )}

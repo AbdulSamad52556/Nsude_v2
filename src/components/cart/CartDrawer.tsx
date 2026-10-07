@@ -38,9 +38,8 @@ export function CartDrawer() {
             onClick={closeCart}
             aria-hidden
           />
-          {/* Boxed reference frame: keeps the sliding panel aligned to the
-              1440px column's right edge instead of the true viewport edge. */}
-          <div className="pointer-events-none fixed inset-0 z-[98] mx-auto max-w-[1440px]">
+          {/* Full-screen frame the panel slides in from the right edge of. */}
+          <div className="pointer-events-none fixed inset-0 z-[98]">
           <motion.aside
             role="dialog"
             aria-modal="true"
@@ -95,7 +94,7 @@ export function CartDrawer() {
                   <Link
                     href="/checkout"
                     onClick={closeCart}
-                    className="group flex h-10 w-full items-center justify-center gap-2 rounded-md bg-moss md:h-14 text-sm uppercase tracking-widest2 text-paper transition-[filter] hover:brightness-90"
+                    className="group flex h-10 w-full items-center justify-center gap-2 rounded-md bg-ink md:h-14 text-sm uppercase tracking-widest2 text-paper transition-colors hover:bg-graphite"
                   >
                     Checkout
                     <ArrowRight

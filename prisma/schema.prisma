@@ -76,6 +76,8 @@ model Product {
   sizes          String[]
   /// "T-Shirts" | "Long Sleeve"
   category       String
+  /// Optional sub-category within the category (e.g. T-Shirts › Graphic).
+  subcategory    String?
   material       String         @default("")
   /// "Slim" | "Regular" | "Relaxed" | "Oversized" | "Boxy"
   fit            String
@@ -132,6 +134,10 @@ model Listing {
   colorKey         String
   hex              String
   category         String
+  /// URL key of the category / sub-category (e.g. "t-shirts", "graphic").
+  categoryKey      String?
+  subcategory      String?
+  subcategoryKey   String?
   fit              String
   /// Sizes that can be bought in this color right now.
   availableSizes   String[]
@@ -149,6 +155,7 @@ model Listing {
 
   @@index([productId])
   @@index([category])
+  @@index([categoryKey, subcategoryKey])
   @@index([fit])
   @@index([colorKey])
   @@index([priceMin])
@@ -453,8 +460,16 @@ model FinanceEntry {
   amount        Int
   /// "bank" | "cash" | "upi" | "card" | "razorpay"
   method        String?
-  /// Expense category (packaging, shipping, marketing…).
+  /// Expense category name at the time (packaging, shipping, marketing…).
   category      String?
+  categoryId    String?   @db.ObjectId
+  /// Optional sub-category within it (e.g. Marketing › Instagram ads).
+  subcategory   String?
+  subcategoryId String?   @db.ObjectId
+  /// Who was paid (or who paid us), e.g. "PackCo".
+  vendor        String?
+  /// Bills / receipts (photos or PDFs on Cloudinary).
+  attachments   FinanceAttachment[]
   description   String
   orderId       String?   @db.ObjectId
   orderNumber   String?
@@ -473,4 +488,70 @@ model FinanceEntry {
   @@index([type, at])
   @@index([employeeEmail, at])
   @@index([orderId])
+  @@index([vendor, at])
+  @@index([categoryId, at])
+}
+
+type FinanceAttachment {
+  url        String
+  publicId   String
+  name       String
+  /// "image" | "pdf"
+  kind       String
+  /// Cloudinary resource type, needed to delete it ("image" | "raw").
+  resourceType String
+}
+
+/// Expense categories admins manage; a category can have sub-categories
+/// (parentId set). Hidden ones stay on old entries but can't be picked.
+model ExpenseCategory {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  name      String
+  parentId  String?  @db.ObjectId
+  active    Boolean  @default(true)
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([parentId])
+}
+
+/// Shop categories (e.g. T-Shirts, Long Sleeve) and their sub-categories
+/// (parentId set), managed by admins. Products store the names; renaming
+/// here updates the products.
+model ProductCategory {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  name      String
+  parentId  String?  @db.ObjectId
+  active    Boolean  @default(true)
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([parentId])
+}
+
+/// A themed edit or drop ("Summer '26", "Monochrome"), hand-picked by an
+/// admin. Unlike categories, a product can be in any number of these.
+model Collection {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  name        String
+  /// URL key: /collections/<slug>.
+  slug        String   @unique
+  /// Short line under the name on banners and tiles.
+  tagline     String?
+  description String?
+  /// Wide banner photo; falls back to the first product's photo.
+  image       Image?
+  /// Products in the order they're shown.
+  productIds  String[] @db.ObjectId
+  /// Shown on the site (hidden ones are drafts).
+  active      Boolean  @default(false)
+  /// The one shown as the big banner on the home page.
+  featured    Boolean  @default(false)
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([active, sortOrder])
 }

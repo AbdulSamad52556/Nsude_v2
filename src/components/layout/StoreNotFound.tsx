@@ -10,7 +10,7 @@ export async function StoreNotFound() {
 
   return (
     <div className="px-5 pb-20 pt-28 md:px-10 md:pb-28 md:pt-36">
-      <section className="relative mx-auto flex max-w-content flex-col items-center text-center">
+      <section className="relative mx-auto flex flex-col items-center text-center">
         {/* Oversized number behind the message. */}
         <span
           aria-hidden
@@ -19,7 +19,7 @@ export async function StoreNotFound() {
           404
         </span>
         <div className="-mt-[clamp(2.5rem,9vw,6rem)] flex flex-col items-center">
-          <span className="rounded-full bg-moss px-3 py-1 text-[10px] uppercase tracking-widest2 text-paper">
+          <span className="rounded-full bg-ink px-3 py-1 text-[10px] uppercase tracking-widest2 text-paper">
             Page not found
           </span>
           <h1 className="mt-5 text-display-md font-medium uppercase tracking-tighter text-ink">
@@ -31,14 +31,14 @@ export async function StoreNotFound() {
           <div className="mt-8 flex w-full max-w-xs flex-col gap-3 sm:max-w-none sm:flex-row sm:justify-center">
             <Link
               href="/shop"
-              className="group flex h-11 items-center justify-center gap-2 rounded-md bg-moss px-6 text-xs uppercase tracking-widest2 text-paper transition-[filter] hover:brightness-90 md:h-12"
+              className="group flex h-11 items-center justify-center gap-2 rounded-md bg-ink px-6 text-xs uppercase tracking-widest2 text-paper transition-colors hover:bg-graphite md:h-12"
             >
               Shop all
               <ArrowRight size={15} strokeWidth={1.5} className="transition-transform duration-300 group-hover:translate-x-1" />
             </Link>
             <Link
               href="/"
-              className="flex h-11 items-center justify-center gap-2 rounded-md border border-taupe/60 px-6 text-xs uppercase tracking-widest2 text-ink transition-colors hover:border-moss hover:text-moss md:h-12"
+              className="flex h-11 items-center justify-center gap-2 rounded-md border border-taupe/60 px-6 text-xs uppercase tracking-widest2 text-ink transition-colors hover:border-ink hover:text-ink md:h-12"
             >
               <ArrowLeft size={15} strokeWidth={1.5} /> Back to home
             </Link>
@@ -47,10 +47,10 @@ export async function StoreNotFound() {
       </section>
 
       {picks.length > 0 && (
-        <section className="mx-auto mt-20 max-w-content md:mt-28">
+        <section className="mx-auto mt-20 md:mt-28">
           <div className="mb-6 flex items-end justify-between gap-4 border-t border-taupe/30 pt-8">
             <h2 className="text-xs uppercase tracking-widest2 text-ink">You might like</h2>
-            <Link href="/shop" className="text-[11px] uppercase tracking-widest2 text-ash hover:text-moss">
+            <Link href="/shop" className="text-[11px] uppercase tracking-widest2 text-ash hover:text-ink">
               View all
             </Link>
           </div>

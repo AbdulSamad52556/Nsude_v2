@@ -79,7 +79,7 @@ function HeroCopy({ active, opacity, y }: HeroCopyProps) {
   // Only the CTA takes clicks, and only while it's actually visible.
   const ctaPointerEvents = useTransform(opacity, (o) => (o > 0.05 ? "auto" : "none"));
   return (
-    <div className="pointer-events-none relative z-10 mx-auto flex h-full w-full max-w-content flex-col justify-end px-5 pb-14 md:px-10 md:pb-20">
+    <div className="pointer-events-none relative z-10 mx-auto flex h-full w-full flex-col justify-end px-5 pb-14 md:px-10 md:pb-20">
       <motion.div style={{ opacity, y }}>
         <h1 aria-label={HEADLINE_LINES.join(" ")}>
           {HEADLINE_LINES.map((line, li) => (

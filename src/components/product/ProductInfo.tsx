@@ -147,7 +147,7 @@ export function ProductInfo({ product, variant, onColorChange }: ProductInfoProp
     <button
       type="button"
       disabled
-      className="rounded-md flex h-10 w-full items-center justify-center bg-graphite/40 text-xs uppercase tracking-widest2 text-paper"
+      className="rounded-md flex h-10 w-full items-center justify-center bg-ash/50 text-xs uppercase tracking-widest2 text-paper"
     >
       {variant.name} — Sold Out
     </button>
@@ -156,14 +156,14 @@ export function ProductInfo({ product, variant, onColorChange }: ProductInfoProp
       <button
         type="button"
         onClick={() => phoneTap("buy")}
-        className="rounded-md flex h-10 flex-1 items-center justify-center border border-ink bg-paper text-xs uppercase tracking-widest2 text-ink transition-colors active:border-moss active:bg-moss active:text-paper"
+        className="rounded-md flex h-10 flex-1 items-center justify-center border border-ink bg-paper text-xs uppercase tracking-widest2 text-ink transition-colors active:border-ink active:bg-ink active:text-paper"
       >
         Buy Now
       </button>
       <button
         type="button"
         onClick={() => phoneTap("add")}
-        className="rounded-md flex h-10 flex-1 items-center justify-center gap-2 bg-moss text-xs uppercase tracking-widest2 text-paper transition-colors active:brightness-90"
+        className="rounded-md flex h-10 flex-1 items-center justify-center gap-2 bg-ink text-xs uppercase tracking-widest2 text-paper transition-colors active:bg-graphite"
       >
         <ShoppingBag size={15} strokeWidth={1.5} />
         Add to Bag
@@ -216,7 +216,7 @@ export function ProductInfo({ product, variant, onColorChange }: ProductInfoProp
           type="button"
           onClick={handleAddToBag}
           disabled={soldOut}
-          className="rounded-md group flex h-14 w-full items-center justify-center gap-2 bg-moss text-sm uppercase tracking-widest2 text-paper transition-[filter,background-color] duration-300 hover:brightness-90 disabled:cursor-not-allowed disabled:bg-graphite/40 disabled:brightness-100"
+          className="rounded-md group flex h-11 w-full items-center justify-center gap-2 bg-ink text-xs uppercase tracking-widest2 text-paper transition-[filter,background-color] duration-300 hover:bg-graphite disabled:cursor-not-allowed disabled:bg-ash/50 disabled:brightness-100"
         >
           {soldOut ? `${variant.name} — Sold Out` : "Add to Bag"}
           {!soldOut && (
@@ -231,7 +231,7 @@ export function ProductInfo({ product, variant, onColorChange }: ProductInfoProp
           <button
             type="button"
             onClick={handleBuyNow}
-            className="rounded-md flex h-14 w-full items-center justify-center border border-ink text-sm uppercase tracking-widest2 text-ink transition-colors duration-300 hover:border-moss hover:bg-moss hover:text-paper"
+            className="rounded-md flex h-11 w-full items-center justify-center border border-ink text-xs uppercase tracking-widest2 text-ink transition-colors duration-300 hover:border-ink hover:bg-ink hover:text-paper"
           >
             Buy Now
           </button>
@@ -360,7 +360,7 @@ export function ProductInfo({ product, variant, onColorChange }: ProductInfoProp
                     type="button"
                     onClick={finishSheet}
                     disabled={!size}
-                    className="mt-6 flex h-10 w-full items-center justify-center rounded-md bg-moss text-xs uppercase tracking-widest2 text-paper transition-[filter] active:brightness-90 disabled:bg-graphite/40"
+                    className="mt-6 flex h-10 w-full items-center justify-center rounded-md bg-ink text-xs uppercase tracking-widest2 text-paper transition-colors active:bg-graphite disabled:bg-ash/50"
                   >
                     Done
                   </button>

@@ -11,6 +11,7 @@ cloudinary.config({
 export const UPLOAD_FOLDERS = {
   products: "nsude/products",
   hero: "nsude/hero",
+  collections: "nsude/collections",
 } as const;
 
 export type UploadFolder = keyof typeof UPLOAD_FOLDERS;
@@ -53,6 +54,34 @@ export async function uploadImageFromUrl(url: string, folder: UploadFolder): Pro
     width: result.width,
     height: result.height,
   };
+}
+
+/** A bill / receipt for Finance: photos as images, PDFs as raw files (so
+    they open as PDFs). Kept in their own folder. */
+export function uploadReceipt(buffer: Buffer, isPdf: boolean, filename: string) {
+  const resourceType = isPdf ? "raw" : "image";
+  return new Promise<{ url: string; publicId: string; resourceType: string }>((resolve, reject) => {
+    const stream = cloudinary.uploader.upload_stream(
+      {
+        folder: "nsude/receipts",
+        resource_type: resourceType,
+        // Raw files need their extension in the id to be served as PDFs.
+        ...(isPdf ? { public_id: `${filename.replace(/\.pdf$/i, "").replace(/[^\w-]+/g, "-").slice(0, 60)}-${Date.now()}.pdf` } : {}),
+      },
+      (error, result?: UploadApiResponse) => {
+        if (error || !result) return reject(error ?? new Error("Upload failed"));
+        resolve({ url: result.secure_url, publicId: result.public_id, resourceType });
+      }
+    );
+    stream.end(buffer);
+  });
+}
+
+/** Removes one uploaded file of either kind; best effort. */
+export async function deleteAsset(publicId: string, resourceType: string) {
+  await cloudinary.uploader.destroy(publicId, { resource_type: resourceType }).catch((err) => {
+    console.error(`Cloudinary delete failed for ${publicId}`, err);
+  });
 }
 
 /** Best-effort delete: a failed cleanup shouldn't fail the admin's save. */

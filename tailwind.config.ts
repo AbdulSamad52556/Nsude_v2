@@ -6,7 +6,7 @@ const config: Config = {
     extend: {
       colors: {
         // Brand palette: Deep Black, Off White (paper), Stone Grey (ash),
-        // Taupe, Olive (moss) and the Sand Beige accent.
+        // Taupe and the Sand Beige accent.
         ink: "#000000",
         charcoal: "#161615",
         graphite: "#3a3a38",
@@ -18,8 +18,6 @@ const config: Config = {
         rust: "#8a5a3f",
         taupe: "#a89f94",
         sand: "#d9c9b8",
-        // Tag color (e.g. the NEW badge on product photos).
-        moss: "#3f4639",
       },
       fontFamily: {
         sans: ["var(--font-inter)", "Helvetica Neue", "Arial", "sans-serif"],
@@ -51,9 +49,6 @@ const config: Config = {
           "0%": { opacity: "0", transform: "translateY(12px)" },
           "100%": { opacity: "1", transform: "translateY(0)" },
         },
-      },
-      maxWidth: {
-        content: "1440px",
       },
     },
   },

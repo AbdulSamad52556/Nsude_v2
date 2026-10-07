@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
 import { Loader2, Plus, X } from "lucide-react";
-import { CATEGORIES, FITS, SIZES, type Product, type Size } from "@/lib/types";
+import { FITS, SIZES, type CategoryTreeNode, type Product, type Size } from "@/lib/types";
 import { fieldErrors, productInputSchema } from "@/lib/validation";
 import { cx } from "@/lib/utils";
 import { ApiError, apiFetch } from "./api";
@@ -31,6 +31,8 @@ interface FormState {
   variants: VariantDraft[];
   sizes: Size[];
   category: Product["category"];
+  /** "" = none. */
+  subcategory: string;
   material: string;
   fit: Product["fit"];
   weight: string;
@@ -73,7 +75,8 @@ function toFormState(p?: Product): FormState {
         }))
       : [blankVariant("Black")],
     sizes: p?.sizes ?? [...SIZES],
-    category: p?.category ?? "T-Shirts",
+    category: p?.category ?? "",
+    subcategory: p?.subcategory ?? "",
     material: p?.material ?? "",
     fit: p?.fit ?? "Regular",
     weight: p?.weight ?? "",
@@ -86,7 +89,7 @@ function toFormState(p?: Product): FormState {
 const num = (v: string) => (v.trim() === "" ? NaN : Number(v));
 
 const inputClass =
-  "rounded-md h-11 w-full border border-taupe/50 bg-transparent px-3 text-sm focus:border-moss focus:outline-none";
+  "rounded-md h-11 w-full border border-taupe/50 bg-transparent px-3 text-sm focus:border-ink focus:outline-none";
 const labelClass = "mb-2 block text-[11px] uppercase tracking-widest2 text-ash";
 
 function FieldError({ message }: { message?: string }) {
@@ -103,7 +106,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   );
 }
 
-export function ProductForm({ product }: { product?: Product }) {
+export function ProductForm({ product, categories }: { product?: Product; categories: CategoryTreeNode[] }) {
   const router = useRouter();
   const isEdit = Boolean(product);
   const [form, setForm] = useState<FormState>(() => toFormState(product));
@@ -171,6 +174,7 @@ export function ProductForm({ product }: { product?: Product }) {
         ),
       })),
       measurements: form.measurements.filter((m) => m.label.trim()),
+      subcategory: form.subcategory || null,
     };
 
     const parsed = productInputSchema.safeParse(payload);
@@ -276,7 +280,7 @@ export function ProductForm({ product }: { product?: Product }) {
                 set("variants", [...form.variants, { ...blankVariant("", "#8a8a84"), sizePrices: { ...form.variants[0]?.sizePrices } }])
               }
               disabled={form.variants.length >= 20}
-              className="mt-4 flex h-11 items-center gap-2 border border-dashed border-graphite/30 px-5 text-xs uppercase tracking-widest2 text-ash hover:border-moss hover:text-ink disabled:opacity-40"
+              className="mt-4 flex h-11 items-center gap-2 border border-dashed border-graphite/30 px-5 text-xs uppercase tracking-widest2 text-ash hover:border-ink hover:text-ink disabled:opacity-40"
             >
               <Plus size={14} /> Add color
             </button>
@@ -295,7 +299,7 @@ export function ProductForm({ product }: { product?: Product }) {
                       type="button"
                       aria-pressed={on}
                       onClick={() => set("sizes", on ? form.sizes.filter((x) => x !== s) : SIZES.filter((x) => x === s || form.sizes.includes(x)))}
-                      className={cx("h-10 w-12 border text-xs", on ? "border-moss bg-moss text-paper" : "border-taupe/50 hover:border-moss")}
+                      className={cx("h-10 w-12 border text-xs", on ? "border-ink bg-ink text-paper" : "border-taupe/50 hover:border-ink")}
                     >
                       {s}
                     </button>
@@ -324,7 +328,7 @@ export function ProductForm({ product }: { product?: Product }) {
                       <td className="py-1 pr-2">
                         <input
                           aria-label={`Measurement ${i + 1} label`}
-                          className="rounded-md h-9 w-full border border-taupe/50 bg-transparent px-2 focus:border-moss focus:outline-none"
+                          className="rounded-md h-9 w-full border border-taupe/50 bg-transparent px-2 focus:border-ink focus:outline-none"
                           value={m.label}
                           onChange={(e) => set("measurements", form.measurements.map((x, j) => (j === i ? { ...x, label: e.target.value } : x)))}
                         />
@@ -333,7 +337,7 @@ export function ProductForm({ product }: { product?: Product }) {
                         <td key={s} className="py-1 pr-2">
                           <input
                             aria-label={`${m.label || "Measurement"} ${s}`}
-                            className="rounded-md h-9 w-full min-w-[56px] border border-taupe/50 bg-transparent px-2 focus:border-moss focus:outline-none"
+                            className="rounded-md h-9 w-full min-w-[56px] border border-taupe/50 bg-transparent px-2 focus:border-ink focus:outline-none"
                             value={m.values[s]}
                             onChange={(e) =>
                               set("measurements", form.measurements.map((x, j) => (j === i ? { ...x, values: { ...x.values, [s]: e.target.value } } : x)))
@@ -413,10 +417,45 @@ export function ProductForm({ product }: { product?: Product }) {
             <div className="flex flex-col gap-4">
               <div>
                 <label htmlFor="category" className={labelClass}>Category</label>
-                <Select id="category" value={form.category} onChange={(e) => set("category", e.target.value as FormState["category"])}>
-                  {CATEGORIES.map((c) => <option key={c}>{c}</option>)}
+                <Select
+                  id="category"
+                  value={form.category}
+                  onChange={(e) => setForm((f) => ({ ...f, category: e.target.value, subcategory: "" }))}
+                >
+                  <option value="">Choose…</option>
+                  {/* Hidden categories only show if this product is already in one. */}
+                  {categories
+                    .filter((c) => c.active || c.name === product?.category)
+                    .map((c) => (
+                      <option key={c.id} value={c.name}>
+                        {c.name}
+                        {!c.active ? " (hidden)" : ""}
+                      </option>
+                    ))}
                 </Select>
+                {err("category") && <p className="mt-1 text-xs text-rust">{err("category")}</p>}
               </div>
+              {(() => {
+                const subs = (categories.find((c) => c.name === form.category)?.children ?? []).filter(
+                  (s) => s.active || s.name === product?.subcategory
+                );
+                if (subs.length === 0) return null;
+                return (
+                  <div>
+                    <label htmlFor="subcategory" className={labelClass}>Sub-category (optional)</label>
+                    <Select id="subcategory" value={form.subcategory} onChange={(e) => set("subcategory", e.target.value)}>
+                      <option value="">None</option>
+                      {subs.map((s) => (
+                        <option key={s.id} value={s.name}>
+                          {s.name}
+                          {!s.active ? " (hidden)" : ""}
+                        </option>
+                      ))}
+                    </Select>
+                    {err("subcategory") && <p className="mt-1 text-xs text-rust">{err("subcategory")}</p>}
+                  </div>
+                );
+              })()}
               <div>
                 <label htmlFor="fit" className={labelClass}>Fit</label>
                 <Select id="fit" value={form.fit} onChange={(e) => set("fit", e.target.value as FormState["fit"])}>
@@ -454,7 +493,7 @@ export function ProductForm({ product }: { product?: Product }) {
           <button
             type="submit"
             disabled={saving || uploading > 0}
-            className="rounded-md flex h-11 items-center gap-2 bg-moss px-6 text-xs uppercase tracking-widest2 text-paper hover:brightness-90 disabled:opacity-60"
+            className="rounded-md flex h-11 items-center gap-2 bg-ink px-6 text-xs uppercase tracking-widest2 text-paper hover:bg-graphite disabled:opacity-60"
           >
             {saving && <Loader2 size={16} className="animate-spin" />}
             {isEdit ? "Save changes" : "Create product"}

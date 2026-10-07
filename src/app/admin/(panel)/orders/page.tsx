@@ -68,7 +68,7 @@ export default async function AdminOrdersPage({ searchParams }: { searchParams: 
           can(admin, "orders.manage") && (
             <Link
               href="/admin/orders/new"
-              className="flex h-11 items-center gap-2 rounded-md bg-moss px-5 text-xs uppercase tracking-widest2 text-paper hover:brightness-90"
+              className="flex h-11 items-center gap-2 rounded-md bg-ink px-5 text-xs uppercase tracking-widest2 text-paper hover:bg-graphite"
             >
               <Plus size={16} strokeWidth={1.5} /> New order
             </Link>
@@ -84,7 +84,7 @@ export default async function AdminOrdersPage({ searchParams }: { searchParams: 
               href={href({ status: t.value, q, size: sizeParam })}
               className={cx(
                 "border px-3 py-1.5 text-[11px] uppercase tracking-widest2",
-                status === t.value ? "border-moss bg-moss text-paper" : "border-taupe/50 text-graphite hover:border-moss"
+                status === t.value ? "border-ink bg-ink text-paper" : "border-taupe/50 text-graphite hover:border-ink"
               )}
             >
               {t.label} <span className="opacity-60">{t.count}</span>
@@ -98,9 +98,9 @@ export default async function AdminOrdersPage({ searchParams }: { searchParams: 
             name="q"
             defaultValue={q}
             placeholder="Order no., email or phone"
-            className="rounded-md h-10 w-64 border border-taupe/50 bg-transparent px-3 text-sm focus:border-moss focus:outline-none"
+            className="rounded-md h-10 w-64 border border-taupe/50 bg-transparent px-3 text-sm focus:border-ink focus:outline-none"
           />
-          <button type="submit" className="rounded-md h-10 bg-moss px-4 text-xs uppercase tracking-widest2 text-paper hover:brightness-90">
+          <button type="submit" className="rounded-md h-10 bg-ink px-4 text-xs uppercase tracking-widest2 text-paper hover:bg-graphite">
             Search
           </button>
         </form>

@@ -25,6 +25,8 @@ const bodySchema = z.object({
   vid: z.string().regex(ID_PATTERN),
   sid: z.string().regex(ID_PATTERN),
   area: z.enum(["store", "admin"]).default("store"),
+  /** "Still here" check-in: no events, just keeps the visit current. */
+  heartbeat: z.boolean().optional(),
   // Sent with the first batch of a visit.
   ctx: z
     .object({
@@ -49,7 +51,6 @@ const bodySchema = z.object({
           .optional(),
       })
     )
-    .min(1)
     .max(50),
 });
 
@@ -86,6 +87,21 @@ export async function POST(request: NextRequest) {
   const parsed = bodySchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return done;
   const { vid, sid, ctx, area } = parsed.data;
+
+  if (parsed.data.heartbeat) {
+    // Admin check-ins only count for the signed-in admin's own session.
+    const admin = area === "admin" ? await getAdmin() : null;
+    if (area === "admin" && !admin) return done;
+    // Only an existing, matching visit; a heartbeat never starts one.
+    await db.visitSession
+      .updateMany({
+        where: { key: sid, visitorId: vid, area, ...(admin ? { adminEmail: admin.email } : {}) },
+        data: { lastSeenAt: new Date() },
+      })
+      .catch(() => {});
+    return done;
+  }
+
   const events = parsed.data.events.filter((e) => !SERVER_ONLY.has(e.type) && areaOf(e.path) === area);
   if (events.length === 0) return done;
 

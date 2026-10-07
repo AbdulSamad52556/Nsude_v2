@@ -84,7 +84,7 @@ export function PhoneLogin({ onSignedIn }: { onSignedIn: (account: AccountData, 
 
   return (
     <div className="flex w-full flex-col items-center text-center">
-      <span className="flex h-14 w-14 items-center justify-center rounded-full bg-moss/10 text-moss md:h-16 md:w-16">
+      <span className="flex h-14 w-14 items-center justify-center rounded-full bg-ink/10 text-ink md:h-16 md:w-16">
         <Smartphone size={24} strokeWidth={1.5} />
       </span>
       <h1 className="mt-5 text-xl font-medium uppercase tracking-tighter text-ink md:text-display-md">
@@ -104,7 +104,7 @@ export function PhoneLogin({ onSignedIn }: { onSignedIn: (account: AccountData, 
                 setStep("phone");
                 setError(null);
               }}
-              className="text-moss underline underline-offset-4"
+              className="text-ink underline underline-offset-4"
             >
               Change
             </button>
@@ -144,7 +144,7 @@ export function PhoneLogin({ onSignedIn }: { onSignedIn: (account: AccountData, 
             <button
               type="submit"
               disabled={busy || !normalized.success}
-              className="mt-4 flex h-10 w-full items-center justify-center gap-2 rounded-md bg-moss text-xs uppercase tracking-widest2 text-paper transition-[filter] hover:brightness-90 disabled:cursor-not-allowed disabled:bg-graphite/40 md:h-11"
+              className="mt-4 flex h-10 w-full items-center justify-center gap-2 rounded-md bg-ink text-xs uppercase tracking-widest2 text-paper transition-colors hover:bg-graphite disabled:cursor-not-allowed disabled:bg-ash/50 md:h-11"
             >
               {busy ? <Loader2 size={15} className="animate-spin" /> : null}
               Send code
@@ -160,9 +160,9 @@ export function PhoneLogin({ onSignedIn }: { onSignedIn: (account: AccountData, 
             noValidate
           >
             {screenCode && (
-              <div className="mb-4 flex items-center justify-between gap-3 rounded-md bg-moss/10 px-3 py-2.5">
+              <div className="mb-4 flex items-center justify-between gap-3 rounded-md bg-ink/10 px-3 py-2.5">
                 <div>
-                  <p className="text-[10px] uppercase tracking-widest2 text-moss">Your login code</p>
+                  <p className="text-[10px] uppercase tracking-widest2 text-ink">Your login code</p>
                   <p className="mt-0.5 text-lg font-medium tracking-[0.3em] text-ink">{screenCode}</p>
                 </div>
                 <button
@@ -172,7 +172,7 @@ export function PhoneLogin({ onSignedIn }: { onSignedIn: (account: AccountData, 
                     verify(screenCode);
                   }}
                   disabled={busy}
-                  className="shrink-0 rounded-md bg-moss px-3 py-2 text-[10px] uppercase tracking-widest2 text-paper transition-[filter] hover:brightness-90 disabled:bg-graphite/40"
+                  className="shrink-0 rounded-md bg-ink px-3 py-2 text-[10px] uppercase tracking-widest2 text-paper transition-colors hover:bg-graphite disabled:bg-ash/50"
                 >
                   Use this code
                 </button>
@@ -201,7 +201,7 @@ export function PhoneLogin({ onSignedIn }: { onSignedIn: (account: AccountData, 
             <button
               type="submit"
               disabled={busy || code.length !== OTP_LENGTH}
-              className="mt-4 flex h-10 w-full items-center justify-center gap-2 rounded-md bg-moss text-xs uppercase tracking-widest2 text-paper transition-[filter] hover:brightness-90 disabled:cursor-not-allowed disabled:bg-graphite/40 md:h-11"
+              className="mt-4 flex h-10 w-full items-center justify-center gap-2 rounded-md bg-ink text-xs uppercase tracking-widest2 text-paper transition-colors hover:bg-graphite disabled:cursor-not-allowed disabled:bg-ash/50 md:h-11"
             >
               {busy && <Loader2 size={15} className="animate-spin" />}
               Verify &amp; continue
@@ -210,7 +210,7 @@ export function PhoneLogin({ onSignedIn }: { onSignedIn: (account: AccountData, 
               {resendIn > 0 ? (
                 `Resend code in ${resendIn}s`
               ) : (
-                <button type="button" onClick={() => sendCode()} className="text-moss underline underline-offset-4">
+                <button type="button" onClick={() => sendCode()} className="text-ink underline underline-offset-4">
                   Resend code
                 </button>
               )}

@@ -1,4 +1,5 @@
 import "server-only";
+import { z } from "zod";
 import type { Order, Prisma } from "@prisma/client";
 import { db } from "./db";
 import { recordAudit, type AuditActor } from "./audit";
@@ -92,6 +93,9 @@ export async function auditEntry(
     at: Date;
     method: string | null;
     category: string | null;
+    subcategory?: string | null;
+    vendor?: string | null;
+    attachments?: { name: string }[];
     employeeName: string | null;
     orderNumber: string | null;
     reference: string | null;
@@ -111,7 +115,11 @@ export async function auditEntry(
       { field: "Amount", from: "—", to: formatPaise(entry.amount, { sign: true }) },
       { field: "Date", from: "—", to: entry.at.toLocaleDateString("en-IN", { dateStyle: "medium", timeZone: "Asia/Kolkata" }) },
       { field: "Details", from: "—", to: entry.description },
-      ...(entry.category ? [{ field: "Category", from: "—", to: entry.category }] : []),
+      ...(entry.category
+        ? [{ field: "Category", from: "—", to: entry.subcategory ? `${entry.category} › ${entry.subcategory}` : entry.category }]
+        : []),
+      ...(entry.vendor ? [{ field: "Vendor", from: "—", to: entry.vendor }] : []),
+      ...(entry.attachments?.length ? [{ field: "Bills", from: "—", to: entry.attachments.map((a) => a.name).join(", ") }] : []),
       ...(entry.employeeName ? [{ field: "Employee", from: "—", to: entry.employeeName }] : []),
       ...(entry.orderNumber ? [{ field: "Order", from: "—", to: entry.orderNumber }] : []),
       ...(entry.method ? [{ field: "Method", from: "—", to: entry.method }] : []),
@@ -175,3 +183,19 @@ export function entryDate(day?: string) {
   const at = new Date(`${day}T12:00:00+05:30`);
   return Number.isNaN(at.getTime()) || at.getTime() > Date.now() ? new Date() : at;
 }
+
+/** A bill / receipt as returned by /api/admin/finance/receipt. Only files in
+    our own Cloudinary receipts folder are accepted. */
+export const attachmentSchema = z.object({
+  url: z
+    .string()
+    .url()
+    .max(500)
+    .refine((u) => u.startsWith(`https://res.cloudinary.com/${process.env.CLOUDINARY_CLOUD_NAME}/`), "Unknown file"),
+  publicId: z.string().max(300).refine((id) => id.startsWith("nsude/receipts/"), "Unknown file"),
+  name: z.string().trim().min(1).max(120),
+  kind: z.enum(["image", "pdf"]),
+  resourceType: z.enum(["image", "raw"]),
+});
+export type Attachment = z.infer<typeof attachmentSchema>;
+export const MAX_ATTACHMENTS = 5;

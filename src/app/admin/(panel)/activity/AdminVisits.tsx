@@ -4,7 +4,7 @@ import { Monitor, Smartphone, Tablet } from "lucide-react";
 import { db } from "@/lib/server/db";
 import { superadminEmail } from "@/lib/server/auth";
 import { cx } from "@/lib/utils";
-import { VISIT_IDLE_MINUTES } from "@/lib/activity";
+import { isActive } from "@/lib/activity";
 import { RANGES, formatDuration, rangeStart, type RangeKey } from "@/lib/server/activityView";
 import { AdminPageHeader } from "@/components/admin/AdminShell";
 import { Pagination, readPaging } from "@/components/admin/Pagination";
@@ -17,7 +17,7 @@ export function ActivityTabs({ area }: { area: "store" | "admin" }) {
   const tab = (active: boolean) =>
     cx(
       "rounded px-4 py-2 text-[11px] uppercase tracking-widest2 transition-colors",
-      active ? "bg-moss text-paper" : "text-graphite hover:bg-sand/30"
+      active ? "bg-ink text-paper" : "text-graphite hover:bg-sand/30"
     );
   return (
     <nav aria-label="Whose activity" className="mb-6 inline-flex rounded-md border border-taupe/50 p-0.5">
@@ -113,7 +113,7 @@ export async function AdminVisits({
   const chip = (active: boolean) =>
     cx(
       "rounded-md border px-3 py-1.5 text-[11px] uppercase tracking-widest2",
-      active ? "border-moss bg-moss text-paper" : "border-taupe/50 text-graphite hover:border-moss"
+      active ? "border-ink bg-ink text-paper" : "border-taupe/50 text-graphite hover:border-ink"
     );
   const base = { range: range === "7d" ? undefined : range, user, device, size: searchParams.size };
   const rangeLabel = RANGES.find((r) => r.key === range)!.label;
@@ -177,14 +177,14 @@ export async function AdminVisits({
             <tbody className="divide-y divide-taupe/20">
               {visits.map((v, i) => {
                 const Icon = DEVICE_ICON[v.device as keyof typeof DEVICE_ICON] ?? Monitor;
-                const live = Date.now() - v.lastSeenAt.getTime() < VISIT_IDLE_MINUTES * 60 * 1000;
+                const live = isActive(v.lastSeenAt);
                 const failedOnly = ended(v.key, "sign_in_failed") && !ended(v.key, "signed_in");
                 const status = failedOnly
                   ? { label: "Failed sign-in", tone: "border-rust/40 text-rust" }
                   : ended(v.key, "signed_out")
                     ? { label: "Signed out", tone: "border-taupe/50 text-ash" }
                     : live
-                      ? { label: "Active now", tone: "border-moss bg-moss text-paper" }
+                      ? { label: "Active now", tone: "border-ink bg-ink text-paper" }
                       : { label: "Left (idle)", tone: "border-sand bg-sand/40 text-ink" };
                 return (
                   <tr key={v.id} className="hover:bg-sand/15">

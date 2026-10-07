@@ -7,6 +7,7 @@ import { FINANCE_TABS, formatPaise } from "@/lib/finance";
 import { LIVE, employeeBalances, financeEmployees } from "@/lib/server/finance";
 import { AdminPageHeader } from "@/components/admin/AdminShell";
 import { SectionTabs } from "@/components/admin/SectionTabs";
+import { expenseCategoryTree, knownVendors } from "@/lib/server/expenseCategories";
 import { FinanceEntryButton } from "@/components/admin/FinanceEntryButton";
 import { auditTime } from "@/components/admin/AuditList";
 
@@ -34,6 +35,7 @@ export default async function FinanceEmployeesPage() {
     { owe: 0, owed: 0 }
   );
   const people = employees.map((e) => ({ email: e.email, name: e.name }));
+  const [categoryTree, vendors] = canManage ? await Promise.all([expenseCategoryTree(), knownVendors()]) : [[], []];
 
   return (
     <div>
@@ -43,8 +45,8 @@ export default async function FinanceEmployeesPage() {
         action={
           canManage ? (
             <div className="flex flex-wrap gap-2">
-              <FinanceEntryButton employees={people} initialType="employee_withdrawal" label="Employee takes" variant="outline" />
-              <FinanceEntryButton employees={people} initialType="employee_deposit" label="Employee adds" />
+              <FinanceEntryButton employees={people} categories={categoryTree} vendors={vendors} initialType="employee_withdrawal" label="Employee takes" variant="outline" />
+              <FinanceEntryButton employees={people} categories={categoryTree} vendors={vendors} initialType="employee_deposit" label="Employee adds" />
             </div>
           ) : undefined
         }
@@ -97,7 +99,7 @@ export default async function FinanceEmployeesPage() {
                       <span
                         className={cx(
                           "inline-block whitespace-nowrap rounded-full border px-2 py-0.5 text-xs",
-                          b.owes > 0 ? "border-rust/40 text-rust" : "border-moss bg-moss text-paper"
+                          b.owes > 0 ? "border-rust/40 text-rust" : "border-ink bg-ink text-paper"
                         )}
                       >
                         {b.owes > 0 ? `Owes ${formatPaise(b.owes)}` : `Owed ${formatPaise(-b.owes)}`}

@@ -197,7 +197,7 @@ function SavedValue({ value, onEdit }: { value: string; onEdit: () => void }) {
         onClick={onEdit}
         aria-label="Edit"
         title="Edit"
-        className="-mr-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-moss transition-colors hover:bg-moss/10"
+        className="-mr-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-ink transition-colors hover:bg-ink/10"
       >
         <Pencil size={15} strokeWidth={1.5} />
       </button>
@@ -656,12 +656,12 @@ export function CheckoutView({ razorpayEnabled }: { razorpayEnabled: boolean }) 
     return (
       <div className="mx-auto min-h-[100svh] max-w-2xl px-5 pb-24 pt-24 md:min-h-0 md:pt-40">
         <div className="flex flex-col items-center gap-3 text-center md:gap-4">
-          <span className="flex h-12 w-12 items-center justify-center rounded-full bg-moss text-paper md:h-14 md:w-14">
+          <span className="flex h-12 w-12 items-center justify-center rounded-full bg-ink text-paper md:h-14 md:w-14">
             <Check size={22} strokeWidth={2} />
           </span>
           <p className="text-[11px] uppercase tracking-widest2 text-ash md:text-xs">Thank you for your order</p>
           <h1 className="text-xl font-medium uppercase tracking-tighter text-ink md:text-display-md">Order Confirmed</h1>
-          <span className="rounded-md bg-moss/10 px-3 py-1 text-[11px] uppercase tracking-widest2 text-moss md:text-xs">
+          <span className="rounded-md bg-ink/10 px-3 py-1 text-[11px] uppercase tracking-widest2 text-ink md:text-xs">
             Order {placed.number}
           </span>
           <p className="max-w-md text-[13px] leading-relaxed text-graphite md:text-sm">
@@ -739,7 +739,7 @@ export function CheckoutView({ razorpayEnabled }: { razorpayEnabled: boolean }) 
         {/* Larger screens: under the cards. */}
         <Link
           href="/shop"
-          className="group mt-10 hidden h-14 w-full items-center justify-center gap-2 rounded-md bg-moss text-sm uppercase tracking-widest2 text-paper transition-[filter] hover:brightness-90 md:flex"
+          className="group mt-10 hidden h-14 w-full items-center justify-center gap-2 rounded-md bg-ink text-sm uppercase tracking-widest2 text-paper transition-colors hover:bg-graphite md:flex"
         >
           Continue Shopping
           <ArrowRight size={16} strokeWidth={1.5} className="transition-transform duration-300 group-hover:translate-x-1" />
@@ -752,7 +752,7 @@ export function CheckoutView({ razorpayEnabled }: { razorpayEnabled: boolean }) 
             <div className="fixed inset-x-0 bottom-0 z-40 border-t border-graphite/10 bg-paper px-5 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-3 md:hidden">
               <Link
                 href="/shop"
-                className="flex h-10 w-full items-center justify-center gap-2 rounded-md bg-moss text-xs uppercase tracking-widest2 text-paper transition-[filter] active:brightness-90"
+                className="flex h-10 w-full items-center justify-center gap-2 rounded-md bg-ink text-xs uppercase tracking-widest2 text-paper transition-colors active:bg-graphite"
               >
                 Continue Shopping
                 <ArrowRight size={16} strokeWidth={1.5} />
@@ -768,7 +768,7 @@ export function CheckoutView({ razorpayEnabled }: { razorpayEnabled: boolean }) 
     return (
       // Fills the screen on phones so the footer isn't on the first screen.
       <div className="mx-auto flex min-h-[100svh] max-w-md flex-col items-center justify-center px-5 pb-16 pt-24 text-center md:min-h-0 md:pb-24 md:pt-40">
-        <span className="flex h-16 w-16 items-center justify-center rounded-full bg-moss/10 text-moss md:h-20 md:w-20">
+        <span className="flex h-16 w-16 items-center justify-center rounded-full bg-ink/10 text-ink md:h-20 md:w-20">
           <ShoppingBag size={26} strokeWidth={1.5} />
         </span>
         <h1 className="mt-5 text-xl font-medium uppercase tracking-tighter text-ink md:mt-6 md:text-display-md">
@@ -779,7 +779,7 @@ export function CheckoutView({ razorpayEnabled }: { razorpayEnabled: boolean }) 
         </p>
         <Link
           href="/shop"
-          className="group mt-7 flex h-10 w-full max-w-xs items-center justify-center gap-2 rounded-md bg-moss text-xs uppercase tracking-widest2 text-paper transition-[filter] hover:brightness-90 md:mt-8 md:h-12 md:text-sm"
+          className="group mt-7 flex h-10 w-full max-w-xs items-center justify-center gap-2 rounded-md bg-ink text-xs uppercase tracking-widest2 text-paper transition-colors hover:bg-graphite md:mt-8 md:h-12 md:text-sm"
         >
           Shop Now
           <ArrowRight size={16} strokeWidth={1.5} className="transition-transform duration-300 group-hover:translate-x-1" />
@@ -854,7 +854,7 @@ export function CheckoutView({ razorpayEnabled }: { razorpayEnabled: boolean }) 
         (continuing ? !sectionComplete(step) : blocked || !SECTIONS.every(sectionComplete))
       }
       className={cx(
-        "group h-10 w-full items-center justify-center gap-2 rounded-md bg-moss md:h-14 text-xs uppercase tracking-widest2 text-paper transition-[filter,background-color] md:text-sm hover:brightness-90 disabled:cursor-not-allowed disabled:bg-graphite/40 disabled:brightness-100",
+        "group h-10 w-full items-center justify-center gap-2 rounded-md bg-ink md:h-14 text-xs uppercase tracking-widest2 text-paper transition-[filter,background-color] md:text-sm hover:bg-graphite disabled:cursor-not-allowed disabled:bg-ash/50 disabled:brightness-100",
         className
       )}
     >
@@ -967,7 +967,7 @@ export function CheckoutView({ razorpayEnabled }: { razorpayEnabled: boolean }) 
   return (
     // Phones: at least a full screen tall, so the footer never shows on the
     // first screen even when every section is closed.
-    <div className="mx-auto min-h-[100svh] max-w-content px-5 pb-24 pt-28 md:min-h-0 md:px-10 md:pt-40">
+    <div className="mx-auto min-h-[100svh] px-5 pb-24 pt-28 md:min-h-0 md:px-10 md:pt-40">
       {/* Phones: centered title (back arrow is in the header); desktop: large heading. */}
       <div className="mb-8 flex items-center justify-center md:mb-14 md:justify-start">
         <h1 className="text-xl font-medium uppercase tracking-tighter text-ink md:text-display-lg">Checkout</h1>
@@ -1000,13 +1000,13 @@ export function CheckoutView({ razorpayEnabled }: { razorpayEnabled: boolean }) 
             onToggle={() => toggleSection("contact")}
           >
             {account ? (
-              <p className="mb-4 rounded-md bg-moss/10 px-3 py-2 text-[11px] text-moss md:text-xs">
+              <p className="mb-4 rounded-md bg-ink/10 px-3 py-2 text-[11px] text-ink md:text-xs">
                 Logged in as +91 {account.phone}
               </p>
             ) : (
               <p className="mb-4 text-[12px] text-graphite md:text-[13px]">
                 Have an account?{" "}
-                <Link href="/account?next=/checkout" className="text-moss underline underline-offset-4">
+                <Link href="/account?next=/checkout" className="text-ink underline underline-offset-4">
                   Log in
                 </Link>{" "}
                 for faster checkout.
@@ -1093,7 +1093,7 @@ export function CheckoutView({ razorpayEnabled }: { razorpayEnabled: boolean }) 
                       onClick={editSavedAddress}
                       aria-label="Edit address"
                       title="Edit address"
-                      className="-mr-1 -mt-1 flex h-8 w-8 items-center justify-center rounded-md text-moss transition-colors hover:bg-moss/10"
+                      className="-mr-1 -mt-1 flex h-8 w-8 items-center justify-center rounded-md text-ink transition-colors hover:bg-ink/10"
                     >
                       <Pencil size={15} strokeWidth={1.5} />
                     </button>
@@ -1115,7 +1115,7 @@ export function CheckoutView({ razorpayEnabled }: { razorpayEnabled: boolean }) 
               <button
                 type="button"
                 onClick={() => setShowAddressList(true)}
-                className="mb-4 text-[11px] uppercase tracking-widest2 text-moss underline underline-offset-4"
+                className="mb-4 text-[11px] uppercase tracking-widest2 text-ink underline underline-offset-4"
               >
                 Use a saved address
               </button>
@@ -1129,7 +1129,7 @@ export function CheckoutView({ razorpayEnabled }: { razorpayEnabled: boolean }) 
                       key={id}
                       className={cx(
                         "flex cursor-pointer items-start gap-3 rounded-md border p-3 transition-colors",
-                        on ? "border-moss" : "border-graphite/20 hover:border-graphite/50"
+                        on ? "border-ink" : "border-graphite/20 hover:border-graphite/50"
                       )}
                     >
                       <input
@@ -1146,10 +1146,10 @@ export function CheckoutView({ razorpayEnabled }: { razorpayEnabled: boolean }) 
                         aria-hidden
                         className={cx(
                           "mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border",
-                          on ? "border-moss" : "border-graphite/40"
+                          on ? "border-ink" : "border-graphite/40"
                         )}
                       >
-                        {on && <span className="h-2 w-2 rounded-full bg-moss" />}
+                        {on && <span className="h-2 w-2 rounded-full bg-ink" />}
                       </span>
                       <span className="min-w-0 flex-1 text-[13px] leading-relaxed text-ink md:text-sm">
                         {a ? (
@@ -1164,7 +1164,7 @@ export function CheckoutView({ razorpayEnabled }: { razorpayEnabled: boolean }) 
                         )}
                       </span>
                       {a && account.defaultAddressId === a.id && (
-                        <span className="shrink-0 rounded-full bg-moss/10 px-2 py-0.5 text-[9px] uppercase tracking-wide text-moss">Default</span>
+                        <span className="shrink-0 rounded-full bg-ink/10 px-2 py-0.5 text-[9px] uppercase tracking-wide text-ink">Default</span>
                       )}
                     </label>
                   );
@@ -1232,7 +1232,7 @@ export function CheckoutView({ razorpayEnabled }: { razorpayEnabled: boolean }) 
                     type="checkbox"
                     checked={saveAddress}
                     onChange={(e) => setSaveAddress(e.target.checked)}
-                    className="h-4 w-4 accent-moss"
+                    className="h-4 w-4 accent-ink"
                   />
                   Save this address to my account
                 </label>
@@ -1326,7 +1326,7 @@ export function CheckoutView({ razorpayEnabled }: { razorpayEnabled: boolean }) 
                 aria-controls="mobile-order-summary"
                 className="flex w-full flex-col items-center border-t border-graphite/10 px-5 pb-3 pt-2"
               >
-                <span aria-hidden className="mb-2 h-1 w-9 rounded-full bg-graphite/25" />
+                <span aria-hidden className="mb-2 h-1 w-9 rounded-full bg-ash/25" />
                 <span className="flex w-full items-center justify-center gap-2">
                   <span className="flex items-center gap-2 text-[11px] uppercase tracking-widest2 text-ash">
                     {summaryTitle}

@@ -8,6 +8,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const staticRoutes = [
     "",
     "/shop",
+    "/collections",
     "/about",
     "/cart",
     "/contact",
@@ -28,5 +29,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     lastModified: new Date(),
   }));
 
-  return [...staticRoutes, ...productRoutes];
+  const collections = await db.collection.findMany({ where: { active: true }, select: { slug: true, updatedAt: true } });
+  const collectionRoutes = collections.map((c) => ({
+    url: `${siteUrl}/collections/${c.slug}`,
+    lastModified: c.updatedAt,
+  }));
+
+  return [...staticRoutes, ...collectionRoutes, ...productRoutes];
 }

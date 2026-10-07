@@ -9,6 +9,7 @@ import { isObjectId } from "@/lib/server/revalidate";
 import { productHref } from "@/lib/types";
 import { AdminPageHeader } from "@/components/admin/AdminShell";
 import { ProductForm } from "@/components/admin/ProductForm";
+import { productCategoryTree } from "@/lib/server/productCategories";
 import { AuditList } from "@/components/admin/AuditList";
 import { ReadOnly } from "@/components/admin/ReadOnly";
 
@@ -20,6 +21,7 @@ export default async function EditProductPage({ params }: { params: { id: string
   const row = await db.product.findUnique({ where: { id: params.id } });
   if (!row) notFound();
   const product = toProduct(row);
+  const categories = await productCategoryTree();
   const history = await db.auditLog.findMany({
     where: { entity: "product", entityId: product.id },
     orderBy: { at: "desc" },
@@ -42,7 +44,7 @@ export default async function EditProductPage({ params }: { params: { id: string
         }
       />
       <ReadOnly when={!can(admin, "products.manage")}>
-        <ProductForm product={product} />
+        <ProductForm categories={categories} product={product} />
       </ReadOnly>
 
       {/* Every edit to this product (prices, stock, colors…), old → new.

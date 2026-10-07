@@ -19,6 +19,8 @@ export type FinanceType = keyof typeof FINANCE_TYPES;
 export const MANUAL_TYPES = ["expense", "employee_withdrawal", "employee_deposit", "income", "adjustment"] as const;
 export type ManualType = (typeof MANUAL_TYPES)[number];
 
+/** Starting expense categories (admins manage the real list in Finance →
+    Categories; this only seeds it the first time). */
 export const EXPENSE_CATEGORIES = [
   "Production",
   "Fabric & materials",
@@ -67,4 +69,5 @@ export const FINANCE_TABS = [
   { href: "/admin/finance", label: "Overview" },
   { href: "/admin/finance/ledger", label: "Ledger" },
   { href: "/admin/finance/employees", label: "Employees" },
+  { href: "/admin/finance/categories", label: "Categories" },
 ];

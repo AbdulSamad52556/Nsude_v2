@@ -5,7 +5,8 @@ import { db } from "@/lib/server/db";
 import { pageAdmin } from "@/lib/server/auth";
 import { can } from "@/lib/adminPermissions";
 import { formatPrice } from "@/lib/utils";
-import { priceRange, totalStock } from "@/lib/types";
+import { PRODUCT_TABS, priceRange, totalStock } from "@/lib/types";
+import { SectionTabs } from "@/components/admin/SectionTabs";
 import { toProduct } from "@/lib/server/products";
 import { AdminPageHeader } from "@/components/admin/AdminShell";
 import { Pagination, readPaging } from "@/components/admin/Pagination";
@@ -38,13 +39,14 @@ export default async function AdminProductsPage({ searchParams }: { searchParams
           canManage && (
             <Link
               href="/admin/products/new"
-              className="rounded-md flex h-11 items-center gap-2 bg-moss px-5 text-xs uppercase tracking-widest2 text-paper hover:brightness-90"
+              className="rounded-md flex h-11 items-center gap-2 bg-ink px-5 text-xs uppercase tracking-widest2 text-paper hover:bg-graphite"
             >
               <Plus size={16} strokeWidth={1.5} /> New Product
             </Link>
           )
         }
       />
+      <SectionTabs tabs={PRODUCT_TABS} active="/admin/products" />
 
       {products.length === 0 ? (
         <p className="rounded-lg border border-taupe/30 p-8 text-center text-sm text-graphite">

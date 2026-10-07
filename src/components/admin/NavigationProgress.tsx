@@ -4,8 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 
 /**
- * Thin bar across the top of the content while an admin page loads (olive;
- * sand on phones, over the olive header). Starts on any click on an in-app
+ * Thin bar across the top of the content while an admin page loads (black;
+ * sand on phones, over the black header). Starts on any click on an in-app
  * link, creeps towards the end, then fills and fades once the new page shows.
  */
 export function NavigationProgress() {
@@ -77,7 +77,7 @@ export function NavigationProgress() {
       style={{ opacity: visible ? 1 : 0, transition: "opacity 300ms ease" }}
     >
       <div
-        className="h-full bg-sand md:bg-moss md:shadow-[0_0_8px_rgba(63,70,57,0.5)]"
+        className="h-full bg-sand md:bg-ink md:shadow-[0_0_8px_rgba(0,0,0,0.5)]"
         style={{ width: `${width}%`, transition: width === 0 ? "none" : "width 200ms ease-out" }}
       />
     </div>

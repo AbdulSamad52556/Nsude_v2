@@ -153,7 +153,7 @@ export function AdminOrderForm({ catalog }: { catalog: CatalogColour[] }) {
                   onClick={() => setDelivery(value)}
                   className={cx(
                     "h-8 rounded px-3 text-[10px] uppercase tracking-widest2",
-                    delivery === value ? "bg-moss text-paper" : "text-graphite hover:bg-sand/30"
+                    delivery === value ? "bg-ink text-paper" : "text-graphite hover:bg-sand/30"
                   )}
                 >
                   {label}
@@ -260,7 +260,7 @@ export function AdminOrderForm({ catalog }: { catalog: CatalogColour[] }) {
           <button
             type="button"
             onClick={() => setLines((ls) => [...ls, { key: Math.max(...ls.map((l) => l.key)) + 1, code: "", size: "", quantity: 1 }])}
-            className="mt-3 flex h-9 items-center gap-1.5 rounded-md border border-taupe/50 px-3 text-[11px] uppercase tracking-widest2 text-graphite hover:border-moss hover:text-moss"
+            className="mt-3 flex h-9 items-center gap-1.5 rounded-md border border-taupe/50 px-3 text-[11px] uppercase tracking-widest2 text-graphite hover:border-ink hover:text-ink"
           >
             <Plus size={13} strokeWidth={1.5} /> Add item
           </button>
@@ -286,7 +286,7 @@ export function AdminOrderForm({ catalog }: { catalog: CatalogColour[] }) {
                 <dt className="text-graphite">
                   Shipping
                   {shippingText === null ? (
-                    <button type="button" onClick={() => setShippingText(String(autoShipping))} className="ml-2 text-[11px] text-moss underline">
+                    <button type="button" onClick={() => setShippingText(String(autoShipping))} className="ml-2 text-[11px] text-ink underline">
                       change
                     </button>
                   ) : (
@@ -303,7 +303,7 @@ export function AdminOrderForm({ catalog }: { catalog: CatalogColour[] }) {
                       inputMode="numeric"
                       value={shippingText}
                       onChange={(e) => setShippingText(e.target.value.replace(/\D/g, ""))}
-                      className="h-8 w-24 rounded-md border border-taupe/50 bg-transparent px-2 text-right text-sm focus:border-moss focus:outline-none"
+                      className="h-8 w-24 rounded-md border border-taupe/50 bg-transparent px-2 text-right text-sm focus:border-ink focus:outline-none"
                       aria-label="Shipping (₹)"
                     />
                   )}
@@ -318,7 +318,7 @@ export function AdminOrderForm({ catalog }: { catalog: CatalogColour[] }) {
                   value={discountText}
                   onChange={(e) => setDiscountText(e.target.value.replace(/\D/g, ""))}
                   placeholder="0"
-                  className="h-8 w-24 rounded-md border border-taupe/50 bg-transparent px-2 text-right text-sm focus:border-moss focus:outline-none"
+                  className="h-8 w-24 rounded-md border border-taupe/50 bg-transparent px-2 text-right text-sm focus:border-ink focus:outline-none"
                   aria-label="Discount (₹)"
                 />
               </dd>
@@ -348,7 +348,7 @@ export function AdminOrderForm({ catalog }: { catalog: CatalogColour[] }) {
                 onClick={() => setPaid(value)}
                 className={cx(
                   "h-11 rounded-md border text-[11px] uppercase tracking-widest2",
-                  paid === value ? "border-moss bg-moss text-paper" : "border-taupe/50 text-graphite hover:border-moss"
+                  paid === value ? "border-ink bg-ink text-paper" : "border-taupe/50 text-graphite hover:border-ink"
                 )}
               >
                 {label}
@@ -373,7 +373,7 @@ export function AdminOrderForm({ catalog }: { catalog: CatalogColour[] }) {
               <Field label="Reference (optional)" hint="UPI / bank transaction id…">
                 <input value={reference} onChange={(e) => setReference(e.target.value)} maxLength={100} className={inputClass} />
               </Field>
-              <p className="text-[11px] text-moss">{formatPrice(total)} will be added to Finance.</p>
+              <p className="text-[11px] text-ink">{formatPrice(total)} will be added to Finance.</p>
             </div>
           )}
           {paid === false && (
@@ -387,7 +387,7 @@ export function AdminOrderForm({ catalog }: { catalog: CatalogColour[] }) {
         <button
           type="submit"
           disabled={busy || !ready}
-          className="flex h-12 items-center justify-center gap-2 rounded-md bg-moss px-6 text-xs uppercase tracking-widest2 text-paper hover:brightness-90 disabled:opacity-50"
+          className="flex h-12 items-center justify-center gap-2 rounded-md bg-ink px-6 text-xs uppercase tracking-widest2 text-paper hover:bg-graphite disabled:opacity-50"
         >
           {busy && <Loader2 size={15} className="animate-spin" />} Create order · {formatPrice(total)}
         </button>

@@ -8,6 +8,7 @@ import { FINANCE_TABS, FINANCE_TYPES, formatPaise, type FinanceType } from "@/li
 import { LIVE, codToCollectWhere, employeeBalances, financeEmployees, refundsDueWhere, sumPaise } from "@/lib/server/finance";
 import { AdminPageHeader } from "@/components/admin/AdminShell";
 import { SectionTabs } from "@/components/admin/SectionTabs";
+import { expenseCategoryTree, knownVendors } from "@/lib/server/expenseCategories";
 import { FinanceEntryButton } from "@/components/admin/FinanceEntryButton";
 import { OrderMoneyButton } from "@/components/admin/FinanceActions";
 import { auditTime } from "@/components/admin/AuditList";
@@ -55,20 +56,21 @@ export default async function FinancePage() {
   const maxCat = Math.max(1, ...categories.map((c) => c.paise));
   const monthName = new Date().toLocaleDateString("en-IN", { month: "long", timeZone: "Asia/Kolkata" });
   const people = employees.map((e) => ({ email: e.email, name: e.name }));
+  const [categoryTree, vendors] = canManage ? await Promise.all([expenseCategoryTree(), knownVendors()]) : [[], []];
 
   return (
     <div>
       <AdminPageHeader
         title="Finance"
         subtitle="Everything that moves the company's money: orders, refunds, expenses and employees."
-        action={canManage && hasOpening > 0 ? <FinanceEntryButton employees={people} /> : undefined}
+        action={canManage && hasOpening > 0 ? <FinanceEntryButton employees={people} categories={categoryTree} vendors={vendors} /> : undefined}
       />
       <SectionTabs tabs={FINANCE_TABS} active="/admin/finance" />
 
       {hasOpening === 0 && (
         <div className="mb-6 flex flex-wrap items-center justify-between gap-4 rounded-lg border border-sand bg-sand/30 p-5">
           <div className="flex items-start gap-3">
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-moss text-paper">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-ink text-paper">
               <Landmark size={17} strokeWidth={1.5} />
             </span>
             <div>
@@ -93,7 +95,7 @@ export default async function FinancePage() {
           <p className="mt-1 text-[11px] text-paper/60">After every counted entry</p>
         </div>
         {[
-          { label: `Money in · ${monthName}`, value: formatPaise(moneyIn), tone: "text-moss" },
+          { label: `Money in · ${monthName}`, value: formatPaise(moneyIn), tone: "text-ink" },
           { label: `Money out · ${monthName}`, value: formatPaise(moneyOut), tone: "text-rust" },
           { label: `Expenses · ${monthName}`, value: formatPaise(-expenses) },
         ].map((s) => (
@@ -114,7 +116,7 @@ export default async function FinancePage() {
             <p className="text-[10px] uppercase tracking-widest2 text-ash">{s.label}</p>
             <p className="mt-2 text-2xl font-medium">{s.value}</p>
             {s.href ? (
-              <Link href={s.href} className="mt-1 inline-block text-[11px] text-ash underline-offset-4 hover:text-moss hover:underline">
+              <Link href={s.href} className="mt-1 inline-block text-[11px] text-ash underline-offset-4 hover:text-ink hover:underline">
                 {s.hint}
               </Link>
             ) : (
@@ -143,7 +145,7 @@ export default async function FinancePage() {
         <section>
           <div className="mb-3 flex items-center justify-between">
             <h2 className="text-xs uppercase tracking-widest2">Recent entries</h2>
-            <Link href="/admin/finance/ledger" className="flex items-center gap-1 text-[11px] uppercase tracking-widest2 text-ash hover:text-moss">
+            <Link href="/admin/finance/ledger" className="flex items-center gap-1 text-[11px] uppercase tracking-widest2 text-ash hover:text-ink">
               Full ledger <ArrowRight size={13} strokeWidth={1.5} />
             </Link>
           </div>
@@ -159,7 +161,7 @@ export default async function FinancePage() {
                       {FINANCE_TYPES[e.type as FinanceType]?.label ?? e.type} · {auditTime(e.at)}
                     </p>
                   </div>
-                  <span className={cx("shrink-0 font-medium", e.amount >= 0 ? "text-moss" : "text-rust", e.voidedAt && "line-through")}>
+                  <span className={cx("shrink-0 font-medium", e.amount >= 0 ? "text-ink" : "text-rust", e.voidedAt && "line-through")}>
                     {formatPaise(e.amount, { sign: true })}
                   </span>
                 </li>

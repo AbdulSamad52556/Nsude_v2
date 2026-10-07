@@ -5,7 +5,6 @@ import { useState } from "react";
 import { Loader2, Plus } from "lucide-react";
 import { cx } from "@/lib/utils";
 import {
-  EXPENSE_CATEGORIES,
   FINANCE_TYPES,
   MANUAL_TYPES,
   PAYMENT_METHODS_FINANCE,
@@ -16,8 +15,10 @@ import {
 import { Dialog, Field, inputClass, primaryButton } from "./Dialog";
 import { Select } from "./Select";
 import { ApiError, apiFetch } from "./api";
+import { BillPicker, type Attachment } from "./FinanceAttachments";
 
 type Employee = { email: string; name: string };
+export type CategoryOption = { id: string; name: string; active: boolean; children: { id: string; name: string; active: boolean }[] };
 type EntryType = ManualType | "opening";
 
 const TAB_LABEL: Record<ManualType, string> = {
@@ -36,11 +37,17 @@ const today = () => new Date(Date.now() + 5.5 * 3600e3).toISOString().slice(0, 1
  */
 export function FinanceEntryButton({
   employees,
+  categories = [],
+  vendors = [],
   initialType = "expense",
   label,
   variant = "primary",
 }: {
   employees: Employee[];
+  /** Expense categories and their sub-categories (Finance → Categories). */
+  categories?: CategoryOption[];
+  /** Vendors used before, suggested while typing. */
+  vendors?: string[];
   initialType?: EntryType;
   label?: string;
   variant?: "primary" | "outline";
@@ -52,7 +59,10 @@ export function FinanceEntryButton({
   const [direction, setDirection] = useState<"in" | "out">("in");
   const [date, setDate] = useState(today);
   const [method, setMethod] = useState("bank");
-  const [category, setCategory] = useState("");
+  const [categoryId, setCategoryId] = useState("");
+  const [subcategoryId, setSubcategoryId] = useState("");
+  const [vendor, setVendor] = useState("");
+  const [bills, setBills] = useState<Attachment[]>([]);
   const [employeeEmail, setEmployeeEmail] = useState("");
   const [description, setDescription] = useState("");
   const [reference, setReference] = useState("");
@@ -63,12 +73,18 @@ export function FinanceEntryButton({
   const paise = parseRupees(amount);
   const sign = type === "opening" || type === "adjustment" ? (direction === "out" ? -1 : 1) : FINANCE_TYPES[type].sign;
   const isEmployee = type === "employee_withdrawal" || type === "employee_deposit";
+  const hasVendor = type === "expense" || type === "income";
+  const shownCategories = categories.filter((c) => c.active);
+  const subOptions = shownCategories.find((c) => c.id === categoryId)?.children.filter((c) => c.active) ?? [];
 
   function reset() {
     setAmount("");
     setDescription("");
     setReference("");
-    setCategory("");
+    setCategoryId("");
+    setSubcategoryId("");
+    setVendor("");
+    setBills([]);
     setEmployeeEmail("");
     setDate(today());
     setErrors({});
@@ -89,7 +105,10 @@ export function FinanceEntryButton({
           direction,
           date,
           method,
-          category: type === "expense" ? category : undefined,
+          categoryId: type === "expense" ? categoryId : undefined,
+          subcategoryId: type === "expense" && subcategoryId ? subcategoryId : undefined,
+          vendor: hasVendor && vendor ? vendor : undefined,
+          attachments: bills,
           employeeEmail: isEmployee ? employeeEmail : undefined,
           description: description || undefined,
           reference: reference || undefined,
@@ -116,8 +135,8 @@ export function FinanceEntryButton({
         }}
         className={
           variant === "primary"
-            ? "flex h-11 items-center gap-2 rounded-md bg-moss px-5 text-xs uppercase tracking-widest2 text-paper hover:brightness-90"
-            : "flex h-10 items-center gap-2 rounded-md border border-taupe/50 px-4 text-[11px] uppercase tracking-widest2 text-graphite hover:border-moss hover:text-moss"
+            ? "flex h-11 items-center gap-2 rounded-md bg-ink px-5 text-xs uppercase tracking-widest2 text-paper hover:bg-graphite"
+            : "flex h-10 items-center gap-2 rounded-md border border-taupe/50 px-4 text-[11px] uppercase tracking-widest2 text-graphite hover:border-ink hover:text-ink"
         }
       >
         <Plus size={15} strokeWidth={1.5} /> {label ?? "New entry"}
@@ -143,7 +162,7 @@ export function FinanceEntryButton({
                   }}
                   className={cx(
                     "rounded-md border px-3 py-1.5 text-[11px] uppercase tracking-widest2",
-                    type === t ? "border-moss bg-moss text-paper" : "border-taupe/50 text-graphite hover:border-moss"
+                    type === t ? "border-ink bg-ink text-paper" : "border-taupe/50 text-graphite hover:border-ink"
                   )}
                 >
                   {TAB_LABEL[t]}
@@ -192,22 +211,64 @@ export function FinanceEntryButton({
           </div>
 
           {type === "expense" && (
-            <Field label="Category" error={errors.category}>
-              <Select value={category} onChange={(e) => setCategory(e.target.value)} required>
-                <option value="">Choose…</option>
-                {EXPENSE_CATEGORIES.map((c) => (
-                  <option key={c} value={c}>
-                    {c}
-                  </option>
+            <div className={cx("grid gap-3", subOptions.length > 0 && "grid-cols-2")}>
+              <Field label="Category" error={errors.categoryId}>
+                <Select
+                  value={categoryId}
+                  onChange={(e) => {
+                    setCategoryId(e.target.value);
+                    setSubcategoryId("");
+                  }}
+                  required
+                >
+                  <option value="">Choose…</option>
+                  {shownCategories.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
+              {subOptions.length > 0 && (
+                <Field label="Sub-category (optional)" error={errors.subcategoryId}>
+                  <Select value={subcategoryId} onChange={(e) => setSubcategoryId(e.target.value)}>
+                    <option value="">—</option>
+                    {subOptions.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name}
+                      </option>
+                    ))}
+                  </Select>
+                </Field>
+              )}
+            </div>
+          )}
+
+          {hasVendor && (
+            <Field
+              label={type === "expense" ? "Paid to (vendor)" : "Received from"}
+              hint={type === "expense" ? "Shop, supplier or person — e.g. PackCo" : undefined}
+            >
+              <input
+                value={vendor}
+                onChange={(e) => setVendor(e.target.value)}
+                list="finance-vendors"
+                maxLength={100}
+                autoComplete="off"
+                className={inputClass}
+              />
+              <datalist id="finance-vendors">
+                {vendors.map((v) => (
+                  <option key={v} value={v} />
                 ))}
-              </Select>
+              </datalist>
             </Field>
           )}
 
           <Field
             label={type === "expense" ? "What was it for" : type === "opening" ? "Note (optional)" : isEmployee ? "Note (optional)" : "Note"}
             error={errors.description}
-            hint={type === "expense" ? "e.g. 200 poly mailers from PackCo" : undefined}
+            hint={type === "expense" ? "e.g. 200 poly mailers" : undefined}
           >
             <input value={description} onChange={(e) => setDescription(e.target.value)} maxLength={300} className={inputClass} />
           </Field>
@@ -230,6 +291,8 @@ export function FinanceEntryButton({
           <Field label="Reference (optional)" hint="Bank / UPI transaction id, invoice number…">
             <input value={reference} onChange={(e) => setReference(e.target.value)} maxLength={100} className={inputClass} />
           </Field>
+
+          {type !== "opening" && <BillPicker value={bills} onChange={setBills} />}
 
           {message && <p className="text-xs text-rust">{message}</p>}
           <button type="submit" disabled={busy || !paise} className={primaryButton}>

@@ -50,7 +50,7 @@ export default async function StockLedgerPage({ searchParams }: { searchParams: 
   const chip = (active: boolean) =>
     cx(
       "rounded-md border px-3 py-1.5 text-[11px] uppercase tracking-widest2",
-      active ? "border-moss bg-moss text-paper" : "border-taupe/50 text-graphite hover:border-moss"
+      active ? "border-ink bg-ink text-paper" : "border-taupe/50 text-graphite hover:border-ink"
     );
 
   return (
@@ -92,7 +92,7 @@ export default async function StockLedgerPage({ searchParams }: { searchParams: 
         {code && (
           <p className="text-xs text-graphite">
             Showing {colourName ? `${colourName.productName} · ${colourName.color}` : code} ({code}) only.{" "}
-            <Link href={href({ ...base, code: undefined })} className="underline underline-offset-4 hover:text-moss">
+            <Link href={href({ ...base, code: undefined })} className="underline underline-offset-4 hover:text-ink">
               Show all colours
             </Link>
           </p>
@@ -127,7 +127,7 @@ export default async function StockLedgerPage({ searchParams }: { searchParams: 
                       {m.color} · <span className="font-mono">{m.code}</span>
                     </p>
                   </td>
-                  <td className={cx("p-3 font-medium", m.change > 0 ? "text-moss" : "text-rust")}>
+                  <td className={cx("p-3 font-medium", m.change > 0 ? "text-ink" : "text-rust")}>
                     {m.change > 0 ? `+${m.change}` : `−${-m.change}`}
                   </td>
                   <td className="p-3">{m.stockAfter ?? "—"}</td>
@@ -137,7 +137,7 @@ export default async function StockLedgerPage({ searchParams }: { searchParams: 
                   </td>
                   <td className="p-3 text-xs">
                     {m.ref?.startsWith("NS-") && can(admin, "orders.view") ? (
-                      <Link href={`/admin/orders?q=${m.ref}`} className="font-mono text-moss underline underline-offset-2">
+                      <Link href={`/admin/orders?q=${m.ref}`} className="font-mono text-ink underline underline-offset-2">
                         {m.ref}
                       </Link>
                     ) : (

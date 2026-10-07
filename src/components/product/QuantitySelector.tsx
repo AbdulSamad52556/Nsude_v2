@@ -15,19 +15,19 @@ export function QuantitySelector({
         type="button"
         onClick={() => onChange(Math.max(1, value - 1))}
         aria-label="Decrease quantity"
-        className="flex h-10 w-9 items-center justify-center text-ink transition-opacity hover:opacity-60 disabled:opacity-30"
+        className="flex h-10 w-9 items-center justify-center text-ink md:h-9 md:w-8 transition-opacity hover:opacity-60 disabled:opacity-30"
         disabled={value <= 1}
       >
         <Minus size={13} strokeWidth={1.5} />
       </button>
-      <span className="flex h-10 w-8 items-center justify-center text-sm" aria-live="polite">
+      <span className="flex h-10 w-8 items-center justify-center text-sm md:h-9 md:w-7 md:text-[13px]" aria-live="polite">
         {value}
       </span>
       <button
         type="button"
         onClick={() => onChange(Math.min(9, value + 1))}
         aria-label="Increase quantity"
-        className="flex h-10 w-9 items-center justify-center text-ink transition-opacity hover:opacity-60 disabled:opacity-30"
+        className="flex h-10 w-9 items-center justify-center text-ink md:h-9 md:w-8 transition-opacity hover:opacity-60 disabled:opacity-30"
         disabled={value >= 9}
       >
         <Plus size={13} strokeWidth={1.5} />

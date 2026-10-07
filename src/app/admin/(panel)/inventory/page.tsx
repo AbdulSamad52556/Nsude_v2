@@ -84,7 +84,7 @@ export default async function InventoryPage({ searchParams }: { searchParams: Se
   const chip = (active: boolean) =>
     cx(
       "rounded-md border px-3 py-1.5 text-[11px] uppercase tracking-widest2",
-      active ? "border-moss bg-moss text-paper" : "border-taupe/50 text-graphite hover:border-moss"
+      active ? "border-ink bg-ink text-paper" : "border-taupe/50 text-graphite hover:border-ink"
     );
 
   return (
@@ -129,9 +129,9 @@ export default async function InventoryPage({ searchParams }: { searchParams: Se
             name="q"
             defaultValue={searchParams.q}
             placeholder="Product, colour or code"
-            className="h-10 w-56 rounded-md border border-taupe/50 bg-transparent px-3 text-sm focus:border-moss focus:outline-none"
+            className="h-10 w-56 rounded-md border border-taupe/50 bg-transparent px-3 text-sm focus:border-ink focus:outline-none"
           />
-          <button type="submit" className="h-10 rounded-md bg-moss px-4 text-xs uppercase tracking-widest2 text-paper hover:brightness-90">
+          <button type="submit" className="h-10 rounded-md bg-ink px-4 text-xs uppercase tracking-widest2 text-paper hover:bg-graphite">
             Search
           </button>
         </form>
@@ -195,7 +195,7 @@ export default async function InventoryPage({ searchParams }: { searchParams: Se
                     <div className="flex items-center justify-end gap-2">
                       <Link
                         href={`/admin/inventory/ledger?code=${v.code}`}
-                        className="text-[10px] uppercase tracking-widest2 text-ash underline-offset-4 hover:text-moss hover:underline"
+                        className="text-[10px] uppercase tracking-widest2 text-ash underline-offset-4 hover:text-ink hover:underline"
                       >
                         Ledger
                       </Link>

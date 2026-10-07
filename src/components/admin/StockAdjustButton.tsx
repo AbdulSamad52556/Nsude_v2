@@ -61,7 +61,7 @@ export function StockAdjustButton({ code, name, stock }: { code: string; name: s
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="flex h-8 items-center gap-1.5 rounded-md border border-taupe/50 px-3 text-[10px] uppercase tracking-widest2 text-graphite hover:border-moss hover:text-moss"
+        className="flex h-8 items-center gap-1.5 rounded-md border border-taupe/50 px-3 text-[10px] uppercase tracking-widest2 text-graphite hover:border-ink hover:text-ink"
       >
         <SlidersHorizontal size={12} strokeWidth={1.5} /> Adjust
       </button>
@@ -86,7 +86,7 @@ export function StockAdjustButton({ code, name, stock }: { code: string; name: s
                 onClick={() => pickMode(m)}
                 className={cx(
                   "h-9 rounded text-[11px] uppercase tracking-widest2",
-                  mode === m ? "bg-moss text-paper" : "text-graphite hover:bg-sand/30"
+                  mode === m ? "bg-ink text-paper" : "text-graphite hover:bg-sand/30"
                 )}
               >
                 {label}

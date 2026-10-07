@@ -34,7 +34,7 @@ export default async function UsersPage({ searchParams }: { searchParams: Search
           can(admin, "users.manage") && (
             <Link
               href="/admin/users/new"
-              className="flex h-11 items-center gap-2 rounded-md bg-moss px-5 text-xs uppercase tracking-widest2 text-paper hover:brightness-90"
+              className="flex h-11 items-center gap-2 rounded-md bg-ink px-5 text-xs uppercase tracking-widest2 text-paper hover:bg-graphite"
             >
               <Plus size={16} strokeWidth={1.5} /> New User
             </Link>
@@ -44,7 +44,7 @@ export default async function UsersPage({ searchParams }: { searchParams: Search
 
       {/* The .env account: fixed, full access, can't be edited here. */}
       <div className="mb-6 flex items-center gap-3 rounded-lg border border-sand bg-sand/25 p-4 text-sm">
-        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-moss text-paper">
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-ink text-paper">
           <ShieldCheck size={16} strokeWidth={1.5} />
         </span>
         <div className="min-w-0">
@@ -86,7 +86,7 @@ export default async function UsersPage({ searchParams }: { searchParams: Search
                     <span
                       className={cx(
                         "inline-block whitespace-nowrap rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-wide",
-                        u.active ? "border-moss bg-moss text-paper" : "border-ash/30 text-ash"
+                        u.active ? "border-ink bg-ink text-paper" : "border-ash/30 text-ash"
                       )}
                     >
                       {u.active ? "Active" : "Disabled"}

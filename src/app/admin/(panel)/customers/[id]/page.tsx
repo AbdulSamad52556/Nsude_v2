@@ -10,7 +10,7 @@ import { formatPrice } from "@/lib/utils";
 import { AdminPageHeader } from "@/components/admin/AdminShell";
 import { OrderStatusBadge } from "@/components/admin/OrderStatusBadge";
 import { AuditList, auditTime } from "@/components/admin/AuditList";
-import { OUTCOME_LABEL, OUTCOME_TONE, visitOutcome } from "@/lib/activity";
+import { OUTCOME_LABEL, OUTCOME_TONE, isActive, visitOutcome } from "@/lib/activity";
 import { formatDuration } from "@/lib/server/activityView";
 import { cx } from "@/lib/utils";
 
@@ -89,7 +89,18 @@ export default async function CustomerPage({ params }: { params: { id: string } 
                             {v.pageViews} page{v.pageViews === 1 ? "" : "s"} · {formatDuration(v.lastSeenAt.getTime() - v.startedAt.getTime())} ·{" "}
                             {v.device}
                           </span>
-                          <span className={cx("ml-auto rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-wide", OUTCOME_TONE[o])}>
+                          {isActive(v.lastSeenAt) && (
+                            <span className="ml-auto inline-flex items-center gap-1.5 rounded-full bg-ink px-2 py-0.5 text-[10px] uppercase tracking-wide text-paper">
+                              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-sand" /> Active now
+                            </span>
+                          )}
+                          <span
+                            className={cx(
+                              "rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-wide",
+                              !isActive(v.lastSeenAt) && "ml-auto",
+                              OUTCOME_TONE[o]
+                            )}
+                          >
                             {OUTCOME_LABEL[o]}
                           </span>
                         </Link>
@@ -120,7 +131,7 @@ export default async function CustomerPage({ params }: { params: { id: string } 
                   <li key={a.id} className="leading-relaxed text-graphite">
                     {describeAddress(a)}
                     {customer.defaultAddressId === a.id && (
-                      <span className="ml-2 rounded-full bg-moss/10 px-2 py-0.5 text-[10px] uppercase tracking-wide text-moss">Default</span>
+                      <span className="ml-2 rounded-full bg-ink/10 px-2 py-0.5 text-[10px] uppercase tracking-wide text-ink">Default</span>
                     )}
                   </li>
                 ))}

@@ -10,11 +10,14 @@ export function Dialog({
   title,
   onClose,
   children,
+  wide = false,
 }: {
   open: boolean;
   title: string;
   onClose: () => void;
   children: React.ReactNode;
+  /** Roomier panel (e.g. the banner cropper). */
+  wide?: boolean;
 }) {
   useEffect(() => {
     if (!open) return;
@@ -32,7 +35,7 @@ export function Dialog({
   return createPortal(
     <div className="fixed inset-0 z-[70] flex items-end justify-center sm:items-center sm:p-6" role="dialog" aria-modal="true" aria-label={title}>
       <div className="absolute inset-0 bg-ink/50" onClick={onClose} aria-hidden />
-      <div className="relative max-h-[92svh] w-full overflow-y-auto rounded-t-xl bg-paper p-5 shadow-[0_20px_60px_rgba(0,0,0,0.3)] sm:max-w-lg sm:rounded-xl sm:p-6">
+      <div className={`relative max-h-[92svh] w-full overflow-y-auto rounded-t-xl bg-paper p-5 shadow-[0_20px_60px_rgba(0,0,0,0.3)] sm:rounded-xl sm:p-6 ${wide ? "sm:max-w-4xl" : "sm:max-w-lg"}`}>
         <div className="mb-5 flex items-center justify-between gap-4">
           <h2 className="text-sm font-medium uppercase tracking-widest2">{title}</h2>
           <button type="button" onClick={onClose} aria-label="Close" className="text-ash hover:text-ink">
@@ -72,6 +75,6 @@ export function Field({
 }
 
 export const inputClass =
-  "h-11 w-full rounded-md border border-taupe/50 bg-transparent px-3 text-sm focus:border-moss focus:outline-none";
+  "h-11 w-full rounded-md border border-taupe/50 bg-transparent px-3 text-sm focus:border-ink focus:outline-none";
 export const primaryButton =
-  "flex h-11 items-center justify-center gap-2 rounded-md bg-moss px-6 text-xs uppercase tracking-widest2 text-paper hover:brightness-90 disabled:opacity-60";
+  "flex h-11 items-center justify-center gap-2 rounded-md bg-ink px-6 text-xs uppercase tracking-widest2 text-paper hover:bg-graphite disabled:opacity-60";

@@ -6,7 +6,15 @@
 // sendBeacon so the last steps of a visit aren't lost. Never records what's
 // typed into forms.
 
-import { ID_PATTERN, VISIT_IDLE_MINUTES, VISITOR_COOKIE, areaOf, visitCookie, type ActivityArea } from "@/lib/activity";
+import {
+  HEARTBEAT_MINUTES,
+  ID_PATTERN,
+  VISITOR_COOKIE,
+  areaOf,
+  visitCookie,
+  visitIdleMinutes,
+  type ActivityArea,
+} from "@/lib/activity";
 
 type Value = string | number | boolean;
 type Event = { type: string; at: number; path: string; data?: Record<string, Value> };
@@ -16,6 +24,8 @@ const FLUSH_MS = 4000;
 const MAX_BATCH = 40;
 
 let queue: Event[] = [];
+// When this page last told the server anything (an event or a check-in).
+let lastContact = 0;
 let timer: ReturnType<typeof setTimeout> | null = null;
 // Where a new visit came from, per area, sent with its first batch.
 const pendingCtx: Partial<Record<ActivityArea, Record<string, string>>> = {};
@@ -51,7 +61,7 @@ function ids(area: ActivityArea) {
     sid = newId();
     pendingCtx[area] = visitContext();
   }
-  writeCookie(visitCookie(area), sid, VISIT_IDLE_MINUTES * 60);
+  writeCookie(visitCookie(area), sid, visitIdleMinutes(area) * 60);
   return { vid, sid };
 }
 
@@ -121,8 +131,35 @@ export function track(type: string, data?: Record<string, Value | null | undefin
     ...(Object.keys(clean).length ? { data: clean } : {}),
   });
   ids(areaOf(where)); // keep the visit alive
+  lastContact = Date.now();
   if (queue.length >= MAX_BATCH) send(false);
   else timer ??= setTimeout(() => send(false), FLUSH_MS);
+}
+
+/**
+ * "Still here": called every minute while a page is open, it tells the server
+ * once every 5 minutes that the tab is open and on screen — only when nothing
+ * else (a click, a page) was sent in that time. Shoppers and admin users
+ * alike. It doesn't add to the timeline; the server only moves the visit's
+ * "last seen", which is what "Active now" reads.
+ */
+export function heartbeat() {
+  if (typeof window === "undefined" || document.visibilityState !== "visible") return;
+  if (Date.now() - lastContact < HEARTBEAT_MINUTES * 60 * 1000) return;
+  const area = areaOf(location.pathname);
+  // Visit already over (away too long): this starts a new one properly.
+  if (!readCookie(visitCookie(area))) {
+    track("page_view", { title: document.title.replace(/ — NSUDE( Admin)?$/, ""), resumed: true });
+    return;
+  }
+  const { vid, sid } = ids(area);
+  lastContact = Date.now();
+  fetch(ENDPOINT, {
+    method: "POST",
+    body: JSON.stringify({ vid, sid, area, heartbeat: true, events: [] }),
+    headers: { "Content-Type": "application/json" },
+    keepalive: true,
+  }).catch(() => {});
 }
 
 /** Sends whatever is queued right away (page hidden / closing). */

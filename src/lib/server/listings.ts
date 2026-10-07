@@ -2,8 +2,9 @@ import "server-only";
 import { unstable_cache } from "next/cache";
 import type { Listing, Prisma, Product as DbProduct } from "@prisma/client";
 import { db } from "./db";
+import { productCategoryTree } from "./productCategories";
 import { toProduct } from "./products";
-import { priceRange, type CardData, type Product } from "@/lib/types";
+import { categoryKey, priceRange, type CardData, type Product } from "@/lib/types";
 import { colorKey, filtersToQuery, type Filters, type PriceBand, type SortKey } from "@/components/shop/filters";
 
 /** Cache tag for everything read from the Listing collection. */
@@ -29,6 +30,9 @@ function listingDocs(row: DbProduct): Prisma.ListingCreateManyInput[] {
       colorKey: colorKey(v.name),
       hex: v.hex,
       category: product.category,
+      categoryKey: categoryKey(product.category),
+      subcategory: product.subcategory ?? null,
+      subcategoryKey: product.subcategory ? categoryKey(product.subcategory) : null,
       fit: product.fit,
       availableSizes: inStock ? product.sizes.filter((s) => !v.unavailableSizes.includes(s)) : [],
       inStock,
@@ -45,7 +49,7 @@ function listingDocs(row: DbProduct): Prisma.ListingCreateManyInput[] {
       featured: product.featured,
       newArrival: product.newArrival,
       productCreatedAt: row.createdAt,
-      searchText: [product.name, v.name, product.fit, product.category].join(" ").toLowerCase(),
+      searchText: [product.name, v.name, product.fit, product.category, product.subcategory ?? ""].join(" ").toLowerCase(),
     };
   });
 }
@@ -114,13 +118,15 @@ const PRICE_MATCH: Record<PriceBand, Record<string, number>> = {
   "above-2000": { $gt: 2000 },
 };
 
-type Facet = "category" | "fits" | "sizes" | "colors" | "price";
+type Facet = "category" | "subcategory" | "fits" | "sizes" | "colors" | "price";
 
 /** MongoDB $match for the active filters, optionally ignoring one facet —
     that's how each option's count reflects all the *other* choices. */
 function matchStage(f: Filters, ignore?: Facet) {
   const m: Record<string, unknown> = {};
-  if (ignore !== "category" && f.category) m.category = f.category;
+  if (ignore !== "category" && f.category) m.categoryKey = f.category;
+  // Sub-categories only narrow within their category.
+  if (ignore !== "category" && ignore !== "subcategory" && f.category && f.subcategory) m.subcategoryKey = f.subcategory;
   if (ignore !== "fits" && f.fits.length) m.fit = { $in: f.fits };
   if (ignore !== "sizes" && f.sizes.length) m.availableSizes = { $in: f.sizes };
   if (ignore !== "colors" && f.colors.length) m.colorKey = { $in: f.colors };
@@ -137,7 +143,10 @@ const SORT_STAGE: Record<SortKey, Record<string, 1 | -1>> = {
 };
 
 export interface ShopFacets {
+  /** Counts by category key. */
   category: Record<string, number>;
+  /** Counts by sub-category key, within the chosen category. */
+  subcategory: Record<string, number>;
   fit: Record<string, number>;
   size: Record<string, number>;
   price: Record<string, number>;
@@ -180,7 +189,8 @@ async function runShopQuery(filters: Filters, page: number): Promise<ShopPage> {
             { $project: { _id: 0, ...Object.fromEntries(Object.keys(CARD_SELECT).map((k) => [k, 1])) } },
           ],
           total: [matchStage(filters), { $count: "n" }],
-          category: [matchStage(filters, "category"), ...groupCounts("$category")],
+          category: [matchStage(filters, "category"), ...groupCounts("$categoryKey")],
+          subcategory: [matchStage(filters, "subcategory"), ...groupCounts("$subcategoryKey")],
           fit: [matchStage(filters, "fits"), ...groupCounts("$fit")],
           size: [matchStage(filters, "sizes"), { $unwind: "$availableSizes" }, ...groupCounts("$availableSizes")],
           price: [matchStage(filters, "price"), ...groupCounts(priceBandExpr as unknown as string)],
@@ -201,6 +211,7 @@ async function runShopQuery(filters: Filters, page: number): Promise<ShopPage> {
     items: CardFields[];
     total: { n: number }[];
     category: { _id: string; n: number }[];
+    subcategory: { _id: string; n: number }[];
     fit: { _id: string; n: number }[];
     size: { _id: string; n: number }[];
     price: { _id: string; n: number }[];
@@ -217,6 +228,7 @@ async function runShopQuery(filters: Filters, page: number): Promise<ShopPage> {
     hasMore: skip + result.items.length < total,
     facets: {
       category: toCounts(result.category),
+      subcategory: filters.category ? toCounts(result.subcategory) : {},
       fit: toCounts(result.fit),
       size: toCounts(result.size),
       price: toCounts(result.price),
@@ -284,6 +296,60 @@ export async function getFeaturedCards(limit = 4) {
   return rows.map(toCard);
 }
 
+/** Newest products (one card each, default colour), "New" ones first. */
+export async function getNewArrivalCards(limit = 8) {
+  const rows = await db.listing.findMany({
+    where: { position: 0 },
+    orderBy: [{ newArrival: "desc" }, { productCreatedAt: "desc" }],
+    take: limit,
+    select: CARD_SELECT,
+  });
+  return rows.map(toCard);
+}
+
+/** Each shown category (admin order) with how many products it has, a photo
+    for its tile, and its sub-categories. */
+export async function getCategoryTiles() {
+  const [tree, groups] = await Promise.all([
+    productCategoryTree({ activeOnly: true }),
+    db.listing.groupBy({ by: ["categoryKey"], where: { position: 0 }, _count: { _all: true } }),
+  ]);
+  const counts = new Map(groups.map((g) => [g.categoryKey, g._count._all]));
+  const tiles = await Promise.all(
+    tree.map(async (c) => {
+      const cover = await db.listing.findFirst({
+        where: { categoryKey: c.key, position: 0 },
+        orderBy: [{ featured: "desc" }, { productCreatedAt: "asc" }],
+        select: { images: true, productName: true },
+      });
+      return {
+        category: c.name,
+        key: c.key,
+        count: counts.get(c.key) ?? 0,
+        image: cover?.images[0]?.src ?? null,
+        alt: cover?.productName ?? c.name,
+        subcategories: c.children.map((s) => ({ name: s.name, key: s.key })),
+      };
+    })
+  );
+  return tiles.filter((t) => t.count > 0);
+}
+
+/** Default colorway of each of these products, in the order given
+    (products that no longer exist are skipped). */
+export async function getCardsForProducts(productIds: string[]) {
+  if (productIds.length === 0) return [] as CardData[];
+  const rows = await db.listing.findMany({
+    where: { productId: { in: productIds }, position: 0 },
+    select: { ...CARD_SELECT, productId: true },
+  });
+  const byProduct = new Map(rows.map((r) => [r.productId, r]));
+  return productIds.flatMap((id) => {
+    const row = byProduct.get(id);
+    return row ? [toCard(row)] : [];
+  });
+}
+
 /** Default colorway of up to `limit` products with this fit. */
 export async function getCardsByFit(fit: string, limit = 3) {
   const rows = await db.listing.findMany({
@@ -296,10 +362,15 @@ export async function getCardsByFit(fit: string, limit = 3) {
 }
 
 /** "You may also like": same fit first, then same category, then anything. */
-export async function getRelatedCards(product: Pick<Product, "id" | "fit" | "category">, limit = 3) {
+export async function getRelatedCards(product: Pick<Product, "id" | "fit" | "category" | "subcategory">, limit = 3) {
   const cards: CardData[] = [];
   const seen = new Set<string>([product.id]);
-  const tiers: Prisma.ListingWhereInput[] = [{ fit: product.fit }, { category: product.category }, {}];
+  const tiers: Prisma.ListingWhereInput[] = [
+    ...(product.subcategory ? [{ subcategoryKey: categoryKey(product.subcategory) }] : []),
+    { fit: product.fit },
+    { category: product.category },
+    {},
+  ];
   for (const where of tiers) {
     if (cards.length >= limit) break;
     const rows = await db.listing.findMany({

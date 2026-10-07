@@ -60,8 +60,8 @@ export function OrderMoneyButton({
         onClick={() => setOpen(true)}
         className={
           compact
-            ? "flex h-8 items-center gap-1.5 whitespace-nowrap rounded-md border border-taupe/50 px-3 text-[10px] uppercase tracking-widest2 text-graphite hover:border-moss hover:text-moss"
-            : "flex h-10 w-full items-center justify-center gap-2 rounded-md bg-moss px-4 text-[11px] uppercase tracking-widest2 text-paper hover:brightness-90"
+            ? "flex h-8 items-center gap-1.5 whitespace-nowrap rounded-md border border-taupe/50 px-3 text-[10px] uppercase tracking-widest2 text-graphite hover:border-ink hover:text-ink"
+            : "flex h-10 w-full items-center justify-center gap-2 rounded-md bg-ink px-4 text-[11px] uppercase tracking-widest2 text-paper hover:bg-graphite"
         }
       >
         <Icon size={compact ? 12 : 14} strokeWidth={1.5} />{" "}

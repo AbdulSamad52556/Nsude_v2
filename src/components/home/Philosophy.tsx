@@ -26,18 +26,19 @@ const pillars = [
 export function Philosophy() {
   return (
     <section className="bg-ink px-5 py-28 text-paper md:px-10 md:py-36">
-      <div className="mx-auto max-w-content">
+      <div>
         <Reveal>
-          <span className="mb-16 block text-xs uppercase tracking-widest2 text-stone md:mb-24">
-            The NSUDE Standard
-          </span>
+          <span className="mb-3 block text-xs uppercase tracking-widest2 text-taupe">The NSUDE Standard</span>
+          <h2 className="mb-16 max-w-2xl text-display-md font-medium uppercase tracking-tighter text-paper md:mb-24">
+            Four things we never compromise on
+          </h2>
         </Reveal>
 
         <div className="grid grid-cols-1 gap-x-8 gap-y-14 md:grid-cols-4">
           {pillars.map((pillar, i) => (
             <Reveal key={pillar.title} delay={i * 0.1}>
-              <div className="flex flex-col gap-4 border-t border-graphite pt-6">
-                <span className="text-xs text-stone">{pillar.number}</span>
+              <div className="flex flex-col gap-4 border-t border-taupe/40 pt-6">
+                <span className="text-xs text-sand">{pillar.number}</span>
                 <h3 className="text-2xl font-medium uppercase tracking-tighter">
                   {pillar.title}
                 </h3>

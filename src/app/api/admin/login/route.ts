@@ -5,7 +5,7 @@ import { burnPasswordCheck, verifyPassword } from "@/lib/server/password";
 import { db } from "@/lib/server/db";
 import { SESSION_COOKIE, SESSION_MAX_AGE, createSessionToken, type AdminSession } from "@/lib/auth/session";
 import { newVisitKey, recordActivity } from "@/lib/server/activity";
-import { ADMIN_VISIT_COOKIE, VISIT_IDLE_MINUTES } from "@/lib/activity";
+import { ADMIN_VISIT_COOKIE, ADMIN_VISIT_IDLE_MINUTES } from "@/lib/activity";
 
 const bodySchema = z.object({
   email: z.string().trim().email().max(200),
@@ -62,7 +62,7 @@ export async function POST(request: NextRequest) {
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
     path: "/",
-    maxAge: VISIT_IDLE_MINUTES * 60,
+    maxAge: ADMIN_VISIT_IDLE_MINUTES * 60,
   });
   response.cookies.set(SESSION_COOKIE, token, {
     httpOnly: true,

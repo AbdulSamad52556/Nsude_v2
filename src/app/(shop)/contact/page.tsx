@@ -18,7 +18,7 @@ export default function ContactPage() {
         title="Contact"
         subtitle="Questions about an order, fit, or fabric — we usually respond within one business day."
       />
-      <div className="mx-auto grid max-w-content grid-cols-1 gap-16 px-5 pb-28 md:grid-cols-[1fr_1.2fr] md:px-10">
+      <div className="mx-auto grid grid-cols-1 gap-16 px-5 pb-28 md:grid-cols-[1fr_1.2fr] md:px-10">
         <div className="flex flex-col gap-6 text-sm text-graphite">
           <div className="flex items-center gap-3">
             <Mail size={16} strokeWidth={1.5} className="text-ash" />

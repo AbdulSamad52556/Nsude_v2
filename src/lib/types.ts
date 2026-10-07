@@ -4,8 +4,27 @@ export type Fit = (typeof FITS)[number];
 export const SIZES = ["S", "M", "L", "XL", "XXL"] as const;
 export type Size = (typeof SIZES)[number];
 
+/** Starting shop categories; admins manage the real list (Products →
+    Categories), so a category is any name from there. */
 export const CATEGORIES = ["T-Shirts", "Long Sleeve"] as const;
-export type Category = (typeof CATEGORIES)[number];
+export type Category = string;
+
+/** URL key for a category / sub-category name ("Long Sleeve" → "long-sleeve"). */
+export const categoryKey = (name: string) =>
+  name
+    .toLowerCase()
+    .replace(/&/g, "and")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+
+/** A category with its sub-categories, as the shop and admin forms use it. */
+export interface CategoryTreeNode {
+  id: string;
+  name: string;
+  key: string;
+  active: boolean;
+  children: { id: string; name: string; key: string; active: boolean }[];
+}
 
 export interface ProductImage {
   src: string;
@@ -43,6 +62,8 @@ export interface Product {
   variants: ColorVariant[];
   sizes: Size[];
   category: Category;
+  /** Optional sub-category within the category (e.g. T-Shirts › Graphic). */
+  subcategory?: string | null;
   material: string;
   fit: Fit;
   weight: string;
@@ -100,6 +121,23 @@ export function totalStock(product: { variants: { stock: number }[] }) {
  * related-products all send this lean shape to the browser instead of full
  * products (which carry descriptions, measurements, every photo, …).
  */
+/** Collection banners are cropped to this size: a full-width strip,
+    250px tall on phones and 300px on larger screens. */
+export const COLLECTION_BANNER = { width: 1920, height: 400 } as const;
+
+/** A hand-picked collection, as the admin form edits it. */
+export interface CollectionData {
+  id: string;
+  name: string;
+  slug: string;
+  tagline: string;
+  description: string;
+  image: { src: string; alt: string; publicId: string | null; width: number | null; height: number | null } | null;
+  productIds: string[];
+  active: boolean;
+  featured: boolean;
+}
+
 export interface CardData {
   code: string;
   name: string;
@@ -138,3 +176,10 @@ export interface HeroSlide {
       `priceRange` is that color's prices across sizes. */
   product: Pick<Product, "id" | "name"> & { code: string; priceRange: { min: number; max: number } };
 }
+
+/** Tabs on the admin Products pages. */
+export const PRODUCT_TABS = [
+  { href: "/admin/products", label: "Products" },
+  { href: "/admin/products/categories", label: "Categories" },
+  { href: "/admin/products/collections", label: "Collections" },
+];

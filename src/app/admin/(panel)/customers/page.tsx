@@ -49,9 +49,9 @@ export default async function CustomersPage({ searchParams }: { searchParams: Se
           name="q"
           defaultValue={q}
           placeholder="Phone, name or email"
-          className="rounded-md h-10 w-64 border border-taupe/50 bg-transparent px-3 text-sm focus:border-moss focus:outline-none"
+          className="rounded-md h-10 w-64 border border-taupe/50 bg-transparent px-3 text-sm focus:border-ink focus:outline-none"
         />
-        <button type="submit" className="rounded-md h-10 bg-moss px-4 text-xs uppercase tracking-widest2 text-paper hover:brightness-90">
+        <button type="submit" className="rounded-md h-10 bg-ink px-4 text-xs uppercase tracking-widest2 text-paper hover:bg-graphite">
           Search
         </button>
       </form>

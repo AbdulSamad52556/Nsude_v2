@@ -14,7 +14,7 @@ import { BackButton } from "@/components/ui/BackButton";
 
 const links = [
   { label: "Shop", href: "/shop" },
-  { label: "Collection", href: "/#collection" },
+  { label: "Collections", href: "/collections" },
   { label: "About", href: "/about" },
 ];
 
@@ -70,7 +70,7 @@ export function Navbar() {
         animate={{ y: hidden ? "-100%" : "0%" }}
         transition={{ duration: shouldReduceMotion ? 0 : 0.4, ease: [0.16, 1, 0.3, 1] }}
         className={cx(
-          "fixed inset-x-0 top-0 z-50 mx-auto w-full max-w-[1440px] transition-[padding,background-color,border-color] duration-500 ease-editorial",
+          "fixed inset-x-0 top-0 z-50 w-full transition-[padding,background-color,border-color] duration-500 ease-editorial",
           solid
             ? "border-b border-graphite/10 bg-paper/90 backdrop-blur-md"
             : "border-b border-transparent bg-transparent",
@@ -78,7 +78,7 @@ export function Navbar() {
         )}
       >
         <nav
-          className="mx-auto flex max-w-content items-center justify-between px-5 md:px-10"
+          className="mx-auto flex items-center justify-between px-5 md:px-10"
           aria-label="Main navigation"
         >
           <div className="flex items-center">

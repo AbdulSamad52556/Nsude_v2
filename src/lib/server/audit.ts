@@ -122,6 +122,7 @@ export function productChanges(before: Product, after: Product): Change[] {
       Description: "description",
       Story: "story",
       Category: "category",
+      "Sub-category": "subcategory",
       Fit: "fit",
       Material: "material",
       Weight: "weight",
@@ -180,7 +181,7 @@ export function productChanges(before: Product, after: Product): Change[] {
 export function productSnapshot(p: Product): Change[] {
   const changes: Change[] = [
     { field: "Name", from: "—", to: p.name },
-    { field: "Category / fit", from: "—", to: `${p.category} · ${p.fit}` },
+    { field: "Category / fit", from: "—", to: `${p.category}${p.subcategory ? ` › ${p.subcategory}` : ""} · ${p.fit}` },
     { field: "Sizes", from: "—", to: p.sizes.join(", ") },
   ];
   for (const v of p.variants) {
