@@ -530,3 +530,28 @@ model ProductCategory {
 
   @@index([parentId])
 }
+
+/// A themed edit or drop ("Summer '26", "Monochrome"), hand-picked by an
+/// admin. Unlike categories, a product can be in any number of these.
+model Collection {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  name        String
+  /// URL key: /collections/<slug>.
+  slug        String   @unique
+  /// Short line under the name on banners and tiles.
+  tagline     String?
+  description String?
+  /// Wide banner photo; falls back to the first product's photo.
+  image       Image?
+  /// Products in the order they're shown.
+  productIds  String[] @db.ObjectId
+  /// Shown on the site (hidden ones are drafts).
+  active      Boolean  @default(false)
+  /// The one shown as the big banner on the home page.
+  featured    Boolean  @default(false)
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([active, sortOrder])
+}

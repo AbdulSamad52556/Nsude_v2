@@ -11,6 +11,7 @@ cloudinary.config({
 export const UPLOAD_FOLDERS = {
   products: "nsude/products",
   hero: "nsude/hero",
+  collections: "nsude/collections",
 } as const;
 
 export type UploadFolder = keyof typeof UPLOAD_FOLDERS;

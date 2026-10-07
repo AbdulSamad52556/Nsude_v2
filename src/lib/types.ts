@@ -121,6 +121,23 @@ export function totalStock(product: { variants: { stock: number }[] }) {
  * related-products all send this lean shape to the browser instead of full
  * products (which carry descriptions, measurements, every photo, …).
  */
+/** Collection banners are cropped to this size: a full-width strip,
+    250px tall on phones and 300px on larger screens. */
+export const COLLECTION_BANNER = { width: 1920, height: 400 } as const;
+
+/** A hand-picked collection, as the admin form edits it. */
+export interface CollectionData {
+  id: string;
+  name: string;
+  slug: string;
+  tagline: string;
+  description: string;
+  image: { src: string; alt: string; publicId: string | null; width: number | null; height: number | null } | null;
+  productIds: string[];
+  active: boolean;
+  featured: boolean;
+}
+
 export interface CardData {
   code: string;
   name: string;
@@ -164,4 +181,5 @@ export interface HeroSlide {
 export const PRODUCT_TABS = [
   { href: "/admin/products", label: "Products" },
   { href: "/admin/products/categories", label: "Categories" },
+  { href: "/admin/products/collections", label: "Collections" },
 ];

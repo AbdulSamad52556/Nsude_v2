@@ -335,6 +335,21 @@ export async function getCategoryTiles() {
   return tiles.filter((t) => t.count > 0);
 }
 
+/** Default colorway of each of these products, in the order given
+    (products that no longer exist are skipped). */
+export async function getCardsForProducts(productIds: string[]) {
+  if (productIds.length === 0) return [] as CardData[];
+  const rows = await db.listing.findMany({
+    where: { productId: { in: productIds }, position: 0 },
+    select: { ...CARD_SELECT, productId: true },
+  });
+  const byProduct = new Map(rows.map((r) => [r.productId, r]));
+  return productIds.flatMap((id) => {
+    const row = byProduct.get(id);
+    return row ? [toCard(row)] : [];
+  });
+}
+
 /** Default colorway of up to `limit` products with this fit. */
 export async function getCardsByFit(fit: string, limit = 3) {
   const rows = await db.listing.findMany({

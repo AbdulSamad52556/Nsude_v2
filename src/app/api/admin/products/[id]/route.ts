@@ -6,6 +6,7 @@ import { adminActor, recordAudit, productChanges } from "@/lib/server/audit";
 import { deleteImages } from "@/lib/server/cloudinary";
 import { assignVariantCodes, productImageIds, toProduct } from "@/lib/server/products";
 import { syncProductListings } from "@/lib/server/listings";
+import { removeProductFromCollections } from "@/lib/server/collections";
 import { isObjectId, revalidateStorefront } from "@/lib/server/revalidate";
 import { fieldErrors, productInputSchema, withDerivedPrice } from "@/lib/validation";
 import { logStockChange } from "@/lib/server/stockLedger";
@@ -114,6 +115,7 @@ export async function DELETE(_request: NextRequest, { params }: Params) {
   // Hero slides pointing at this product are deleted with it (cascade).
   await db.product.delete({ where: { id: params.id } });
   await syncProductListings(params.id); // removes its listings
+  await removeProductFromCollections(params.id);
   await deleteImages([
     ...productImageIds(existing),
     ...existing.heroSlides.map((s) => s.image.publicId),

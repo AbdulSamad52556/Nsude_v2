@@ -31,7 +31,7 @@ export interface UploadedImage {
   height: number;
 }
 
-export async function uploadImage(file: File, folder: "products" | "hero") {
+export async function uploadImage(file: File, folder: "products" | "hero" | "collections") {
   const body = new FormData();
   body.append("file", file);
   body.append("folder", folder);
@@ -42,7 +42,7 @@ export async function uploadImage(file: File, folder: "products" | "hero") {
 }
 
 /** Import a remote image by URL; it's copied into Cloudinary. */
-export async function uploadImageFromUrl(url: string, folder: "products" | "hero") {
+export async function uploadImageFromUrl(url: string, folder: "products" | "hero" | "collections") {
   const data = await apiFetch<{ image: UploadedImage }>("/api/admin/upload", {
     method: "POST",
     body: JSON.stringify({ url, folder }),

@@ -145,6 +145,27 @@ export const heroInputSchema = z.object({
 
 export type HeroInput = z.infer<typeof heroInputSchema>;
 
+export const collectionInputSchema = z.object({
+  name: z.string().trim().min(1, "Enter a name").max(60),
+  slug: z
+    .string()
+    .trim()
+    .min(1, "Enter a web address")
+    .max(60)
+    .regex(/^[a-z0-9]+(-[a-z0-9]+)*$/, "Use lowercase letters, numbers and single dashes"),
+  tagline: z.string().trim().max(120).default(""),
+  description: z.string().trim().max(1000).default(""),
+  image: imageSchema.nullable(),
+  productIds: z
+    .array(z.string().regex(/^[a-f0-9]{24}$/))
+    .max(200, "Up to 200 products")
+    .refine((ids) => new Set(ids).size === ids.length, "A product is listed twice"),
+  active: z.boolean(),
+  featured: z.boolean(),
+});
+
+export type CollectionInput = z.infer<typeof collectionInputSchema>;
+
 /** Flatten zod issues into { "field.path": "message" } for form display. */
 export function fieldErrors(error: z.ZodError) {
   const out: Record<string, string> = {};

@@ -11,17 +11,19 @@ import { Marquee } from "@/components/ui/Marquee";
 import { FREE_SHIPPING_THRESHOLD } from "@/lib/checkout";
 import { formatPrice } from "@/lib/utils";
 import { getHeroSlides } from "@/lib/server/products";
+import { getHomeCollection } from "@/lib/server/collections";
 import { getCardsByFit, getCategoryTiles, getFeaturedCards, getNewArrivalCards } from "@/lib/server/listings";
 
 // "Shop The Fit" tabs — each fetches only the three products it shows.
 const FIT_TABS = ["Relaxed", "Regular", "Oversized"] as const;
 
 export default async function HomePage() {
-  const [slides, newIn, featured, categories, ...byFit] = await Promise.all([
+  const [slides, newIn, featured, categories, homeCollection, ...byFit] = await Promise.all([
     getHeroSlides(),
     getNewArrivalCards(8),
     getFeaturedCards(4),
     getCategoryTiles(),
+    getHomeCollection(),
     ...FIT_TABS.map((fit) => getCardsByFit(fit, 3)),
   ]);
   const fitCards = Object.fromEntries(FIT_TABS.map((fit, i) => [fit, byFit[i]]));
@@ -34,7 +36,7 @@ export default async function HomePage() {
       <BrandStatement />
       <FeaturedCollection cards={featured} />
       <ShopByCategory tiles={categories} />
-      <CollectionCampaign />
+      <CollectionCampaign collection={homeCollection} />
       <ShopTheFit cardsByFit={fitCards} />
       <Philosophy />
       <ServiceStrip />
