@@ -62,6 +62,8 @@ export const cartItemSchema = z.object({
   code: z.string().regex(CODE_PATTERN),
   size: z.enum(SIZES),
   quantity: z.number().int().min(1).max(MAX_LINE_QUANTITY),
+  /** Custom print: the saved design's id. */
+  designId: z.string().regex(/^[a-f0-9]{24}$/).optional(),
 });
 export const cartItemsSchema = z.array(cartItemSchema).min(1, "Your bag is empty").max(30);
 

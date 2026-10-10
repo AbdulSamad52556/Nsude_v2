@@ -58,6 +58,7 @@ export const productInputSchema = z
     weight: z.string().trim().max(40).default(""),
     featured: z.boolean(),
     newArrival: z.boolean(),
+    blank: z.boolean().default(false),
     measurements: z
       .array(z.object({ label: z.string().trim().min(1).max(40), values: sizeValuesSchema }))
       .default([]),

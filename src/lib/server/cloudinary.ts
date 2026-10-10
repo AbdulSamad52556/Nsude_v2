@@ -12,6 +12,8 @@ export const UPLOAD_FOLDERS = {
   products: "nsude/products",
   hero: "nsude/hero",
   collections: "nsude/collections",
+  /** Customers' custom-tee uploads and design renders. */
+  custom: "nsude/custom",
 } as const;
 
 export type UploadFolder = keyof typeof UPLOAD_FOLDERS;

@@ -24,6 +24,15 @@ body {
   color: #f8f6f1;
 }
 
+/* Storefront headings and big display text use Archivo, slightly narrowed;
+   everything else stays in Inter. (The admin panel keeps Inter throughout.) */
+.storefront :is(h1, h2, h3),
+.storefront [class*="text-display-"],
+.font-display {
+  font-family: var(--font-archivo), "Helvetica Neue", Arial, sans-serif;
+  font-stretch: 92%;
+}
+
 .custom-cursor-active,
 .custom-cursor-active a,
 .custom-cursor-active button {

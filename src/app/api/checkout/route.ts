@@ -96,6 +96,11 @@ export async function POST(request: NextRequest) {
     await giveBackStock(quote.lines);
     throw err;
   });
+  // Custom designs on this order are now kept for printing.
+  const designIds = quote.lines.flatMap((l) => (l.designId ? [l.designId] : []));
+  if (designIds.length) {
+    await db.customDesign.updateMany({ where: { id: { in: designIds } }, data: { orderedAt: new Date() } });
+  }
   await logStockMovements(quote.lines, -1, {
     reason: "sale",
     ref: order.number,
@@ -112,7 +117,7 @@ export async function POST(request: NextRequest) {
     action: "Order placed",
     changes: [
       ...quote.lines.map((l) => ({
-        field: `Item · ${l.name} (${l.color} · ${l.size})`,
+        field: `Item · ${l.name} (${l.color} · ${l.size}${l.design ? ` · ${l.design}` : ""})`,
         from: "—",
         to: `${l.quantity} × ₹${l.price.toLocaleString("en-IN")}`,
       })),

@@ -20,6 +20,7 @@ export function CartItem({ line }: { line: CartLine }) {
             <h3 className="text-sm uppercase tracking-wide text-ink">{line.name}</h3>
             <p className="mt-1 text-xs uppercase tracking-wide text-ash">
               {line.color} · {line.size}
+              {line.design ? ` · ${line.design}` : ""}
             </p>
           </div>
           <button

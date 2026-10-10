@@ -75,6 +75,7 @@ export default function CartPage() {
                     <p className="mt-1 text-xs uppercase tracking-wide text-ash">
                       {line.color} · Size {line.size}
                     </p>
+                    {line.design && <p className="mt-1 text-xs text-graphite">Custom · {line.design}</p>}
                   </div>
                   <button
                     type="button"

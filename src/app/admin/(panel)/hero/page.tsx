@@ -14,7 +14,7 @@ export default async function AdminHeroPage() {
   const admin = await pageAdmin("hero.view");
   const [slides, rows] = await Promise.all([
     getHeroSlides(),
-    db.product.findMany({ orderBy: { name: "asc" } }),
+    db.product.findMany({ where: { blank: { not: true } }, orderBy: { name: "asc" } }),
   ]);
   // A slide links to the product's default color, so show that color's price.
   const products = rows.map(toProduct).map((p) => ({

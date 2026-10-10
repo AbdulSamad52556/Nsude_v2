@@ -60,7 +60,9 @@ export function CustomCursor() {
     <div
       ref={dot}
       aria-hidden
-      className="pointer-events-none fixed left-0 top-0 z-[90] mix-blend-difference will-change-transform"
+      // Above every overlay (cart, search, menus, filters, preloader); only
+      // the keyboard "Skip to content" link (z-200) sits higher.
+      className="pointer-events-none fixed left-0 top-0 z-[150] mix-blend-difference will-change-transform"
       style={{ transform: "translate3d(-100px, -100px, 0)" }}
     >
       {/* Size and fade animate here, separate from the position above, so

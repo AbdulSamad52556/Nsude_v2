@@ -60,7 +60,8 @@ export async function POST(request: NextRequest) {
   }
   const b = parsed.data;
 
-  const quote = await priceCart(b.items);
+  // The shop may also sell plain blank tees in person.
+  const quote = await priceCart(b.items, { allowPlainBlanks: true });
   if (quote.issues.length) {
     return NextResponse.json({ error: quote.issues.map((i) => i.message).join(" · ") }, { status: 409 });
   }

@@ -33,8 +33,10 @@ export async function productsByCode(codes: string[]) {
 export function toOrderSummary(order: Order, catalog: Awaited<ReturnType<typeof productsByCode>>) {
   // Orders entered by the shop (phone / in-person) are changed by the shop only.
   const editable = order.status === CUSTOMER_EDITABLE_STATUS && !order.createdBy;
-  // Items can be changed only on cash-on-delivery orders (no payment to adjust).
-  const itemsEditable = editable && order.paymentMethod === "cod";
+  // Items can be changed only on cash-on-delivery orders (no payment to
+  // adjust), and not once a custom print is on the order (it may already be
+  // in production; the order can still be cancelled).
+  const itemsEditable = editable && order.paymentMethod === "cod" && !order.items.some((i) => i.designId);
   return {
     id: order.id,
     number: order.number,
@@ -68,6 +70,7 @@ export function toOrderSummary(order: Order, catalog: Awaited<ReturnType<typeof 
         price: i.price,
         quantity: i.quantity,
         image: i.image,
+        design: i.design ?? null,
         sizeOptions,
       };
     }),

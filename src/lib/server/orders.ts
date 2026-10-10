@@ -9,6 +9,8 @@ import { recordAudit, systemActor, type AuditActor } from "./audit";
 import { logStockMovements } from "./stockLedger";
 import { recordOrderMoneyIn } from "./finance";
 import { priceFor, type Size } from "@/lib/types";
+import { customPrice, printLabel, type PrintSide } from "@/lib/custom";
+import { getCustomSettings } from "./custom";
 import { randomCode } from "@/lib/codes";
 import { shippingFor, type OrderStatus } from "@/lib/checkout";
 
@@ -19,6 +21,8 @@ export interface CartItem {
   code: string;
   size: Size;
   quantity: number;
+  /** A custom print: the saved design (on a blank tee). */
+  designId?: string;
 }
 
 export interface PricedLine {
@@ -30,12 +34,15 @@ export interface PricedLine {
   price: number;
   quantity: number;
   image: string;
+  designId?: string | null;
+  design?: string | null;
 }
 
 export interface CartIssue {
   code: string;
   size: string;
   message: string;
+  designId?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -48,11 +55,11 @@ export interface CartIssue {
  * or more than the color has in stock (stock is per color, shared by its
  * sizes).
  */
-export async function priceCart(items: CartItem[]) {
-  // Merge repeated code + size lines.
+export async function priceCart(items: CartItem[], { allowPlainBlanks = false } = {}) {
+  // Merge repeated code + size (+ design) lines.
   const merged = new Map<string, CartItem>();
   for (const item of items) {
-    const key = `${item.code}-${item.size}`;
+    const key = `${item.code}-${item.size}-${item.designId ?? ""}`;
     const prev = merged.get(key);
     merged.set(key, prev ? { ...prev, quantity: prev.quantity + item.quantity } : { ...item });
   }
@@ -66,6 +73,13 @@ export async function priceCart(items: CartItem[]) {
     })
   );
 
+  // Custom prints: their saved designs and the current print prices.
+  const designIds = Array.from(new Set(items.flatMap((i) => (i.designId ? [i.designId] : []))));
+  const designs = designIds.length
+    ? new Map((await db.customDesign.findMany({ where: { id: { in: designIds } } })).map((d) => [d.id, d]))
+    : new Map();
+  const custom = designIds.length ? await getCustomSettings() : null;
+
   const lines: PricedLine[] = [];
   const issues: CartIssue[] = [];
   const wanted = new Map<string, number>();
@@ -77,6 +91,22 @@ export async function priceCart(items: CartItem[]) {
       continue;
     }
     const { product, variant } = found;
+    const design = item.designId ? designs.get(item.designId) : null;
+    // Blanks are only sold with a design on them (or by the shop itself);
+    // a design only goes on the blank colour it was made on.
+    if (product.blank ? !design && !allowPlainBlanks : Boolean(item.designId)) {
+      issues.push({ code: item.code, size: item.size, designId: item.designId, message: "This item is no longer available" });
+      continue;
+    }
+    if (design && (design.code !== variant.code || !custom?.enabled)) {
+      issues.push({
+        code: item.code,
+        size: item.size,
+        designId: item.designId,
+        message: custom?.enabled ? "This custom design is no longer available" : "Custom printing is paused right now",
+      });
+      continue;
+    }
     if (!product.sizes.includes(item.size) || variant.unavailableSizes.includes(item.size) || variant.stock === 0) {
       issues.push({ code: item.code, size: item.size, message: `${variant.name} / ${item.size} is sold out` });
       continue;
@@ -88,9 +118,13 @@ export async function priceCart(items: CartItem[]) {
       name: product.name,
       color: variant.name,
       size: item.size,
-      price: priceFor(product, variant, item.size),
+      price: design
+        ? customPrice(priceFor(product, variant, item.size), design.sides.map((s: { side: string }) => s.side as PrintSide), custom!)
+        : priceFor(product, variant, item.size),
       quantity: item.quantity,
-      image: variant.images[0]?.src ?? "",
+      image: design?.sides[0]?.preview ?? variant.images[0]?.src ?? "",
+      designId: design?.id ?? null,
+      design: design ? printLabel(design.sides.map((s: { side: string }) => s.side as PrintSide)) : null,
     });
   }
 

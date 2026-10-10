@@ -278,7 +278,8 @@ function OrderDetails({
             <div className="min-w-0 flex-1">
               <p className="truncate text-[11px] uppercase tracking-wide text-ink md:text-xs">{i.name}</p>
               <p className="text-[11px] text-ash md:text-xs">
-                {i.color} · {i.size} · Qty {i.quantity}
+                {i.color} · {i.size}
+                {i.design ? ` · Custom ${i.design.toLowerCase()}` : ""} · Qty {i.quantity}
               </p>
             </div>
             <span className="text-[11px] text-ink md:text-xs">{formatPrice(i.price * i.quantity)}</span>

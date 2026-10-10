@@ -41,7 +41,7 @@ export function ShopByCategory({ tiles }: { tiles: Tile[] }) {
               <div className="absolute inset-0 bg-gradient-to-t from-ink/70 via-ink/10 to-transparent" />
               <div className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-4 p-5 md:p-8">
                 <div>
-                  <p className="text-2xl font-medium uppercase tracking-tighter text-paper md:text-4xl">{t.category}</p>
+                  <p className="font-display text-2xl font-medium uppercase tracking-tighter text-paper md:text-4xl">{t.category}</p>
                   <p className="mt-1 text-xs uppercase tracking-widest2 text-paper/70">
                     {t.count} {t.count === 1 ? "piece" : "pieces"}
                   </p>

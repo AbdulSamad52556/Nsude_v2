@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Inter, Fraunces } from "next/font/google";
+import { Archivo, Inter } from "next/font/google";
 import "./globals.css";
 import { CartProvider } from "@/context/CartContext";
 import { UIProvider } from "@/context/UIContext";
@@ -10,11 +10,13 @@ const inter = Inter({
   display: "swap",
 });
 
-const fraunces = Fraunces({
+/** Headings: Archivo, slightly narrowed (its width axis) for a tall,
+    confident uppercase. Inter stays for body text. */
+const archivo = Archivo({
   subsets: ["latin"],
-  variable: "--font-fraunces",
+  variable: "--font-archivo",
   display: "swap",
-  style: ["normal", "italic"],
+  axes: ["wdth"],
 });
 
 const siteUrl = "https://nsude.example.com";
@@ -65,7 +67,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={`${inter.variable} ${fraunces.variable}`}>
+    <html lang="en" className={`${inter.variable} ${archivo.variable}`}>
       <body className="min-h-screen bg-ink font-sans antialiased">
         <a
           href="#main-content"
