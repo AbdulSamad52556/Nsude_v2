@@ -84,6 +84,9 @@ model Product {
   weight         String         @default("")
   featured       Boolean        @default(false)
   newArrival     Boolean        @default(false)
+  /// A plain tee offered for custom printing (/customize). Hidden from the
+  /// shop; its colours' photos are the mockups (1st = front, 2nd = back).
+  blank          Boolean        @default(false)
   measurements   Measurement[]
   heroSlides     HeroSlide[]
   createdAt      DateTime       @default(now())
@@ -176,6 +179,10 @@ type OrderItem {
   price     Int
   quantity  Int
   image     String @default("")
+  /// Custom print: the customer's saved design (see CustomDesign).
+  designId  String? @db.ObjectId
+  /// e.g. "Front + back print".
+  design    String?
 }
 
 type ShippingAddress {
@@ -554,4 +561,44 @@ model Collection {
   updatedAt   DateTime @updatedAt
 
   @@index([active, sortOrder])
+}
+
+/// One side of a customer's custom design.
+type DesignSide {
+  /// "front" | "back"
+  side            String
+  /// The shirt with the design on it (what the customer saw).
+  preview         String
+  previewPublicId String
+  /// Transparent PNG of just the print area, at print resolution.
+  print           String
+  printPublicId   String
+  /// The editor state as the customer left it: their print areas (`boxes`,
+  /// fractions of the photo) and the text / images in each (`layers`).
+  layers          Json
+}
+
+/// A design a customer made on /customize, saved when they add it to the
+/// bag. Orders point at it from their items (OrderItem.designId).
+model CustomDesign {
+  id         String       @id @default(auto()) @map("_id") @db.ObjectId
+  productId  String       @db.ObjectId
+  /// Blank colour code it was made on.
+  code       String
+  sides      DesignSide[]
+  /// Cloudinary ids of the customer's original uploads.
+  assetIds   String[]
+  /// Set when an order with this design is placed.
+  orderedAt  DateTime?
+  createdAt  DateTime     @default(now())
+
+  @@index([createdAt])
+}
+
+/// Small store-wide settings, one document per key (e.g. "custom").
+model SiteSetting {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  key       String   @unique
+  value     Json
+  updatedAt DateTime @updatedAt
 }

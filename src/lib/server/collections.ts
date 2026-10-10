@@ -32,6 +32,7 @@ const ORDER = [{ sortOrder: "asc" as const }, { createdAt: "desc" as const }];
 /** Every product, for the admin picker (default colour's photo). */
 export async function collectionProductOptions() {
   const rows = await db.product.findMany({
+    where: { blank: { not: true } },
     orderBy: { name: "asc" },
     select: { id: true, name: true, category: true, variants: true },
   });
@@ -86,14 +87,6 @@ async function toTiles(rows: Collection[]): Promise<CollectionTile[]> {
 export async function getStoreCollections() {
   const rows = await db.collection.findMany({ where: { active: true }, orderBy: ORDER });
   return (await toTiles(rows)).filter((t) => t.count > 0);
-}
-
-/** The collection picked for the home page banner, if it's live. */
-export async function getHomeCollection() {
-  const row = await db.collection.findFirst({ where: { active: true, featured: true } });
-  if (!row) return null;
-  const [tile] = await toTiles([row]);
-  return tile.count > 0 ? tile : null;
 }
 
 /** A live collection and its product cards, or null. (Cached per request:

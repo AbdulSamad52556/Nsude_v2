@@ -118,7 +118,7 @@ function Tile({
         <div className="min-w-0">
           <p
             className={cx(
-              "truncate font-medium uppercase tracking-tighter text-paper",
+              "truncate font-display font-medium uppercase tracking-tighter text-paper",
               lead ? "text-2xl md:text-4xl" : "text-sm md:text-lg"
             )}
           >
@@ -173,7 +173,7 @@ function DetailCard({ card, index }: { card: CardData; index: number }) {
       <div className="flex flex-col justify-between p-4 md:p-8">
         <span className="text-[10px] tracking-widest2 text-ash">0{index}</span>
         <div>
-          <p className="text-base font-medium uppercase tracking-tighter text-ink md:text-2xl">{card.name}</p>
+          <p className="font-display text-base font-medium uppercase tracking-tighter text-ink md:text-2xl">{card.name}</p>
           <p className="mt-1 text-xs text-ash md:text-sm">{card.fit} fit</p>
           {card.swatches.length > 1 && (
             <div className="mt-4 flex items-center gap-1.5">

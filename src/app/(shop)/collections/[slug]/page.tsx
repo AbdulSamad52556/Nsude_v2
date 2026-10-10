@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getCollectionPage } from "@/lib/server/collections";
 import { ProductGrid } from "@/components/product/ProductGrid";
 import { CollectionBanner } from "@/components/collections/CollectionBanner";
+import { BackButton } from "@/components/ui/BackButton";
 
 type Params = { params: { slug: string } };
 
@@ -30,26 +30,17 @@ export default async function CollectionPage({ params }: Params) {
 
   return (
     <div className="px-5 pb-24 pt-24 md:px-10 md:pb-32 md:pt-28">
-      <nav aria-label="Breadcrumb" className="mb-4 text-xs uppercase tracking-wide text-ash">
-        <Link href="/collections" className="hover:text-ink">
-          Collections
-        </Link>
-        <span className="mx-2">/</span>
-        <span className="text-ink">{c.name}</span>
-      </nav>
+      <BackButton fallbackHref="/collections" label="Back" className="-ml-1 mb-4" />
 
       <CollectionBanner c={c} heading="h1" priority eyebrow="Collection" />
 
-      <div className="mb-10 mt-10 flex flex-col justify-between gap-4 md:mb-14 md:mt-12 md:flex-row md:items-end">
-        {c.description ? (
-          <p className="max-w-2xl whitespace-pre-line text-sm leading-relaxed text-graphite md:text-base">{c.description}</p>
-        ) : (
-          <span />
-        )}
-        <p className="shrink-0 text-xs uppercase tracking-widest2 text-ash">
-          {c.count} {c.count === 1 ? "piece" : "pieces"}
+      {c.description ? (
+        <p className="mb-10 mt-10 max-w-2xl whitespace-pre-line text-sm leading-relaxed text-graphite md:mb-14 md:mt-12 md:text-base">
+          {c.description}
         </p>
-      </div>
+      ) : (
+        <div className="h-10 md:h-12" />
+      )}
       <ProductGrid cards={c.cards} layout="shop" />
     </div>
   );

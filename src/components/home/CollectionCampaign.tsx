@@ -10,12 +10,8 @@ import { MagneticButton } from "@/components/ui/MagneticButton";
 import { AnimatedText } from "@/components/ui/AnimatedText";
 import { Reveal } from "@/components/ui/Reveal";
 
-/** The collection chosen as the home banner (admin), or null for the
-    default campaign that links to the whole shop. The tall campaign photo
-    stays either way: collection banners are thin strips made for 300px. */
-type Featured = { name: string; slug: string; tagline: string } | null;
-
-export function CollectionCampaign({ collection }: { collection: Featured }) {
+/** Home page photo banner leading to all collections. */
+export function CollectionCampaign() {
   const ref = useRef<HTMLDivElement>(null);
   const shouldReduceMotion = useReducedMotion();
   const { scrollYProgress } = useScroll({
@@ -26,44 +22,41 @@ export function CollectionCampaign({ collection }: { collection: Featured }) {
 
   return (
     <section id="collection" ref={ref} className="relative h-[60vh] max-h-[620px] min-h-[400px] overflow-hidden bg-ink">
-      <motion.div className="absolute inset-0" style={{ y }}>
+      {/* The photo drifts with the scroll; it's taller than the section so
+          no edge ever shows. */}
+      <motion.div className="absolute inset-x-0 -inset-y-[10%]" style={{ y }}>
         <Image
           src={campaignImages.collectionCampaign}
           alt="Stacks of folded NSUDE T-shirts in black, white, green, blue and clay on a wooden table"
           fill
           sizes="100vw"
-          className="scale-110 object-cover"
+          className="object-cover"
         />
-        <div className="absolute inset-0 bg-ink/40" />
       </motion.div>
+      {/* The tint stays put, so it always covers the whole section. */}
+      <div className="absolute inset-0 bg-ink/40" />
 
       <div className="relative z-10 flex h-full flex-col items-start justify-end px-5 pb-12 md:px-10 md:pb-16">
         <Reveal>
-          <span className="mb-4 block text-xs uppercase tracking-widest2 text-paper/70">
-            {collection ? "The collection" : "Form / Function"}
-          </span>
+          <span className="mb-4 block text-xs uppercase tracking-widest2 text-paper/70">Collections</span>
         </Reveal>
         <AnimatedText
-          text={collection?.name ?? "The NSUDE Collection"}
-          className="max-w-3xl text-display-lg font-medium uppercase tracking-tighter text-paper"
+          text="Curated, not crowded."
+          className="max-w-2xl text-4xl font-medium uppercase leading-[0.95] tracking-tighter text-paper md:text-6xl"
         />
-        {collection?.tagline && (
-          <Reveal delay={0.15}>
-            <p className="mt-4 max-w-xl text-sm text-paper/80 md:text-base">{collection.tagline}</p>
-          </Reveal>
-        )}
-        <Reveal delay={0.2} className="mt-8">
+        <Reveal delay={0.15}>
+          <p className="mt-4 max-w-md text-sm text-paper/80 md:text-base">
+            Small edits of our essentials, each built around one idea.
+          </p>
+        </Reveal>
+        <Reveal delay={0.25} className="mt-7">
           <MagneticButton>
             <Link
-              href={collection ? `/collections/${collection.slug}` : "/shop"}
+              href="/collections"
               className="group inline-flex h-12 items-center gap-3 rounded-md bg-paper px-7 text-xs uppercase tracking-widest2 text-ink transition-colors hover:bg-sand"
             >
-              Explore Collection
-              <ArrowRight
-                size={16}
-                strokeWidth={1.5}
-                className="transition-transform duration-300 group-hover:translate-x-1"
-              />
+              Explore Collections
+              <ArrowRight size={16} strokeWidth={1.5} className="transition-transform duration-300 group-hover:translate-x-1" />
             </Link>
           </MagneticButton>
         </Reveal>

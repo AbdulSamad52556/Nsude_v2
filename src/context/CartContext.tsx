@@ -28,10 +28,29 @@ export interface CartLine {
       lines saved in the bag before product codes existed. */
   code?: string;
   quantity: number;
+  /** Custom print: the saved design (priced on the server at checkout). */
+  designId?: string;
+  /** e.g. "Front + back print". */
+  design?: string;
 }
 
-/** Where a bag line links: its colorway's page, or the shop for old lines. */
+/** A custom tee to add: a blank colour + size with a saved design on it. */
+export interface CustomLineInput {
+  productId: string;
+  name: string;
+  code: string;
+  color: string;
+  size: Size;
+  price: number;
+  image: string;
+  designId: string;
+  design: string;
+}
+
+/** Where a bag line links: its colorway's page (custom tees: the designer),
+    or the shop for old lines. */
 export function cartLineHref(line: CartLine) {
+  if (line.designId) return "/customize";
   return line.code ? `/product/${line.code}` : "/shop";
 }
 
@@ -49,6 +68,8 @@ interface CartContextValue {
     quantity?: number,
     options?: { openDrawer?: boolean }
   ) => void;
+  /** Adds a custom tee (each design is its own line) and opens the bag. */
+  addCustomItem: (item: CustomLineInput, quantity?: number) => void;
   removeItem: (key: string) => void;
   updateQuantity: (key: string, quantity: number) => void;
   clear: () => void;
@@ -121,6 +142,25 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     []
   );
 
+  const addCustomItem = useCallback((item: CustomLineInput, quantity = 1) => {
+    const key = `custom-${item.designId}-${item.size}`;
+    setLines((prev) =>
+      prev.some((l) => l.key === key)
+        ? prev.map((l) => (l.key === key ? { ...l, quantity: clampQuantity(l.quantity + quantity) } : l))
+        : [...prev, { key, ...item, quantity: clampQuantity(quantity) }]
+    );
+    setIsOpen(true);
+    track("add_to_bag", {
+      product: item.name,
+      code: item.code,
+      color: item.color,
+      size: item.size,
+      quantity,
+      price: item.price,
+      custom: item.design,
+    });
+  }, []);
+
   const removeItem = useCallback((key: string) => {
     const line = linesRef.current.find((l) => l.key === key);
     if (line) track("remove_from_bag", { product: line.name, code: line.code, size: line.size, quantity: line.quantity });
@@ -160,6 +200,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     openCart,
     closeCart,
     addItem,
+    addCustomItem,
     removeItem,
     updateQuantity,
     clear,

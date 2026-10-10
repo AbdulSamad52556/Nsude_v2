@@ -37,6 +37,7 @@ interface FormState {
   fit: Product["fit"];
   weight: string;
   featured: boolean;
+  blank: boolean;
   newArrival: boolean;
   measurements: Measurement[];
 }
@@ -81,6 +82,7 @@ function toFormState(p?: Product): FormState {
     fit: p?.fit ?? "Regular",
     weight: p?.weight ?? "",
     featured: p?.featured ?? false,
+    blank: p?.blank ?? false,
     newArrival: p?.newArrival ?? true,
     measurements: p?.measurements.length ? p.measurements : defaultMeasurements(),
   };
@@ -106,10 +108,22 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   );
 }
 
-export function ProductForm({ product, categories }: { product?: Product; categories: CategoryTreeNode[] }) {
+export function ProductForm({
+  product,
+  categories,
+  newBlank = false,
+}: {
+  product?: Product;
+  categories: CategoryTreeNode[];
+  /** New product starts as a blank for custom designs. */
+  newBlank?: boolean;
+}) {
   const router = useRouter();
   const isEdit = Boolean(product);
-  const [form, setForm] = useState<FormState>(() => toFormState(product));
+  const [form, setForm] = useState<FormState>(() => ({
+    ...toFormState(product),
+    ...(newBlank ? { blank: true, featured: false, newArrival: false } : {}),
+  }));
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -477,6 +491,17 @@ export function ProductForm({ product, categories }: { product?: Product; catego
               <label className="flex items-center gap-3 text-sm">
                 <input type="checkbox" checked={form.newArrival} onChange={(e) => set("newArrival", e.target.checked)} className="h-4 w-4 accent-ink" />
                 Mark as new arrival
+              </label>
+              <label className="flex items-start gap-3 border-t border-taupe/30 pt-4 text-sm">
+                <input type="checkbox" checked={form.blank} onChange={(e) => set("blank", e.target.checked)} className="mt-0.5 h-4 w-4 accent-ink" />
+                <span>
+                  Blank for custom designs
+                  <span className="mt-1 block text-xs text-ash">
+                    Hidden from the shop; customers print on it at /customize. Per colour, add the photos in this order:
+                    front, back, left, right: a plain shirt, centred, same framing in every colour (4:5). A view
+                    without a photo can&rsquo;t be printed.
+                  </span>
+                </span>
               </label>
             </div>
           </Section>

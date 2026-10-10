@@ -115,6 +115,9 @@ export default async function AdminProductsPage({ searchParams }: { searchParams
                   <td className="p-3 text-graphite">{p.fit}</td>
                   <td className="p-3">
                     <div className="flex flex-wrap gap-1">
+                      {p.blank && (
+                        <span className="bg-ink px-2 py-0.5 text-[10px] uppercase tracking-wide text-paper">Blank · custom</span>
+                      )}
                       {p.featured && (
                         <span className="border border-taupe/50 px-2 py-0.5 text-[10px] uppercase tracking-wide">
                           Featured

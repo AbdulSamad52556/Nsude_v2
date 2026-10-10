@@ -69,6 +69,8 @@ export interface Product {
   weight: string;
   featured: boolean;
   newArrival: boolean;
+  /** Plain tee for custom printing; hidden from the shop. */
+  blank?: boolean;
   measurements: {
     label: string;
     values: Record<Size, string>;
@@ -182,4 +184,5 @@ export const PRODUCT_TABS = [
   { href: "/admin/products", label: "Products" },
   { href: "/admin/products/categories", label: "Categories" },
   { href: "/admin/products/collections", label: "Collections" },
+  { href: "/admin/products/custom", label: "Custom tees" },
 ];

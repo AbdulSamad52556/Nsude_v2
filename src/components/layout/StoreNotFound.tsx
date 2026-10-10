@@ -14,7 +14,7 @@ export async function StoreNotFound() {
         {/* Oversized number behind the message. */}
         <span
           aria-hidden
-          className="pointer-events-none select-none text-[clamp(7rem,28vw,18rem)] font-medium leading-none tracking-tighter text-sand/60"
+          className="pointer-events-none select-none font-display text-[clamp(7rem,28vw,18rem)] font-medium leading-none tracking-tighter text-sand/60"
         >
           404
         </span>

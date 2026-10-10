@@ -40,6 +40,7 @@ export function toProduct(p: DbProduct): Product {
     weight: p.weight,
     featured: p.featured,
     newArrival: p.newArrival,
+    blank: p.blank ?? false,
     measurements: p.measurements.map((m) => ({
       label: m.label,
       values: { S: m.values.S, M: m.values.M, L: m.values.L, XL: m.values.XL, XXL: m.values.XXL },
@@ -57,7 +58,8 @@ export async function getListingByCode(code: string): Promise<ProductListing | n
   const normalized = code.trim().toUpperCase();
   if (!CODE_PATTERN.test(normalized)) return null;
   const row = await db.product.findFirst({ where: { variants: { some: { code: normalized } } } });
-  if (!row) return null;
+  // Blanks (custom-print tees) have no product page.
+  if (!row || row.blank) return null;
   const product = toProduct(row);
   const variant = product.variants.find((v) => v.code === normalized);
   return variant ? { product, variant } : null;

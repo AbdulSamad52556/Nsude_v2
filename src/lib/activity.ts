@@ -33,6 +33,7 @@ export const ACTIVITY_LABEL: Record<string, string> = {
   size_select: "Picked a size",
   quantity_change: "Changed quantity",
   add_to_bag: "Added to bag",
+  custom_design_saved: "Designed a custom tee",
   buy_now: "Tapped Buy Now",
   remove_from_bag: "Removed from bag",
   bag_quantity: "Changed bag quantity",
@@ -60,6 +61,7 @@ export const ACTIVITY_LABEL: Record<string, string> = {
 /** Events that matter most, highlighted in the timeline. */
 export const KEY_EVENTS = new Set([
   "add_to_bag",
+  "custom_design_saved",
   "buy_now",
   "order_placed",
   "payment_completed",

@@ -10,6 +10,7 @@ const columns = [
       { label: "All T-Shirts", href: "/shop" },
       { label: "New Arrivals", href: "/shop?sort=newest" },
       { label: "Collections", href: "/collections" },
+      { label: "Custom Tees", href: "/customize" },
     ],
   },
   {

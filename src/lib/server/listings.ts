@@ -59,13 +59,14 @@ export async function syncProductListings(productId: string) {
   const row = await db.product.findUnique({ where: { id: productId } });
   await db.$transaction([
     db.listing.deleteMany({ where: { productId } }),
-    ...(row ? [db.listing.createMany({ data: listingDocs(row) })] : []),
+    // Blanks (custom-print tees) are never listed in the shop.
+    ...(row && !row.blank ? [db.listing.createMany({ data: listingDocs(row) })] : []),
   ]);
 }
 
 /** Rebuild every listing from the products (one-off / repair). */
 export async function rebuildAllListings() {
-  const rows = await db.product.findMany();
+  const rows = await db.product.findMany({ where: { blank: { not: true } } });
   await db.listing.deleteMany({});
   const docs = rows.flatMap(listingDocs);
   if (docs.length) await db.listing.createMany({ data: docs });

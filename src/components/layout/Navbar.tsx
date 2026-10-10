@@ -15,6 +15,7 @@ import { BackButton } from "@/components/ui/BackButton";
 const links = [
   { label: "Shop", href: "/shop" },
   { label: "Collections", href: "/collections" },
+  { label: "Customize", href: "/customize" },
   { label: "About", href: "/about" },
 ];
 

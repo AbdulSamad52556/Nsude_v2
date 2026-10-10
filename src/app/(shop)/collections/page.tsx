@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { getStoreCollections } from "@/lib/server/collections";
-import { PageHeader } from "@/components/ui/PageHeader";
 import { Reveal } from "@/components/ui/Reveal";
 import { CollectionBanner } from "@/components/collections/CollectionBanner";
 
@@ -14,9 +13,12 @@ export const metadata: Metadata = {
 export default async function CollectionsPage() {
   const collections = await getStoreCollections();
   return (
-    <div className="pb-24 md:pb-32">
-      <PageHeader title="Collections" subtitle="Hand-picked edits and drops, each built around one idea." />
-      <div className="px-5 md:px-10">
+    <div className="px-5 pb-24 pt-24 md:px-10 md:pb-32 md:pt-28">
+      <header className="mb-6 md:mb-8">
+        <h1 className="text-3xl font-medium uppercase tracking-tighter text-ink md:text-4xl">Collections</h1>
+        <p className="mt-2 text-sm text-graphite">Hand-picked edits and drops, each built around one idea.</p>
+      </header>
+      <div>
         {collections.length === 0 ? (
           <div className="flex flex-col items-center gap-6 rounded-md border border-taupe/40 py-24 text-center">
             <p className="text-sm uppercase tracking-widest2 text-ash">New collections are on the way</p>

@@ -88,11 +88,6 @@ export default async function AdminCollectionsPage() {
                         >
                           {c.active ? "On site" : "Draft"}
                         </span>
-                        {c.featured && (
-                          <span className="rounded-full border border-ink px-2.5 py-0.5 text-[10px] uppercase tracking-wide text-ink">
-                            Home banner
-                          </span>
-                        )}
                       </div>
                     </td>
                     <td className="p-3">

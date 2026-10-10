@@ -129,6 +129,7 @@ export function productChanges(before: Product, after: Product): Change[] {
       Sizes: "sizes",
       "Featured on home page": "featured",
       "New arrival": "newArrival",
+      "Blank for custom designs": "blank",
     }),
     ...diffFields(
       before as unknown as Record<string, unknown>,

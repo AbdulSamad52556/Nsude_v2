@@ -46,10 +46,13 @@ interface QuoteLine {
   price: number;
   quantity: number;
   image: string;
+  designId?: string | null;
+  /** Custom print, e.g. "Front + back print". */
+  design?: string | null;
 }
 interface Quote {
   lines: QuoteLine[];
-  issues: { code: string; size: string; message: string }[];
+  issues: { code: string; size: string; message: string; designId?: string }[];
   subtotal: number;
   shipping: number;
   total: number;
@@ -388,7 +391,13 @@ export function CheckoutView({ razorpayEnabled }: { razorpayEnabled: boolean }) 
   const orderable = useMemo(() => lines.filter((l) => l.code), [lines]);
   const staleLines = lines.length - orderable.length;
   const items = useMemo(
-    () => orderable.map((l) => ({ code: l.code!, size: l.size, quantity: l.quantity })),
+    () =>
+      orderable.map((l) => ({
+        code: l.code!,
+        size: l.size,
+        quantity: l.quantity,
+        ...(l.designId ? { designId: l.designId } : {}),
+      })),
     [orderable]
   );
   const itemsKey = JSON.stringify(items);
@@ -424,6 +433,8 @@ export function CheckoutView({ razorpayEnabled }: { razorpayEnabled: boolean }) 
       price: l.price,
       quantity: l.quantity,
       image: l.image,
+      designId: l.designId ?? null,
+      design: l.design ?? null,
     }));
   const subtotal = quote?.subtotal ?? summaryLines.reduce((s, l) => s + l.price * l.quantity, 0);
   const shipping = quote?.shipping ?? shippingFor(subtotal);
@@ -680,14 +691,15 @@ export function CheckoutView({ razorpayEnabled }: { razorpayEnabled: boolean }) 
             </p>
             <ul className="divide-y divide-graphite/10">
               {placed.lines.map((l) => (
-                <li key={`${l.code}-${l.size}`} className="flex items-center gap-3 p-4 md:gap-4 md:px-5">
+                <li key={`${l.code}-${l.size}-${l.designId ?? ""}`} className="flex items-center gap-3 p-4 md:gap-4 md:px-5">
                   <div className="relative h-16 w-14 shrink-0 overflow-hidden rounded-md bg-bone">
                     {l.image && <Image src={l.image} alt="" fill sizes="56px" className="object-cover" />}
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-[11px] uppercase tracking-wide text-ink md:text-xs">{l.name}</p>
                     <p className="text-[11px] text-ash md:text-xs">
-                      {l.color} · {l.size} · Qty {l.quantity}
+                      {l.color} · {l.size}
+                      {l.design ? ` · ${l.design}` : ""} · Qty {l.quantity}
                     </p>
                   </div>
                   <span className="text-[11px] text-ink md:text-xs">{formatPrice(l.price * l.quantity)}</span>
@@ -880,7 +892,8 @@ export function CheckoutView({ razorpayEnabled }: { razorpayEnabled: boolean }) 
     </div>
   );
 
-  const issueFor = (l: QuoteLine) => issues.find((i) => i.code === l.code && i.size === l.size);
+  const issueFor = (l: QuoteLine) =>
+    issues.find((i) => i.code === l.code && i.size === l.size && (!i.designId || i.designId === l.designId));
 
   const itemCount = summaryLines.reduce((n, l) => n + l.quantity, 0);
   const summaryTitle = `Order Summary · ${itemCount} item${itemCount === 1 ? "" : "s"}`;
@@ -893,7 +906,7 @@ export function CheckoutView({ razorpayEnabled }: { razorpayEnabled: boolean }) 
         {summaryLines.map((line) => {
           const issue = issueFor(line);
           return (
-            <li key={`${line.code}-${line.size}`} className="flex flex-col gap-1.5">
+            <li key={`${line.code}-${line.size}-${line.designId ?? ""}`} className="flex flex-col gap-1.5">
               <div className="flex items-center gap-4">
                 <div className="relative h-16 w-14 shrink-0 overflow-hidden bg-bone">
                   {line.image && <Image src={line.image} alt={line.name} fill sizes="56px" className="object-cover" />}
@@ -906,6 +919,7 @@ export function CheckoutView({ razorpayEnabled }: { razorpayEnabled: boolean }) 
                     <p className="text-[11px] uppercase tracking-wide text-ink md:text-xs">{line.name}</p>
                     <p className="text-[11px] text-ash md:text-xs">
                       {line.color} · {line.size}
+                      {line.design ? ` · ${line.design}` : ""}
                     </p>
                   </div>
                   <span className="text-[11px] text-ink md:text-xs">{formatPrice(line.price * line.quantity)}</span>
@@ -917,9 +931,9 @@ export function CheckoutView({ razorpayEnabled }: { razorpayEnabled: boolean }) 
         })}
         {/* Sold-out / removed items the server couldn't price. */}
         {issues
-          .filter((i) => !summaryLines.some((l) => l.code === i.code && l.size === i.size))
+          .filter((i) => !summaryLines.some((l) => l.code === i.code && l.size === i.size && (!i.designId || i.designId === l.designId)))
           .map((i) => (
-            <li key={`${i.code}-${i.size}-missing`} className="text-xs text-rust">
+            <li key={`${i.code}-${i.size}-${i.designId ?? ""}-missing`} className="text-xs text-rust">
               {i.message}
             </li>
           ))}

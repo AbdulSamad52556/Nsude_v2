@@ -62,7 +62,6 @@ export function CollectionForm({
   const [image, setImage] = useState(collection?.image ?? null);
   const [productIds, setProductIds] = useState<string[]>(collection?.productIds ?? []);
   const [active, setActive] = useState(collection?.active ?? false);
-  const [featured, setFeatured] = useState(collection?.featured ?? false);
   const [query, setQuery] = useState("");
   const [uploading, setUploading] = useState(false);
   // A picked photo waiting to be cropped.
@@ -129,7 +128,8 @@ export function CollectionForm({
       image: image ? { ...image, alt: name } : null,
       productIds: picked,
       active,
-      featured: active && featured,
+      // The home banner no longer features a single collection.
+      featured: false,
     });
     if (!parsed.success) {
       setErrors(fieldErrors(parsed.error));
@@ -362,10 +362,7 @@ export function CollectionForm({
                 <input
                   type="checkbox"
                   checked={active}
-                  onChange={(e) => {
-                    setActive(e.target.checked);
-                    if (!e.target.checked) setFeatured(false);
-                  }}
+                  onChange={(e) => setActive(e.target.checked)}
                   className="mt-0.5 h-4 w-4 accent-ink"
                 />
                 <span>
@@ -373,20 +370,6 @@ export function CollectionForm({
                   <span className="block text-xs text-ash">Off = draft. Only you can see it here.</span>
                 </span>
               </label>
-              <label className={cx("flex items-start gap-3 text-sm", active ? "cursor-pointer" : "opacity-50")}>
-                <input
-                  type="checkbox"
-                  checked={active && featured}
-                  disabled={!active}
-                  onChange={(e) => setFeatured(e.target.checked)}
-                  className="mt-0.5 h-4 w-4 accent-ink"
-                />
-                <span>
-                  Home page banner
-                  <span className="block text-xs text-ash">Puts this collection&rsquo;s name and link on the big home page banner. Only one at a time.</span>
-                </span>
-              </label>
-              <FieldError message={errors.featured} />
             </div>
           </Section>
         </div>
