@@ -109,6 +109,12 @@ export default async function AdminOrderPage({ params }: { params: { id: string 
                             </div>
                           ))}
                         </div>
+                        {design.note && (
+                          <p className="mt-3 rounded bg-paper p-2.5 text-xs text-ink">
+                            <span className="mr-1 uppercase tracking-widest2 text-ash">Customer note:</span>
+                            <span className="whitespace-pre-line">{design.note}</span>
+                          </p>
+                        )}
                         {design.assetIds.length > 0 && (
                           <p className="mt-3 text-xs text-graphite">
                             Customer&rsquo;s original images:{" "}
@@ -230,11 +236,13 @@ export default async function AdminOrderPage({ params }: { params: { id: string 
             <p>
               {a.firstName} {a.lastName}
             </p>
-            <p>
-              <a href={`mailto:${order.email}`} className="text-graphite underline-offset-2 hover:underline">
-                {order.email}
-              </a>
-            </p>
+            {order.email && (
+              <p>
+                <a href={`mailto:${order.email}`} className="text-graphite underline-offset-2 hover:underline">
+                  {order.email}
+                </a>
+              </p>
+            )}
             <p>
               <a href={`tel:+91${order.phone}`} className="text-graphite underline-offset-2 hover:underline">
                 +91 {order.phone}

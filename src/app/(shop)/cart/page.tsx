@@ -166,7 +166,7 @@ export default function CartPage() {
 
           <Link
             href="/checkout"
-            className="group flex h-10 w-full items-center justify-center gap-2 rounded-md bg-ink md:h-14 text-sm uppercase tracking-widest2 text-paper transition-colors hover:bg-graphite"
+            className="group flex h-10 w-full items-center justify-center gap-2 rounded-md bg-ink text-xs uppercase tracking-widest2 text-paper transition-colors hover:bg-graphite md:h-12"
           >
             Checkout
             <ArrowRight size={16} strokeWidth={1.5} className="transition-transform duration-300 group-hover:translate-x-1" />

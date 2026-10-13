@@ -291,7 +291,8 @@ function OrderDetails({
           <p className="mb-1 text-[10px] uppercase tracking-widest2 text-ash">Delivering to</p>
           <p className="leading-relaxed text-graphite">{formatAddress(o.address)}</p>
           <p className="mt-1 text-[11px] text-ash">
-            +91 {o.phone} · {o.email}
+            +91 {o.phone}
+            {o.email ? ` · ${o.email}` : ""}
           </p>
         </div>
         <div className="md:text-right">

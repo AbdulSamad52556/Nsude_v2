@@ -47,6 +47,7 @@ export async function POST(request: NextRequest) {
       productId: product.id,
       code: input.code,
       assetIds: input.assetIds,
+      note: input.note || null,
       sides: input.sides.map((s) => ({
         side: s.side,
         preview: s.preview.url,

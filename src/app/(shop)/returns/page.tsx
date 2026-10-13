@@ -41,6 +41,15 @@ export default function ReturnsPage() {
             payment method within 5–7 business days.
           </li>
         </ol>
+
+        <section className="rounded-md border border-taupe/40 p-5 md:p-6">
+          <h2 className="mb-2 text-xs uppercase tracking-widest2 text-ink">Custom tees</h2>
+          <p>
+            Custom tees are printed just for you, so they can&apos;t be returned or refunded. If yours arrives
+            damaged or there&apos;s a size issue, email hello@nsude.com with your order number and a photo within 14
+            days of delivery, and we&apos;ll exchange it.
+          </p>
+        </section>
       </div>
     </div>
   );

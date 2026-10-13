@@ -8,7 +8,7 @@ import { customerActor, describeAddress, recordAudit, addressChanges, type Chang
 import { isObjectId } from "@/lib/server/revalidate";
 import { fieldErrors } from "@/lib/validation";
 import { addressSchema, phoneSchema } from "@/lib/account";
-import { CUSTOMER_EDITABLE_STATUS, MAX_LINE_QUANTITY, shippingFor } from "@/lib/checkout";
+import { CUSTOMER_EDITABLE_STATUS, MAX_LINE_QUANTITY, optionalEmail, shippingFor } from "@/lib/checkout";
 import { priceFor, SIZES } from "@/lib/types";
 import { formatPrice } from "@/lib/utils";
 import { recordActivity } from "@/lib/server/activity";
@@ -23,7 +23,7 @@ const bodySchema = z.discriminatedUnion("action", [
   z.object({ action: z.literal("address"), address: addressSchema }),
   z.object({
     action: z.literal("contact"),
-    email: z.string().trim().toLowerCase().max(120).email("Enter a valid email address"),
+    email: optionalEmail,
     phone: phoneSchema,
   }),
   z.object({
@@ -85,7 +85,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
   if (body.action === "contact") {
     await db.order.update({ where: { id: order.id }, data: { email: body.email, phone: body.phone } });
     const changes: Change[] = [];
-    if (order.email !== body.email) changes.push({ field: "Email", from: order.email, to: body.email });
+    if (order.email !== body.email) changes.push({ field: "Email", from: order.email || "—", to: body.email || "—" });
     if (order.phone !== body.phone) changes.push({ field: "Mobile", from: `+91 ${order.phone}`, to: `+91 ${body.phone}` });
     if (changes.length) await audit("Contact details changed by customer", changes);
   }
