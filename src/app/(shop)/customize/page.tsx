@@ -54,10 +54,10 @@ export default async function CustomizePage() {
 
   return (
     <div className={`px-5 pb-24 pt-24 md:px-10 md:pb-32 md:pt-28 ${designFontVariables}`}>
-      <header className="mb-8 max-w-2xl md:mb-10">
-        <span className="mb-3 block text-xs uppercase tracking-widest2 text-ash">Custom tees</span>
-        <h1 className="text-3xl font-medium uppercase tracking-tighter text-ink md:text-5xl">Design your own</h1>
-        <p className="mt-3 text-sm text-graphite md:text-base">
+      <header className="mb-4 max-w-2xl md:mb-8">
+        <span className="mb-1.5 hidden text-[11px] uppercase tracking-widest2 text-ash md:block">Custom tees</span>
+        <h1 className="text-2xl font-medium uppercase tracking-tighter text-ink md:text-3xl">Design your own</h1>
+        <p className="mt-1.5 text-xs text-graphite md:mt-2 md:text-sm">
           Your artwork, your words, on our heavyweight tees.
           {open && <> From {formatPrice(customPrice(fromPrice, ["front"], settings))} with a front print.</>}
         </p>

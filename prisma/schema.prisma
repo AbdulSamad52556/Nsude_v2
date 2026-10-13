@@ -588,6 +588,8 @@ model CustomDesign {
   sides      DesignSide[]
   /// Cloudinary ids of the customer's original uploads.
   assetIds   String[]
+  /// The customer's instructions for the print (optional).
+  note       String?
   /// Set when an order with this design is placed.
   orderedAt  DateTime?
   createdAt  DateTime     @default(now())

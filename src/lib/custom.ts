@@ -93,6 +93,13 @@ export type DesignFont = (typeof DESIGN_FONTS)[number]["key"];
 
 export const TEXT_COLORS = ["#0a0a0a", "#f8f6f1", "#b8463a", "#2f4a7a", "#3f5a3a", "#c9a24a", "#7a6a5a"] as const;
 
+/** Shown wherever a custom tee is ordered (designer, checkout, Returns). */
+export const CUSTOM_RETURN_POLICY =
+  "Custom tees are printed just for you, so they can't be returned. If yours arrives damaged or there's a size issue, we'll exchange it.";
+
+/** Longest note a customer can add to a design. */
+export const MAX_DESIGN_NOTE = 300;
+
 export const MAX_LAYERS_PER_SIDE = 8;
 /** Print areas a customer can place on one side. */
 export const MAX_BOXES_PER_SIDE = 4;
@@ -162,5 +169,7 @@ export const designInputSchema = z.object({
       "Every layer must sit in a print area"
     ),
   assetIds: z.array(z.string().max(200)).max(MAX_LAYERS_PER_SIDE * 2),
+  /** The customer's instructions for us (optional). */
+  note: z.string().trim().max(MAX_DESIGN_NOTE).default(""),
 });
 export type DesignInput = z.infer<typeof designInputSchema>;

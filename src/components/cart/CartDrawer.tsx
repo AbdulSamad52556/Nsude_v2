@@ -94,7 +94,7 @@ export function CartDrawer() {
                   <Link
                     href="/checkout"
                     onClick={closeCart}
-                    className="group flex h-10 w-full items-center justify-center gap-2 rounded-md bg-ink md:h-14 text-sm uppercase tracking-widest2 text-paper transition-colors hover:bg-graphite"
+                    className="group flex h-10 w-full items-center justify-center gap-2 rounded-md bg-ink text-xs uppercase tracking-widest2 text-paper transition-colors hover:bg-graphite md:h-12"
                   >
                     Checkout
                     <ArrowRight
@@ -106,7 +106,7 @@ export function CartDrawer() {
                   <Link
                     href="/shop"
                     onClick={closeCart}
-                    className="mt-2 flex h-10 w-full items-center justify-center text-xs md:mt-3 md:h-12 uppercase tracking-widest2 text-graphite hover:text-ink"
+                    className="mt-1 flex h-10 w-full items-center justify-center text-xs uppercase tracking-widest2 text-graphite hover:text-ink"
                   >
                     Continue Shopping
                   </Link>

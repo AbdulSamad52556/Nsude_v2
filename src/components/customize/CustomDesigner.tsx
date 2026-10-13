@@ -2,29 +2,22 @@
 
 import Image from "next/image";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import {
-  AlignCenter,
-  BoxSelect,
-  ImagePlus,
-  Loader2,
-  Minus,
-  Plus,
-  Trash2,
-  Type,
-  X,
-} from "lucide-react";
+import { createPortal } from "react-dom";
+import { AnimatePresence, LayoutGroup, motion, useReducedMotion } from "framer-motion";
+import { AlignCenter, BoxSelect, Rotate3d, ImagePlus, Info, Loader2, Minus, Plus, Trash2, Type, X } from "lucide-react";
 import { useCart } from "@/context/CartContext";
 import {
+  CUSTOM_RETURN_POLICY,
   customPrice,
   DESIGN_FONTS,
   MAX_BOXES_PER_SIDE,
+  MAX_DESIGN_NOTE,
   MAX_LAYERS_PER_SIDE,
   MOCKUP_ASPECT,
   PRINT_SIDES,
   PRINT_WIDTH,
   printLabel,
   SIDE_LABEL,
-  sideFee,
   TEXT_COLORS,
   type CustomSettings,
   type DesignFont,
@@ -35,6 +28,8 @@ import {
 import { MAX_LINE_QUANTITY } from "@/lib/checkout";
 import type { Size } from "@/lib/types";
 import { cx, formatPrice } from "@/lib/utils";
+import { SizeSelector } from "@/components/product/SizeSelector";
+import { Spin360 } from "./Spin360";
 
 export interface DesignerColour {
   code: string;
@@ -111,7 +106,7 @@ function clampBox(b: PrintBox, zone: PrintArea): PrintBox {
 /** The print area each side starts with: a large centre block. */
 function startingBox(zone: PrintArea): PrintBox {
   const w = zone.w * 0.75;
-  const h = Math.min(zone.h * 0.7, (w * 4) / 5 * 1.25);
+  const h = Math.min(zone.h * 0.7, ((w * 4) / 5) * 1.25);
   return { id: newId(), x: zone.x + (zone.w - w) / 2, y: zone.y + zone.h * 0.08, w, h };
 }
 
@@ -147,7 +142,7 @@ async function uploadFile(file: Blob, name: string) {
 
 const toBlob = (canvas: HTMLCanvasElement, type: string, quality?: number) =>
   new Promise<Blob>((resolve, reject) =>
-    canvas.toBlob((b) => (b ? resolve(b) : reject(new Error("Couldn't render the design"))), type, quality)
+    canvas.toBlob((b) => (b ? resolve(b) : reject(new Error("Couldn't render the design"))), type, quality),
   );
 
 export function CustomDesigner({
@@ -171,8 +166,26 @@ export function CustomDesigner({
   const [layers, setLayers] = useState<Layers>({ front: [], back: [], left: [], right: [] });
   const [selection, setSelection] = useState<Selection>(null);
   const [draggingBox, setDraggingBox] = useState(false);
+  // Guides (area borders, labels, handles) show while the pointer is over
+  // the shirt; away from it (or in Preview) the shirt shows as printed.
+  const [hovering, setHovering] = useState(false);
+  const [canHover, setCanHover] = useState(true);
+  const [preview, setPreview] = useState(false);
+  /** Phones: which group of controls is open (desktop shows them all). */
+  const [tab, setTab] = useState<"design" | "order">("design");
+  // The no-returns policy is confirmed once per visit, before the first add.
+  const [policyOpen, setPolicyOpen] = useState(false);
+  const [policyAccepted, setPolicyAccepted] = useState(false);
+  const reduceMotion = useReducedMotion();
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setCanHover(window.matchMedia("(hover: hover)").matches);
+    setMounted(true);
+  }, []);
   const [size, setSize] = useState<Size | null>(null);
   const [quantity, setQuantity] = useState(1);
+  /** The customer's instructions for us, saved with the design. */
+  const [note, setNote] = useState("");
   const [uploading, setUploading] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -190,10 +203,7 @@ export function CustomDesigner({
   const selected = selection?.kind === "layer" ? selection.id : null;
   const current = sideLayers.find((l) => l.id === selected) ?? null;
   // The area new images / text go into: the selected one, else the first.
-  const activeBoxId =
-    (current?.boxId ?? (selection?.kind === "box" ? selection.id : null)) ??
-    sideBoxes[0]?.id ??
-    null;
+  const activeBoxId = current?.boxId ?? (selection?.kind === "box" ? selection.id : null) ?? sideBoxes[0]?.id ?? null;
   const activeBox = sideBoxes.find((b) => b.id === activeBoxId) ?? null;
   const usedSides = PRINT_SIDES.filter((s) => layers[s].length > 0);
   const setSelected = (id: string | null) => setSelection(id ? { kind: "layer", id } : null);
@@ -206,26 +216,35 @@ export function CustomDesigner({
   useEffect(() => {
     if (size && (!blank.sizes.includes(size) || colour.unavailable.includes(size))) setSize(null);
   }, [blank, colour, size]);
-  useEffect(() => setAdded(false), [layers, boxes, code, size, quantity]);
+  useEffect(() => setAdded(false), [layers, boxes, code, size, quantity, note]);
 
-  const update = useCallback((id: string, patch: Partial<ImageLayer> | Partial<TextLayer>) => {
-    setLayers((prev) => ({
-      ...prev,
-      [side]: prev[side].map((l) => (l.id === id ? ({ ...l, ...patch } as Layer) : l)),
-    }));
-  }, [side]);
+  const update = useCallback(
+    (id: string, patch: Partial<ImageLayer> | Partial<TextLayer>) => {
+      setLayers((prev) => ({
+        ...prev,
+        [side]: prev[side].map((l) => (l.id === id ? ({ ...l, ...patch } as Layer) : l)),
+      }));
+    },
+    [side],
+  );
 
-  const remove = useCallback((id: string) => {
-    setLayers((prev) => ({ ...prev, [side]: prev[side].filter((l) => l.id !== id) }));
-    setSelection(null);
-  }, [side]);
+  const remove = useCallback(
+    (id: string) => {
+      setLayers((prev) => ({ ...prev, [side]: prev[side].filter((l) => l.id !== id) }));
+      setSelection(null);
+    },
+    [side],
+  );
 
-  const updateBox = useCallback((id: string, patch: Partial<PrintBox>) => {
-    setBoxes((prev) => ({
-      ...prev,
-      [side]: prev[side].map((b) => (b.id === id ? clampBox({ ...b, ...patch }, settings.areas[side]) : b)),
-    }));
-  }, [side, settings.areas]);
+  const updateBox = useCallback(
+    (id: string, patch: Partial<PrintBox>) => {
+      setBoxes((prev) => ({
+        ...prev,
+        [side]: prev[side].map((b) => (b.id === id ? clampBox({ ...b, ...patch }, settings.areas[side]) : b)),
+      }));
+    },
+    [side, settings.areas],
+  );
 
   // ---- print areas -----------------------------------------------------------------
 
@@ -244,7 +263,7 @@ export function CustomDesigner({
     const n = sideBoxes.length - 1;
     const box = clampBox(
       { id: newId(), x: zone.x + (n % 2 === 1 ? zone.w - w : 0), y: zone.y + Math.floor(n / 2) * h * 1.1, w, h },
-      zone
+      zone,
     );
     setBoxes((prev) => ({ ...prev, [side]: [...prev[side], box] }));
     setSelection({ kind: "box", id: box.id });
@@ -329,7 +348,9 @@ export function CustomDesigner({
       const up = await uploadFile(file, file.name);
       setLayers((prev) => ({
         ...prev,
-        [targetSide]: prev[targetSide].map((l) => (l.id === layer.id ? { ...l, src: up.url, publicId: up.publicId } : l)),
+        [targetSide]: prev[targetSide].map((l) =>
+          l.id === layer.id ? { ...l, src: up.url, publicId: up.publicId } : l,
+        ),
       }));
     } catch (err) {
       setError((err as Error).message);
@@ -346,16 +367,38 @@ export function CustomDesigner({
     | { mode: "scale"; id: string; cx: number; cy: number; dist: number; value: number }
     | { mode: "boxMove"; id: string; startX: number; startY: number; x: number; y: number }
     | { mode: "boxSize"; id: string; startX: number; startY: number; w: number; h: number }
+    | { mode: "pinch"; target: "layer" | "box"; id: string; dist: number; value: number; box?: PrintBox }
     | null
   >(null);
+  /** Fingers on the preview (for two-finger pinch to resize). */
+  const touches = useRef(new Map<number, { x: number; y: number }>());
+  const fingerGap = () => {
+    const [a, b] = Array.from(touches.current.values());
+    return a && b ? Math.max(8, Math.hypot(a.x - b.x, a.y - b.y)) : 0;
+  };
 
   const boxRect = (id: string) =>
     stageRef.current?.querySelector<HTMLElement>(`[data-box="${id}"]`)?.getBoundingClientRect() ?? null;
 
   useEffect(() => {
     function onMove(e: PointerEvent) {
+      if (touches.current.has(e.pointerId)) touches.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
       const g = gesture.current;
       if (!g) return;
+      if (g.mode === "pinch") {
+        const ratio = fingerGap() / g.dist;
+        if (!ratio) return;
+        if (g.target === "box" && g.box) {
+          const w = g.box.w * ratio;
+          const h = g.box.h * ratio;
+          updateBox(g.id, { w, h, x: g.box.x + (g.box.w - w) / 2, y: g.box.y + (g.box.h - h) / 2 });
+        } else {
+          const layer = layers[side].find((l) => l.id === g.id);
+          if (layer?.type === "image") update(g.id, { w: Math.min(2, Math.max(0.05, g.value * ratio)) });
+          else if (layer) update(g.id, { size: Math.min(0.8, Math.max(0.03, g.value * ratio)) });
+        }
+        return;
+      }
       if (g.mode === "boxMove" || g.mode === "boxSize") {
         const stage = stageRef.current?.getBoundingClientRect();
         if (!stage) return;
@@ -379,22 +422,47 @@ export function CustomDesigner({
         else update(g.id, { size: Math.min(0.8, Math.max(0.03, g.value * ratio)) });
       }
     }
-    function onUp() {
-      gesture.current = null;
+    function onUp(e: PointerEvent) {
+      touches.current.delete(e.pointerId);
+      // A pinch ends when a finger lifts; a drag when its pointer does.
+      if (gesture.current?.mode !== "pinch" || touches.current.size < 2) gesture.current = null;
       setDraggingBox(false);
     }
     window.addEventListener("pointermove", onMove);
     window.addEventListener("pointerup", onUp);
+    window.addEventListener("pointercancel", onUp);
     return () => {
       window.removeEventListener("pointermove", onMove);
       window.removeEventListener("pointerup", onUp);
+      window.removeEventListener("pointercancel", onUp);
     };
   }, [update, updateBox, layers, side]);
+
+  /** Second finger down on the preview: pinch the selected item. */
+  function onStageFinger(e: React.PointerEvent) {
+    if (e.pointerType !== "touch") return;
+    touches.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (touches.current.size !== 2 || !selection) return;
+    const dist = fingerGap();
+    if (selection.kind === "layer" && current) {
+      gesture.current = {
+        mode: "pinch",
+        target: "layer",
+        id: current.id,
+        dist,
+        value: current.type === "image" ? current.w : current.size,
+      };
+    } else if (selection.kind === "box") {
+      const box = sideBoxes.find((b) => b.id === selection.id);
+      if (box) gesture.current = { mode: "pinch", target: "box", id: box.id, dist, value: 1, box };
+    }
+  }
 
   function startMove(e: React.PointerEvent, layer: Layer) {
     e.preventDefault();
     e.stopPropagation();
     setSelected(layer.id);
+    setTab("design");
     gesture.current = { mode: "move", id: layer.id, startX: e.clientX, startY: e.clientY, x: layer.x, y: layer.y };
   }
 
@@ -419,6 +487,7 @@ export function CustomDesigner({
     e.preventDefault();
     e.stopPropagation();
     setSelection({ kind: "box", id: box.id });
+    setTab("design");
     setDraggingBox(true);
     gesture.current = { mode: "boxMove", id: box.id, startX: e.clientX, startY: e.clientY, x: box.x, y: box.y };
   }
@@ -443,7 +512,12 @@ export function CustomDesigner({
         else if (box) removeBox(box.id);
       }
       const step = e.shiftKey ? 0.05 : 0.01;
-      const moves: Record<string, [number, number]> = { ArrowLeft: [-step, 0], ArrowRight: [step, 0], ArrowUp: [0, -step], ArrowDown: [0, step] };
+      const moves: Record<string, [number, number]> = {
+        ArrowLeft: [-step, 0],
+        ArrowRight: [step, 0],
+        ArrowUp: [0, -step],
+        ArrowDown: [0, step],
+      };
       if (moves[e.key]) {
         e.preventDefault();
         if (current) update(current.id, { x: current.x + moves[e.key][0], y: current.y + moves[e.key][1] });
@@ -457,7 +531,9 @@ export function CustomDesigner({
 
   // ---- price ---------------------------------------------------------------------
 
-  const basePrice = size ? colour.prices[size] ?? 0 : Math.min(...Object.values(colour.prices).filter((n): n is number => typeof n === "number"));
+  const basePrice = size
+    ? (colour.prices[size] ?? 0)
+    : Math.min(...Object.values(colour.prices).filter((n): n is number => typeof n === "number"));
   const unitPrice = customPrice(basePrice, usedSides, settings);
   const soldOut = colour.stock <= 0;
 
@@ -471,7 +547,7 @@ export function CustomDesigner({
   async function drawLayers(
     ctx: CanvasRenderingContext2D,
     list: Layer[],
-    box: { x: number; y: number; w: number; h: number }
+    box: { x: number; y: number; w: number; h: number },
   ) {
     ctx.save();
     ctx.beginPath();
@@ -520,7 +596,11 @@ export function CustomDesigner({
     const dh = shirt.naturalHeight * k;
     pctx.drawImage(shirt, (PW - dw) / 2, (PH - dh) / 2, dw, dh);
     for (const b of used) {
-      await drawLayers(pctx, layers[s].filter((l) => l.boxId === b.id), { x: b.x * PW, y: b.y * PH, w: b.w * PW, h: b.h * PH });
+      await drawLayers(
+        pctx,
+        layers[s].filter((l) => l.boxId === b.id),
+        { x: b.x * PW, y: b.y * PH, w: b.w * PW, h: b.h * PH },
+      );
     }
 
     // Print file: the whole printable zone, transparent, at print size, with
@@ -530,32 +610,53 @@ export function CustomDesigner({
     print.height = Math.round(PRINT_WIDTH * ((z.h * PH) / (z.w * PW)));
     const pr = print.getContext("2d")!;
     for (const b of used) {
-      await drawLayers(pr, layers[s].filter((l) => l.boxId === b.id), {
-        x: ((b.x - z.x) / z.w) * print.width,
-        y: ((b.y - z.y) / z.h) * print.height,
-        w: (b.w / z.w) * print.width,
-        h: (b.h / z.h) * print.height,
-      });
+      await drawLayers(
+        pr,
+        layers[s].filter((l) => l.boxId === b.id),
+        {
+          x: ((b.x - z.x) / z.w) * print.width,
+          y: ((b.y - z.y) / z.h) * print.height,
+          w: (b.w / z.w) * print.width,
+          h: (b.h / z.h) * print.height,
+        },
+      );
     }
 
     return { preview: await toBlob(preview, "image/jpeg", 0.88), print: await toBlob(print, "image/png") };
   }
 
-  async function addToBag() {
+  /** Can this be added? Says why not (and opens the right tab on phones). */
+  function readyToAdd(): boolean {
     setError(null);
-    if (!size) {
-      setError("Choose a size.");
-      return;
-    }
+    // The design first, then the size (the order customers work in).
     if (usedSides.length === 0) {
+      setTab("design");
       setError("Add an image or text to the front or back first.");
-      return;
+      return false;
     }
     const missing = usedSides.find((s) => !colour.views[s]);
     if (missing) {
+      setTab("design");
       setError(`This colour can't be printed on the ${missing}. Remove that design or pick another colour.`);
-      return;
+      return false;
     }
+    if (!size) {
+      setTab("order");
+      setError("Choose a size.");
+      return false;
+    }
+    return true;
+  }
+
+  /** Add to bag: the first time this visit, show the no-returns policy first. */
+  function requestAdd() {
+    if (!readyToAdd()) return;
+    if (policyAccepted) addToBag();
+    else setPolicyOpen(true);
+  }
+
+  async function addToBag() {
+    if (!readyToAdd() || !size) return;
     setSelection(null);
     try {
       setBusy("Preparing your design…");
@@ -576,18 +677,39 @@ export function CustomDesigner({
             boxes: filledBoxes(r.side).map(({ id, x, y, w, h }) => ({ id, x, y, w, h })),
             layers: layers[r.side].map((l) =>
               l.type === "image"
-                ? { id: l.id, boxId: l.boxId, type: "image" as const, x: l.x, y: l.y, w: l.w, aspect: l.aspect, src: l.src! }
-                : { id: l.id, boxId: l.boxId, type: "text" as const, x: l.x, y: l.y, text: l.text, font: l.font, color: l.color, size: l.size }
+                ? {
+                    id: l.id,
+                    boxId: l.boxId,
+                    type: "image" as const,
+                    x: l.x,
+                    y: l.y,
+                    w: l.w,
+                    aspect: l.aspect,
+                    src: l.src!,
+                  }
+                : {
+                    id: l.id,
+                    boxId: l.boxId,
+                    type: "text" as const,
+                    x: l.x,
+                    y: l.y,
+                    text: l.text,
+                    font: l.font,
+                    color: l.color,
+                    size: l.size,
+                  },
             ),
           };
-        })
+        }),
       );
       setBusy("Adding to your bag…");
-      const assetIds = usedSides.flatMap((s) => layers[s].flatMap((l) => (l.type === "image" && l.publicId ? [l.publicId] : [])));
+      const assetIds = usedSides.flatMap((s) =>
+        layers[s].flatMap((l) => (l.type === "image" && l.publicId ? [l.publicId] : [])),
+      );
       const res = await fetch("/api/custom/designs", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ code: colour.code, sides, assetIds }),
+        body: JSON.stringify({ code: colour.code, sides, assetIds, note: note.trim() }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error ?? "Couldn't save your design");
@@ -603,7 +725,7 @@ export function CustomDesigner({
           designId: data.id,
           design: printLabel(usedSides),
         },
-        quantity
+        quantity,
       );
       setAdded(true);
     } catch (err) {
@@ -617,18 +739,92 @@ export function CustomDesigner({
 
   const imageWarning =
     current?.type === "image" &&
-    current.naturalWidth < PRINT_WIDTH * current.w * ((sideBoxes.find((b) => b.id === current.boxId)?.w ?? zone.w) / zone.w) * 0.5
+    current.naturalWidth <
+      PRINT_WIDTH * current.w * ((sideBoxes.find((b) => b.id === current.boxId)?.w ?? zone.w) / zone.w) * 0.5
       ? "This image is small for its size on the shirt and may print blurry. Use a larger image or make it smaller."
       : null;
 
-  const priceRows = useMemo(
-    () => [
-      { label: `${blank.name}${size ? ` · ${size}` : ""}`, value: basePrice },
-      ...usedSides.map((s) => ({ label: `${SIDE_LABEL[s]} print`, value: sideFee(settings, s) })),
-    ],
-    [blank.name, size, basePrice, usedSides, settings]
-  );
+  // The price only shows once the tee is fully chosen (a design and a size),
+  // as one total: no blank / print breakdown.
+  const priceReady = usedSides.length > 0 && Boolean(size) && usedSides.every((s) => colour.views[s]);
+  const total = unitPrice * quantity;
 
+  const showGuides = !preview && (!canHover || hovering || draggingBox);
+
+  function openSpin() {
+    setSelection(null);
+    setPreview(true);
+  }
+
+  useEffect(() => {
+    if (!preview) return;
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setPreview(false);
+    document.addEventListener("keydown", onKey);
+    const overflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.body.style.overflow = overflow;
+    };
+  }, [preview]);
+
+  /** One view of the shirt with the design on it, as printed (no guides). */
+  const designFace = (s: PrintSide) => (
+    <div className="relative h-full w-full">
+      <Image
+        src={colour.views[s]!}
+        alt={`${blank.name} in ${colour.name}, ${s}`}
+        fill
+        sizes="(min-width: 640px) 520px, 100vw"
+        // Every view loads at once, so turning never shows an empty frame.
+        loading="eager"
+        className="pointer-events-none object-cover"
+        draggable={false}
+      />
+      {boxes[s].map((b) => (
+        <div
+          key={b.id}
+          className="absolute overflow-hidden [container-type:inline-size]"
+          style={{ left: `${b.x * 100}%`, top: `${b.y * 100}%`, width: `${b.w * 100}%`, height: `${b.h * 100}%` }}
+        >
+          {layers[s]
+            .filter((l) => l.boxId === b.id)
+            .map((l) => (
+              <div
+                key={l.id}
+                className="absolute -translate-x-1/2 -translate-y-1/2"
+                style={{
+                  left: `${l.x * 100}%`,
+                  top: `${l.y * 100}%`,
+                  width: l.type === "image" ? `${l.w * 100}%` : undefined,
+                }}
+              >
+                {l.type === "image" ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={l.localUrl} alt="" draggable={false} className="pointer-events-none block w-full" />
+                ) : (
+                  <span
+                    className="block whitespace-nowrap leading-none"
+                    style={{
+                      fontFamily: fontFamilies[l.font],
+                      fontWeight: DESIGN_FONTS.find((f) => f.key === l.font)!.weight,
+                      fontSize: `${l.size * 100}cqw`,
+                      color: l.color,
+                    }}
+                  >
+                    {l.text}
+                  </span>
+                )}
+              </div>
+            ))}
+        </div>
+      ))}
+    </div>
+  );
+  /** The order a shirt turns in: front, right side, back, left side. */
+  const spinSides = (["front", "right", "back", "left"] as const).filter((s) => colour.views[s]);
+  /** Phones show one tab's controls; desktop shows every group. */
+  const panel = (t: typeof tab) => cx(tab !== t && "hidden", "lg:block");
   const boxNumber = (id: string) => sideBoxes.findIndex((b) => b.id === id) + 1;
 
   return (
@@ -636,15 +832,22 @@ export function CustomDesigner({
       {/* Hidden font probes: give the canvas the real font names. */}
       <div aria-hidden className="pointer-events-none absolute h-0 w-0 overflow-hidden opacity-0">
         {DESIGN_FONTS.map((f) => (
-          <span key={f.key} ref={(el) => { probes.current[f.key] = el; }} style={{ fontFamily: fontFamilies[f.key], fontWeight: f.weight }}>
+          <span
+            key={f.key}
+            ref={(el) => {
+              probes.current[f.key] = el;
+            }}
+            style={{ fontFamily: fontFamilies[f.key], fontWeight: f.weight }}
+          >
             Aa
           </span>
         ))}
       </div>
 
       {/* Preview */}
-      <div className="lg:sticky lg:top-24 lg:self-start">
-        <div className="mb-3 flex items-center justify-between">
+      {/* Phones: pinned to the top so every change stays in view. */}
+      <div className="sticky top-0 z-20 -mx-5 bg-paper px-5 pb-3 pt-2 md:-mx-10 md:px-10 lg:top-24 lg:mx-0 lg:self-start lg:bg-transparent lg:px-0 lg:pb-0 lg:pt-0">
+        <div className="mb-2 flex items-center justify-between lg:mb-3">
           <div className="inline-flex rounded-md border border-taupe/50 p-0.5">
             {PRINT_SIDES.map((s) => (
               <button
@@ -657,30 +860,62 @@ export function CustomDesigner({
                 }}
                 className={cx(
                   "rounded px-3 py-2 text-[11px] uppercase tracking-widest2 transition-colors disabled:opacity-40 sm:px-4",
-                  side === s ? "bg-ink text-paper" : "text-graphite hover:bg-sand/30"
+                  side === s ? "bg-ink text-paper" : "text-graphite hover:bg-sand/30",
                 )}
               >
                 {s}
-                {layers[s].length > 0 && <span className="ml-1.5 inline-block h-1.5 w-1.5 rounded-full bg-current align-middle" />}
+                {layers[s].length > 0 && (
+                  <span className="ml-1.5 inline-block h-1.5 w-1.5 rounded-full bg-current align-middle" />
+                )}
               </button>
             ))}
           </div>
-          {/* Phones: the colour shows above the swatches instead. */}
-          <p className="hidden text-[11px] uppercase tracking-widest2 text-ash sm:block">{colour.name}</p>
+          {/* Desktop: beside the view tabs (phones: on the shirt, below). */}
+          <button
+            type="button"
+            onClick={openSpin}
+            title="See it all round"
+            aria-haspopup="dialog"
+            className="rounded-md hidden h-9 items-center gap-1.5 border border-taupe/50 px-2.5 text-[11px] uppercase tracking-widest2 text-graphite transition-colors hover:border-ink hover:text-ink lg:flex"
+          >
+            <Rotate3d size={14} strokeWidth={1.5} />
+            360°
+          </button>
         </div>
 
         <div
           ref={stageRef}
-          className="relative mx-auto aspect-[4/5] w-full max-w-[560px] select-none overflow-hidden rounded-md bg-bone"
+          className={cx(
+            "relative mx-auto aspect-[4/5] w-full max-w-[min(560px,calc(44svh*0.8))] select-none overflow-hidden rounded-md bg-bone lg:max-w-[560px]",
+            // With something selected, gestures on the shirt edit it instead of scrolling the page.
+            selection && "touch-none",
+          )}
+          onPointerDownCapture={onStageFinger}
           onPointerDown={() => setSelection(null)}
+          onPointerEnter={(e) => e.pointerType === "mouse" && setHovering(true)}
+          onPointerLeave={(e) => e.pointerType === "mouse" && setHovering(false)}
         >
-          {mockup && <Image src={mockup} alt={`${blank.name} in ${colour.name}, ${side}`} fill priority sizes="(min-width: 1024px) 560px, 100vw" className="object-cover" />}
+          {mockup && (
+            <Image
+              src={mockup}
+              alt={`${blank.name} in ${colour.name}, ${side}`}
+              fill
+              priority
+              sizes="(min-width: 1024px) 560px, 100vw"
+              className="object-cover"
+            />
+          )}
 
           {/* While an area is dragged: where areas are allowed to go. */}
           {draggingBox && (
             <div
               className="pointer-events-none absolute border border-dotted border-ink/30 bg-ink/[0.03]"
-              style={{ left: `${zone.x * 100}%`, top: `${zone.y * 100}%`, width: `${zone.w * 100}%`, height: `${zone.h * 100}%` }}
+              style={{
+                left: `${zone.x * 100}%`,
+                top: `${zone.y * 100}%`,
+                width: `${zone.w * 100}%`,
+                height: `${zone.h * 100}%`,
+              }}
             />
           )}
 
@@ -694,11 +929,16 @@ export function CustomDesigner({
                 onPointerDown={(e) => startBoxMove(e, b)}
                 className={cx(
                   "absolute cursor-move touch-none [container-type:inline-size]",
-                  active ? "border border-ink" : "border border-dashed border-ash/70 hover:border-ink/60"
+                  "border transition-colors duration-300",
+                  !showGuides
+                    ? "border-transparent"
+                    : active
+                      ? "border-ink"
+                      : "border-dashed border-ash/70 hover:border-ink/60",
                 )}
                 style={{ left: `${b.x * 100}%`, top: `${b.y * 100}%`, width: `${b.w * 100}%`, height: `${b.h * 100}%` }}
               >
-                {boxLayers.length === 0 && (
+                {showGuides && boxLayers.length === 0 && (
                   <p className="pointer-events-none absolute inset-0 flex items-center justify-center p-1 text-center text-[10px] uppercase tracking-widest2 text-ash">
                     {sideBoxes.length > 1 ? `Area ${i + 1}` : "Print area"}
                   </p>
@@ -714,7 +954,11 @@ export function CustomDesigner({
                       aria-label={l.type === "text" ? `Text: ${l.text}` : "Image"}
                       onPointerDown={(e) => startMove(e, l)}
                       className="absolute -translate-x-1/2 -translate-y-1/2 cursor-move touch-none"
-                      style={{ left: `${l.x * 100}%`, top: `${l.y * 100}%`, width: l.type === "image" ? `${l.w * 100}%` : undefined }}
+                      style={{
+                        left: `${l.x * 100}%`,
+                        top: `${l.y * 100}%`,
+                        width: l.type === "image" ? `${l.w * 100}%` : undefined,
+                      }}
                     >
                       {l.type === "image" ? (
                         // eslint-disable-next-line @next/next/no-img-element
@@ -736,11 +980,15 @@ export function CustomDesigner({
                   ))}
                 </div>
                 {/* Selected layer: outline + handles (outside the clip). */}
-                {current && current.boxId === b.id && (
-                  <SelectionFrame layer={current} onScale={(e) => startScale(e, current)} onRemove={() => remove(current.id)} />
+                {showGuides && current && current.boxId === b.id && (
+                  <SelectionFrame
+                    layer={current}
+                    onScale={(e) => startScale(e, current)}
+                    onRemove={() => remove(current.id)}
+                  />
                 )}
                 {/* Selected area: its label, remove button and resize handle. */}
-                {selection?.kind === "box" && selection.id === b.id && (
+                {showGuides && selection?.kind === "box" && selection.id === b.id && (
                   <>
                     <span className="pointer-events-none absolute -top-5 left-0 whitespace-nowrap bg-ink px-1.5 py-0.5 text-[9px] uppercase tracking-widest2 text-paper">
                       Area {i + 1}
@@ -776,21 +1024,74 @@ export function CustomDesigner({
             </div>
           )}
 
+          {/* Phones: 360° as a pill on the shirt (the tab row is full). */}
+          <button
+            type="button"
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={openSpin}
+            aria-haspopup="dialog"
+            aria-label="See it all round (360°)"
+            className="rounded-full absolute bottom-3 right-3 z-10 flex h-9 items-center gap-1.5 border border-taupe/50 bg-paper/90 px-3 text-[11px] uppercase tracking-widest2 text-ink shadow-sm backdrop-blur lg:hidden"
+          >
+            <Rotate3d size={14} strokeWidth={1.5} />
+            360°
+          </button>
+
           {uploading && (
             <div className="absolute inset-x-0 bottom-0 flex items-center justify-center gap-2 bg-ink/70 py-2 text-[11px] uppercase tracking-widest2 text-paper">
               <Loader2 size={14} className="animate-spin" /> Uploading image…
             </div>
           )}
         </div>
-        <p className="mx-auto mt-3 max-w-[560px] text-center text-xs text-ash">
+        <p className="mx-auto mt-3 hidden max-w-[560px] text-center text-xs text-ash lg:block">
           Drag a print area to place it, pull its corner to resize · only what&rsquo;s inside an area is printed
         </p>
+        <p className="mt-2 text-center text-[11px] text-ash lg:hidden">
+          Drag to move · pinch or pull the corner to resize
+        </p>
+
+        {/* Phones: one group of controls at a time. */}
+        <LayoutGroup id="designer-tabs">
+          <div className="mt-2 grid grid-cols-2 rounded-md border border-taupe/50 p-0.5 lg:hidden" role="tablist">
+            {(
+              [
+                ["design", "Design"],
+                ["order", "Order"],
+              ] as const
+            ).map(([key, label]) => (
+              <motion.button
+                key={key}
+                type="button"
+                role="tab"
+                aria-selected={tab === key}
+                onClick={() => setTab(key)}
+                whileTap={reduceMotion ? undefined : { scale: 0.95 }}
+                transition={{ type: "spring", stiffness: 500, damping: 25 }}
+                className={cx(
+                  "relative rounded py-2 text-[11px] uppercase tracking-widest2 transition-colors duration-300 ease-editorial",
+                  tab === key ? "text-paper" : "text-graphite",
+                )}
+              >
+                {/* The black fill slides from the old tab to the new one. */}
+                {tab === key && (
+                  <motion.span
+                    layoutId="designer-tab-fill"
+                    aria-hidden
+                    className="absolute inset-0 rounded bg-ink"
+                    transition={reduceMotion ? { duration: 0 } : { type: "spring", stiffness: 420, damping: 32 }}
+                  />
+                )}
+                <span className="relative">{label}</span>
+              </motion.button>
+            ))}
+          </div>
+        </LayoutGroup>
       </div>
 
       {/* Controls */}
-      <div className="flex flex-col gap-8">
+      <div className="flex flex-col gap-8 pb-24 lg:pb-0">
         {blanks.length > 1 && (
-          <Group title="Tee">
+          <Group title="Tee" className={panel("design")}>
             <div className="grid grid-cols-2 gap-2">
               {blanks.map((b) => (
                 <button
@@ -802,7 +1103,9 @@ export function CustomDesigner({
                   }}
                   className={cx(
                     "rounded-md border px-3 py-2.5 text-left text-xs transition-colors",
-                    b.id === blank.id ? "border-ink bg-ink text-paper" : "border-taupe/50 text-graphite hover:border-ink"
+                    b.id === blank.id
+                      ? "border-ink bg-ink text-paper"
+                      : "border-taupe/50 text-graphite hover:border-ink",
                   )}
                 >
                   <span className="block uppercase tracking-wide">{b.name}</span>
@@ -813,7 +1116,7 @@ export function CustomDesigner({
           </Group>
         )}
 
-        <Group title={`Colour · ${colour.name}`}>
+        <Group title={`Colour · ${colour.name}`} className={panel("design")}>
           <div className="flex flex-wrap gap-2.5">
             {blank.colours.map((c) => (
               <button
@@ -825,7 +1128,7 @@ export function CustomDesigner({
                 className={cx(
                   "relative h-9 w-9 rounded-full border transition-shadow",
                   c.code === colour.code ? "ring-2 ring-ink ring-offset-2 ring-offset-paper" : "border-taupe/60",
-                  c.stock <= 0 && "opacity-40"
+                  c.stock <= 0 && "opacity-40",
                 )}
                 style={{ backgroundColor: c.hex }}
               />
@@ -833,7 +1136,7 @@ export function CustomDesigner({
           </div>
         </Group>
 
-        <Group title={`Design · ${side}`}>
+        <Group title={`Design · ${side}`} className={panel("design")}>
           <button
             type="button"
             onClick={addBox}
@@ -842,7 +1145,7 @@ export function CustomDesigner({
               "rounded-md mb-2 flex h-11 w-full items-center justify-center gap-2 border text-xs uppercase tracking-widest2 transition-colors disabled:opacity-40",
               sideBoxes.length === 0
                 ? "border-ink bg-ink text-paper hover:bg-graphite"
-                : "border-dashed border-ink/50 text-ink hover:border-ink hover:bg-sand/20"
+                : "border-dashed border-ink/50 text-ink hover:border-ink hover:bg-sand/20",
             )}
           >
             <BoxSelect size={16} strokeWidth={1.5} /> Add print area
@@ -868,10 +1171,18 @@ export function CustomDesigner({
               <Type size={16} strokeWidth={1.5} /> Add text
             </button>
           </div>
-          <input ref={fileInput} type="file" accept="image/png,image/jpeg,image/webp" hidden onChange={(e) => addImage(e.target.files)} />
+          <input
+            ref={fileInput}
+            type="file"
+            accept="image/png,image/jpeg,image/webp"
+            hidden
+            onChange={(e) => addImage(e.target.files)}
+          />
           <p className="mt-2 text-xs text-ash">
             {sideBoxes.length === 0 ? "Start by adding a print area, then drag it where you want the print. " : ""}
-            {sideBoxes.length > 1 && activeBox ? `New images and text go into area ${boxNumber(activeBox.id)} (tap an area to choose). ` : ""}
+            {sideBoxes.length > 1 && activeBox
+              ? `New images and text go into area ${boxNumber(activeBox.id)} (tap an area to choose). `
+              : ""}
             PNG with a transparent background prints best. Up to 10 MB.
           </p>
 
@@ -882,11 +1193,22 @@ export function CustomDesigner({
                   <button
                     type="button"
                     onClick={() => setSelected(l.id)}
-                    className={cx("flex w-full items-center gap-3 px-3 py-2.5 text-left text-sm", l.id === selected ? "bg-sand/30" : "hover:bg-sand/15")}
+                    className={cx(
+                      "flex w-full items-center gap-3 px-3 py-2.5 text-left text-sm",
+                      l.id === selected ? "bg-sand/30" : "hover:bg-sand/15",
+                    )}
                   >
-                    {l.type === "image" ? <ImagePlus size={15} className="shrink-0 text-ash" /> : <Type size={15} className="shrink-0 text-ash" />}
+                    {l.type === "image" ? (
+                      <ImagePlus size={15} className="shrink-0 text-ash" />
+                    ) : (
+                      <Type size={15} className="shrink-0 text-ash" />
+                    )}
                     <span className="min-w-0 flex-1 truncate">{l.type === "text" ? l.text : "Image"}</span>
-                    {sideBoxes.length > 1 && <span className="shrink-0 text-[10px] uppercase tracking-widest2 text-ash">Area {boxNumber(l.boxId)}</span>}
+                    {sideBoxes.length > 1 && (
+                      <span className="shrink-0 text-[10px] uppercase tracking-widest2 text-ash">
+                        Area {boxNumber(l.boxId)}
+                      </span>
+                    )}
                     {l.type === "image" && !l.src && <Loader2 size={14} className="animate-spin text-ash" />}
                   </button>
                 </li>
@@ -898,12 +1220,23 @@ export function CustomDesigner({
           {current && (
             <div className="mt-4 flex flex-col gap-4 rounded-md border border-ink/20 p-4">
               <div className="flex items-center justify-between">
-                <p className="text-[11px] uppercase tracking-widest2 text-ink">{current.type === "text" ? "Text" : "Image"}</p>
+                <p className="text-[11px] uppercase tracking-widest2 text-ink">
+                  {current.type === "text" ? "Text" : "Image"}
+                </p>
                 <div className="flex gap-1">
-                  <button type="button" onClick={() => update(current.id, { x: 0.5 })} className="flex items-center gap-1 rounded px-2 py-1 text-[11px] uppercase tracking-wide text-graphite hover:bg-sand/30">
+                  <button
+                    type="button"
+                    onClick={() => update(current.id, { x: 0.5 })}
+                    className="flex items-center gap-1 rounded px-2 py-1 text-[11px] uppercase tracking-wide text-graphite hover:bg-sand/30"
+                  >
                     <AlignCenter size={13} /> Centre
                   </button>
-                  <button type="button" onClick={() => remove(current.id)} aria-label="Remove" className="rounded p-1.5 text-ash hover:text-rust">
+                  <button
+                    type="button"
+                    onClick={() => remove(current.id)}
+                    aria-label="Remove"
+                    className="rounded p-1.5 text-ash hover:text-rust"
+                  >
                     <Trash2 size={15} />
                   </button>
                 </div>
@@ -925,7 +1258,9 @@ export function CustomDesigner({
                         onClick={() => update(current.id, { font: f.key })}
                         className={cx(
                           "truncate rounded-md border px-2 py-2 text-sm transition-colors",
-                          current.font === f.key ? "border-ink bg-ink text-paper" : "border-taupe/50 text-ink hover:border-ink"
+                          current.font === f.key
+                            ? "border-ink bg-ink text-paper"
+                            : "border-taupe/50 text-ink hover:border-ink",
                         )}
                         style={{ fontFamily: fontFamilies[f.key], fontWeight: f.weight }}
                       >
@@ -940,13 +1275,24 @@ export function CustomDesigner({
                         type="button"
                         onClick={() => update(current.id, { color: c })}
                         aria-label={`Colour ${c}`}
-                        className={cx("h-7 w-7 rounded-full border border-taupe/60", current.color === c && "ring-2 ring-ink ring-offset-2 ring-offset-paper")}
+                        className={cx(
+                          "h-7 w-7 rounded-full border border-taupe/60",
+                          current.color === c && "ring-2 ring-ink ring-offset-2 ring-offset-paper",
+                        )}
                         style={{ backgroundColor: c }}
                       />
                     ))}
-                    <label className="relative h-7 w-7 cursor-pointer overflow-hidden rounded-full border border-taupe/60" title="Any colour">
+                    <label
+                      className="relative h-7 w-7 cursor-pointer overflow-hidden rounded-full border border-taupe/60"
+                      title="Any colour"
+                    >
                       <span className="absolute inset-0 bg-[conic-gradient(red,yellow,lime,cyan,blue,magenta,red)]" />
-                      <input type="color" value={current.color} onChange={(e) => update(current.id, { color: e.target.value })} className="absolute inset-0 cursor-pointer opacity-0" />
+                      <input
+                        type="color"
+                        value={current.color}
+                        onChange={(e) => update(current.id, { color: e.target.value })}
+                        className="absolute inset-0 cursor-pointer opacity-0"
+                      />
                     </label>
                   </div>
                   <SizeSlider
@@ -959,7 +1305,13 @@ export function CustomDesigner({
                 </>
               ) : (
                 <>
-                  <SizeSlider label="Image size" value={current.w} min={0.05} max={1.5} onChange={(v) => update(current.id, { w: v })} />
+                  <SizeSlider
+                    label="Image size"
+                    value={current.w}
+                    min={0.05}
+                    max={1.5}
+                    onChange={(v) => update(current.id, { w: v })}
+                  />
                   {imageWarning && <p className="text-xs text-rust">{imageWarning}</p>}
                 </>
               )}
@@ -967,46 +1319,58 @@ export function CustomDesigner({
           )}
         </Group>
 
-        <Group title="Size">
-          <div className="flex flex-wrap gap-2">
-            {blank.sizes.map((s) => {
-              const off = soldOut || colour.unavailable.includes(s);
-              return (
-                <button
-                  key={s}
-                  type="button"
-                  disabled={off}
-                  onClick={() => setSize(s)}
-                  className={cx(
-                    "rounded-md h-11 min-w-[52px] border px-3 text-xs uppercase tracking-widest2 transition-colors disabled:cursor-not-allowed disabled:opacity-35 disabled:line-through",
-                    size === s ? "border-ink bg-ink text-paper" : "border-taupe/50 text-ink hover:border-ink"
-                  )}
-                >
-                  {s}
-                </button>
-              );
-            })}
-          </div>
-          {soldOut && <p className="mt-2 text-xs text-rust">{colour.name} is sold out right now. Try another colour.</p>}
-        </Group>
+        {/* Same picker as the product page (sliding fill, size guide). */}
+        <div className={panel("order")}>
+          <SizeSelector
+            sizes={blank.sizes}
+            unavailableSizes={soldOut ? blank.sizes : colour.unavailable}
+            selected={size}
+            onChange={setSize}
+          />
+          {soldOut && (
+            <p className="mt-2 text-xs text-rust">{colour.name} is sold out right now. Try another colour.</p>
+          )}
+        </div>
 
-        <div className="rounded-md border border-taupe/40 p-5">
-          <dl className="flex flex-col gap-2 text-sm">
-            {priceRows.map((r) => (
-              <div key={r.label} className="flex justify-between text-graphite">
-                <dt>{r.label}</dt>
-                <dd>{r.label.endsWith("print") ? `+ ${formatPrice(r.value)}` : `${size ? "" : "from "}${formatPrice(r.value)}`}</dd>
-              </div>
-            ))}
-            <div className="mt-1 flex justify-between border-t border-taupe/30 pt-3 text-ink">
-              <dt className="uppercase tracking-widest2 text-xs">Price per tee</dt>
-              <dd className="font-medium">{formatPrice(unitPrice)}</dd>
+        <section className={panel("order")}>
+          <label htmlFor="design-note" className="mb-3 block text-[11px] uppercase tracking-widest2 text-ink">
+            Notes for us <span className="text-ash">(optional)</span>
+          </label>
+          <textarea
+            id="design-note"
+            rows={3}
+            maxLength={MAX_DESIGN_NOTE}
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            placeholder="Anything we should know before printing, e.g. make the logo about 8 cm wide, or match the red to my image."
+            className="rounded-md w-full resize-none border border-taupe/50 bg-transparent px-3 py-2.5 text-sm placeholder:text-ash/80 focus:border-ink focus:outline-none"
+          />
+          <p className="mt-1 text-right text-[11px] text-ash">
+            {note.length}/{MAX_DESIGN_NOTE}
+          </p>
+        </section>
+
+        <div className={cx("rounded-md border border-taupe/40 p-5", panel("order"))}>
+          {priceReady ? (
+            <div className="flex items-baseline justify-between text-ink">
+              <span className="text-xs uppercase tracking-widest2">
+                Total{quantity > 1 ? ` · ${quantity} tees` : ""}
+              </span>
+              <span className="text-lg font-medium">{formatPrice(total)}</span>
             </div>
-          </dl>
+          ) : (
+            <p className="text-sm text-graphite">Add your design and pick a size to see the price.</p>
+          )}
 
           <div className="mt-5 flex gap-3">
             <div className="flex h-12 items-center rounded-md border border-taupe/50">
-              <button type="button" onClick={() => setQuantity((q) => Math.max(1, q - 1))} aria-label="Fewer" className="flex h-full w-10 items-center justify-center text-ink disabled:opacity-30" disabled={quantity <= 1}>
+              <button
+                type="button"
+                onClick={() => setQuantity((q) => Math.max(1, q - 1))}
+                aria-label="Fewer"
+                className="flex h-full w-10 items-center justify-center text-ink disabled:opacity-30"
+                disabled={quantity <= 1}
+              >
                 <Minus size={14} />
               </button>
               <span className="w-6 text-center text-sm">{quantity}</span>
@@ -1022,35 +1386,199 @@ export function CustomDesigner({
             </div>
             <button
               type="button"
-              onClick={addToBag}
+              onClick={requestAdd}
               disabled={Boolean(busy) || uploading || soldOut}
-              className="rounded-md flex h-12 flex-1 items-center justify-center gap-2 bg-ink px-4 text-xs uppercase tracking-widest2 text-paper transition-colors hover:bg-graphite disabled:cursor-not-allowed disabled:bg-ash/50"
+              className="rounded-md hidden h-12 flex-1 items-center lg:flex justify-center gap-2 bg-ink px-4 text-xs uppercase tracking-widest2 text-paper transition-colors hover:bg-graphite disabled:cursor-not-allowed disabled:bg-ash/50"
             >
               {busy ? (
                 <>
                   <Loader2 size={16} className="animate-spin" /> {busy}
                 </>
               ) : (
-                <>Add to bag · {formatPrice(unitPrice * quantity)}</>
+                <>Add to bag{priceReady ? ` · ${formatPrice(total)}` : ""}</>
               )}
             </button>
           </div>
-          {error && <p role="alert" className="mt-3 text-xs text-rust">{error}</p>}
-          {added && !error && <p role="status" className="mt-3 text-xs text-graphite">Added to your bag. You can keep editing and add another.</p>}
+          <div className="hidden lg:block">
+            {error && (
+              <p role="alert" className="mt-3 text-xs text-rust">
+                {error}
+              </p>
+            )}
+            {added && !error && (
+              <p role="status" className="mt-3 text-xs text-graphite">
+                Added to your bag. You can keep editing and add another.
+              </p>
+            )}
+          </div>
           <p className="mt-4 text-xs text-ash">
             {blank.material ? `${blank.material} · ` : ""}
             {blank.fit} fit. Every custom tee is printed to order after we check your design.
           </p>
+          <p className="mt-3 flex gap-2 rounded-md bg-sand/30 p-3 text-xs text-graphite">
+            <Info size={14} strokeWidth={1.5} className="mt-0.5 shrink-0 text-ink" />
+            {CUSTOM_RETURN_POLICY}
+          </p>
         </div>
       </div>
+
+      {/* Phones: price and Add to bag always at hand. Rendered into <body>:
+          the page transition's transform would otherwise pin it to the page
+          instead of the screen. */}
+      {mounted &&
+        createPortal(
+          <div className="fixed inset-x-0 bottom-0 z-30 border-t border-taupe/40 bg-paper/95 px-5 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-3 backdrop-blur lg:hidden">
+            {(error || added) && (
+              <p
+                role={error ? "alert" : "status"}
+                className={cx("mb-2 text-xs", error ? "text-rust" : "text-graphite")}
+              >
+                {error ?? "Added to your bag. You can keep editing and add another."}
+              </p>
+            )}
+            <div className="flex items-center gap-3">
+              <div className="min-w-0 flex-1">
+                {priceReady ? (
+                  <p className="text-base font-medium text-ink">{formatPrice(total)}</p>
+                ) : (
+                  <p className="text-xs text-graphite">
+                    {usedSides.length === 0 ? "Add your design" : "Pick a size"} to see the price
+                  </p>
+                )}
+                <p className="truncate text-[11px] uppercase tracking-widest2 text-ash">
+                  {size ? `Size ${size}` : "No size yet"}
+                  {quantity > 1 ? ` · ${quantity} tees` : ""}
+                  {usedSides.length ? ` · ${printLabel(usedSides)}` : ""}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={requestAdd}
+                disabled={Boolean(busy) || uploading || soldOut}
+                className="rounded-md flex h-12 shrink-0 items-center justify-center gap-2 bg-ink px-6 text-xs uppercase tracking-widest2 text-paper transition-colors active:bg-graphite disabled:bg-ash/50"
+              >
+                {busy ? (
+                  <>
+                    <Loader2 size={16} className="animate-spin" /> Saving
+                  </>
+                ) : (
+                  "Add to bag"
+                )}
+              </button>
+            </div>
+          </div>,
+          document.body,
+        )}
+
+      {mounted &&
+        createPortal(
+          <AnimatePresence>
+            {preview && (
+              <motion.div
+                key="spin"
+                className="fixed inset-0 z-[80] flex items-stretch justify-center sm:items-center sm:p-6"
+                role="dialog"
+                aria-modal="true"
+                aria-label="360° preview"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: reduceMotion ? 0 : 0.2 }}
+              >
+                <div className="absolute inset-0 bg-ink/60" onClick={() => setPreview(false)} aria-hidden />
+                <div className="relative flex w-full flex-col bg-paper px-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] pt-4 sm:max-w-[520px] sm:rounded-xl sm:p-6">
+                  <div className="mb-4 flex items-center justify-between">
+                    <div>
+                      <p className="text-[11px] uppercase tracking-widest2 text-ash">360° preview</p>
+                      <p className="text-sm text-ink">
+                        {blank.name} · {colour.name}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setPreview(false)}
+                      aria-label="Close preview"
+                      className="flex h-10 w-10 items-center justify-center rounded-full text-ink hover:bg-sand/40"
+                    >
+                      <X size={20} strokeWidth={1.5} />
+                    </button>
+                  </div>
+                  <div className="flex flex-1 flex-col justify-center">
+                    <div className="mx-auto w-full max-w-[min(100%,calc(62svh*0.8))]">
+                      <Spin360
+                        faces={spinSides.map((s) => designFace(s))}
+                        labels={spinSides.map((s) => SIDE_LABEL[s])}
+                      />
+                    </div>
+                    <p className="mt-3 text-center text-[11px] text-ash">Drag or swipe to turn it</p>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+            {policyOpen && (
+              <motion.div
+                key="policy"
+                className="fixed inset-0 z-[80] flex items-end justify-center sm:items-center sm:p-6"
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="custom-policy-title"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: reduceMotion ? 0 : 0.2 }}
+              >
+                <div className="absolute inset-0 bg-ink/50" onClick={() => setPolicyOpen(false)} aria-hidden />
+                <motion.div
+                  className="relative w-full rounded-t-xl bg-paper p-6 pb-[calc(1.5rem+env(safe-area-inset-bottom))] shadow-[0_20px_60px_rgba(0,0,0,0.3)] sm:max-w-md sm:rounded-xl sm:pb-6"
+                  initial={reduceMotion ? false : { y: 40 }}
+                  animate={{ y: 0 }}
+                  exit={reduceMotion ? undefined : { y: 40 }}
+                  transition={{ type: "spring", stiffness: 420, damping: 36 }}
+                >
+                  <span className="mb-4 flex h-10 w-10 items-center justify-center rounded-full bg-sand/50 text-ink">
+                    <Info size={18} strokeWidth={1.5} />
+                  </span>
+                  <h2 id="custom-policy-title" className="text-lg font-medium uppercase tracking-tighter text-ink">
+                    Made just for you
+                  </h2>
+                  <p className="mt-2 text-sm leading-relaxed text-graphite">{CUSTOM_RETURN_POLICY}</p>
+                  <div className="mt-6 flex flex-col gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setPolicyAccepted(true);
+                        setPolicyOpen(false);
+                        addToBag();
+                      }}
+                      className="rounded-md flex h-12 items-center justify-center bg-ink text-xs uppercase tracking-widest2 text-paper transition-colors hover:bg-graphite"
+                    >
+                      I understand, add to bag
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPolicyOpen(false)}
+                      className="h-11 text-xs uppercase tracking-widest2 text-graphite hover:text-ink"
+                    >
+                      Go back
+                    </button>
+                  </div>
+                </motion.div>
+              </motion.div>
+            )}
+          </AnimatePresence>,
+          document.body,
+        )}
     </div>
   );
 }
 
-function Group({ title, children }: { title: string; children: React.ReactNode }) {
+function Group({ title, children, className }: { title: string; children: React.ReactNode; className?: string }) {
   return (
-    <section>
-      <h2 className="mb-3 text-[11px] font-normal uppercase tracking-widest2 text-ink" style={{ fontFamily: "inherit" }}>
+    <section className={className}>
+      <h2
+        className="mb-3 text-[11px] font-normal uppercase tracking-widest2 text-ink"
+        style={{ fontFamily: "inherit" }}
+      >
         {title}
       </h2>
       {children}
@@ -1058,11 +1586,31 @@ function Group({ title, children }: { title: string; children: React.ReactNode }
   );
 }
 
-function SizeSlider({ label, value, min, max, onChange }: { label: string; value: number; min: number; max: number; onChange: (v: number) => void }) {
+function SizeSlider({
+  label,
+  value,
+  min,
+  max,
+  onChange,
+}: {
+  label: string;
+  value: number;
+  min: number;
+  max: number;
+  onChange: (v: number) => void;
+}) {
   return (
     <label className="block">
       <span className="mb-1.5 block text-[11px] uppercase tracking-widest2 text-ash">{label}</span>
-      <input type="range" min={min} max={max} step={0.005} value={value} onChange={(e) => onChange(Number(e.target.value))} className="w-full accent-ink" />
+      <input
+        type="range"
+        min={min}
+        max={max}
+        step={0.005}
+        value={value}
+        onChange={(e) => onChange(Number(e.target.value))}
+        className="w-full accent-ink"
+      />
     </label>
   );
 }

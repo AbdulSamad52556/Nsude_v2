@@ -13,6 +13,7 @@ import {
   ChevronDown,
   ChevronUp,
   CreditCard,
+  Info,
   Loader2,
   Lock,
   Mail,
@@ -23,7 +24,8 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { useCart } from "@/context/CartContext";
-import type { AccountData } from "@/lib/account";
+import { CUSTOM_RETURN_POLICY } from "@/lib/custom";
+import { OTP_LENGTH, phoneSchema, type AccountData } from "@/lib/account";
 import { formatPrice, cx } from "@/lib/utils";
 import { track } from "@/lib/track";
 import {
@@ -64,6 +66,7 @@ interface PlacedOrder {
   lines: QuoteLine[];
   address: string;
   email: string;
+  phone: string;
 }
 
 type FormValues = {
@@ -89,8 +92,8 @@ const EMPTY_FORM: FormValues = {
   pincode: "",
 };
 const FIELD_ORDER: (keyof FormValues | "paymentMethod")[] = [
-  "email",
   "phone",
+  "email",
   "firstName",
   "lastName",
   "line1",
@@ -101,11 +104,13 @@ const FIELD_ORDER: (keyof FormValues | "paymentMethod")[] = [
   "paymentMethod",
 ];
 
+const VERIFY_PHONE = "Verify your number with the code we send";
+
 // The form is split into three collapsible sections, filled in order.
 type SectionId = "contact" | "address" | "payment";
 const SECTIONS: SectionId[] = ["contact", "address", "payment"];
 const SECTION_FIELDS: Record<SectionId, string[]> = {
-  contact: ["email", "phone"],
+  contact: ["phone", "email"],
   address: ["firstName", "lastName", "line1", "line2", "city", "pincode", "state"],
   payment: ["paymentMethod"],
 };
@@ -191,10 +196,17 @@ function CheckoutSection({
 }
 
 /** A saved detail shown as text, with an Edit link to change it. */
-function SavedValue({ value, onEdit }: { value: string; onEdit: () => void }) {
+function SavedValue({ value, onEdit, badge }: { value: string; onEdit: () => void; badge?: string }) {
   return (
     <div className="flex h-10 items-center justify-between gap-3 rounded-md border border-graphite/10 bg-bone/40 px-3 md:h-11">
-      <span className="min-w-0 truncate text-sm text-ink">{value}</span>
+      <span className="flex min-w-0 items-center gap-2">
+        <span className="truncate text-sm text-ink">{value}</span>
+        {badge && (
+          <span className="flex shrink-0 items-center gap-1 text-[10px] uppercase tracking-widest2 text-ink">
+            <Check size={13} strokeWidth={2} /> {badge}
+          </span>
+        )}
+      </span>
       <button
         type="button"
         onClick={onEdit}
@@ -331,20 +343,96 @@ export function CheckoutView({ razorpayEnabled }: { razorpayEnabled: boolean }) 
   // Signed in with saved addresses: the chosen one shows as a summary; the
   // list only opens on "Change".
   const [showAddressList, setShowAddressList] = useState(false);
+  /** Signed in (already, or just now with the code): fill in their details. */
+  function applyAccount(acc: AccountData) {
+    setAccount(acc);
+    setEditPhone(false);
+    setValues((v) => ({ ...v, email: v.email || acc.email, phone: acc.phone }));
+    const preferred = acc.addresses.find((a) => a.id === acc.defaultAddressId) ?? acc.addresses[0];
+    if (preferred) chooseAddress(preferred.id, acc);
+  }
   useEffect(() => {
     fetch("/api/account")
       .then((res) => (res.ok ? res.json() : null))
       .then((data: { account: AccountData } | null) => {
-        if (!data?.account) return;
-        const acc = data.account;
-        setAccount(acc);
-        setValues((v) => ({ ...v, email: v.email || acc.email, phone: acc.phone }));
-        const preferred = acc.addresses.find((a) => a.id === acc.defaultAddressId) ?? acc.addresses[0];
-        if (preferred) chooseAddress(preferred.id, acc);
+        if (data?.account) applyAccount(data.account);
       })
       .catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // The mobile number is verified with a one-time code, right here; that
+  // also signs the customer in (or creates their account).
+  const [otpSent, setOtpSent] = useState(false);
+  const [otpCode, setOtpCode] = useState("");
+  // Shown on screen until SMS is set up (null once codes go by SMS).
+  const [screenCode, setScreenCode] = useState<string | null>(null);
+  const [otpBusy, setOtpBusy] = useState(false);
+  const [otpError, setOtpError] = useState<string | null>(null);
+  const [resendIn, setResendIn] = useState(0);
+  const codeRef = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (resendIn <= 0) return;
+    const t = window.setTimeout(() => setResendIn((n) => n - 1), 1000);
+    return () => window.clearTimeout(t);
+  }, [resendIn]);
+  const phoneCheck = phoneSchema.safeParse(values.phone);
+  const verified = Boolean(account) && phoneCheck.success && phoneCheck.data === account!.phone;
+
+  async function sendCode() {
+    if (otpBusy) return;
+    if (!phoneCheck.success) {
+      setOtpError(phoneCheck.error.issues[0]?.message ?? "Enter a valid mobile number");
+      return;
+    }
+    setOtpBusy(true);
+    setOtpError(null);
+    const res = await fetch("/api/auth/otp/send", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ phone: phoneCheck.data }),
+    });
+    const data = await res.json().catch(() => ({}));
+    setOtpBusy(false);
+    if (!res.ok) {
+      setOtpError(data.error ?? "Couldn't send the code. Try again.");
+      if (data.retryAfter) setResendIn(data.retryAfter);
+      return;
+    }
+    setScreenCode(data.screenCode ?? null);
+    setResendIn(data.resendIn ?? 30);
+    setOtpCode("");
+    setOtpSent(true);
+    window.setTimeout(() => codeRef.current?.focus(), 50);
+  }
+
+  async function verifyCode(code = otpCode) {
+    if (otpBusy || !phoneCheck.success) return;
+    if (code.length !== OTP_LENGTH) {
+      setOtpError(`Enter the ${OTP_LENGTH}-digit code`);
+      return;
+    }
+    setOtpBusy(true);
+    setOtpError(null);
+    const res = await fetch("/api/auth/otp/verify", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ phone: phoneCheck.data, code }),
+    });
+    const data = await res.json().catch(() => ({}));
+    setOtpBusy(false);
+    if (!res.ok) {
+      setOtpError(data.error ?? "Couldn't verify the code. Try again.");
+      setOtpCode("");
+      codeRef.current?.focus();
+      return;
+    }
+    setOtpSent(false);
+    setScreenCode(null);
+    if (errors.phone) setErrors(({ phone: _removed, ...rest }) => rest);
+    track("checkout_step", { completed: "phone_verified" });
+    applyAccount(data.account as AccountData);
+  }
 
   /** Edit the chosen saved address for this order: the form opens filled in. */
   function editSavedAddress() {
@@ -469,6 +557,7 @@ export function CheckoutView({ razorpayEnabled }: { razorpayEnabled: boolean }) 
         out[key] ??= issue.message;
       }
     }
+    if (!out.phone && !verified) out.phone = VERIFY_PHONE;
     return out;
   }
   const liveErrors = validate();
@@ -538,6 +627,7 @@ export function CheckoutView({ razorpayEnabled }: { razorpayEnabled: boolean }) 
       paymentMethod: paymentMethod ?? "cod",
       lines: q?.lines ?? summaryLines,
       email: values.email.trim(),
+      phone: values.phone,
       address: [
         `${values.firstName} ${values.lastName}`.trim(),
         values.line1,
@@ -679,7 +769,7 @@ export function CheckoutView({ razorpayEnabled }: { razorpayEnabled: boolean }) 
             {cod
               ? `Please keep ${formatPrice(placed.total)} ready to pay when your order arrives.`
               : "Your payment was successful."}{" "}
-            We&apos;ll send shipping updates to {placed.email}.
+            We&apos;ll send shipping updates to {placed.email || `+91 ${placed.phone}`}.
           </p>
         </div>
 
@@ -729,7 +819,7 @@ export function CheckoutView({ razorpayEnabled }: { razorpayEnabled: boolean }) 
                 <MapPin size={15} strokeWidth={1.5} /> Delivering to
               </p>
               <p className="whitespace-pre-line text-[13px] leading-relaxed text-graphite md:text-sm">{placed.address}</p>
-              <p className="mt-2 text-[11px] text-ash md:text-xs">Updates to {placed.email}</p>
+              <p className="mt-2 text-[11px] text-ash md:text-xs">Updates to {placed.email || `+91 ${placed.phone}`}</p>
             </section>
 
             {/* Payment */}
@@ -826,7 +916,9 @@ export function CheckoutView({ razorpayEnabled }: { razorpayEnabled: boolean }) 
     // disabled until it's fixed); empty fields aren't flagged yet.
     onBlur: () => {
       const error = liveErrors[key];
-      if (error && values[key].trim()) setErrors((prev) => ({ ...prev, [key]: error }));
+      // Leaving the number to tap "Get code" isn't a mistake: "not verified
+      // yet" only shows if they try to continue without the code.
+      if (error && error !== VERIFY_PHONE && values[key].trim()) setErrors((prev) => ({ ...prev, [key]: error }));
     },
     enterKeyHint: "next" as const,
     id: key,
@@ -866,7 +958,7 @@ export function CheckoutView({ razorpayEnabled }: { razorpayEnabled: boolean }) 
         (continuing ? !sectionComplete(step) : blocked || !SECTIONS.every(sectionComplete))
       }
       className={cx(
-        "group h-10 w-full items-center justify-center gap-2 rounded-md bg-ink md:h-14 text-xs uppercase tracking-widest2 text-paper transition-[filter,background-color] md:text-sm hover:bg-graphite disabled:cursor-not-allowed disabled:bg-ash/50 disabled:brightness-100",
+        "group h-10 w-full items-center justify-center gap-2 rounded-md bg-ink text-xs uppercase tracking-widest2 text-paper transition-[filter,background-color] md:h-12 hover:bg-graphite disabled:cursor-not-allowed disabled:bg-ash/50 disabled:brightness-100",
         className
       )}
     >
@@ -939,6 +1031,14 @@ export function CheckoutView({ razorpayEnabled }: { razorpayEnabled: boolean }) 
           ))}
       </ul>
 
+      {/* Custom tees: made to order, exchange only. */}
+      {summaryLines.some((l) => l.designId) && (
+        <p className="flex items-start gap-2 rounded-md bg-sand/30 p-3 text-xs text-graphite">
+          <Info size={14} strokeWidth={1.5} className="mt-0.5 shrink-0 text-ink" />
+          {CUSTOM_RETURN_POLICY}
+        </p>
+      )}
+
       {blocked && (
         <div className="flex items-start gap-2 rounded-md border border-rust/30 p-3 text-xs text-rust">
           <AlertCircle size={14} strokeWidth={1.5} className="mt-0.5 shrink-0" />
@@ -981,10 +1081,10 @@ export function CheckoutView({ razorpayEnabled }: { razorpayEnabled: boolean }) 
   return (
     // Phones: at least a full screen tall, so the footer never shows on the
     // first screen even when every section is closed.
-    <div className="mx-auto min-h-[100svh] px-5 pb-24 pt-28 md:min-h-0 md:px-10 md:pt-40">
-      {/* Phones: centered title (back arrow is in the header); desktop: large heading. */}
-      <div className="mb-8 flex items-center justify-center md:mb-14 md:justify-start">
-        <h1 className="text-xl font-medium uppercase tracking-tighter text-ink md:text-display-lg">Checkout</h1>
+    <div className="mx-auto min-h-[100svh] px-5 pb-24 pt-28 md:min-h-0 md:px-10 md:pt-28">
+      {/* Phones: centered title (back arrow is in the header); desktop: a compact page title. */}
+      <div className="mb-8 flex items-center justify-center md:mb-8 md:justify-start">
+        <h1 className="text-xl font-medium uppercase tracking-tighter text-ink md:text-3xl">Checkout</h1>
       </div>
 
       <div className="grid grid-cols-1 gap-10 md:grid-cols-[1fr_380px] md:gap-16">
@@ -1013,21 +1113,145 @@ export function CheckoutView({ razorpayEnabled }: { razorpayEnabled: boolean }) 
             locked={isLocked("contact")}
             onToggle={() => toggleSection("contact")}
           >
-            {account ? (
-              <p className="mb-4 rounded-md bg-ink/10 px-3 py-2 text-[11px] text-ink md:text-xs">
-                Logged in as +91 {account.phone}
-              </p>
-            ) : (
-              <p className="mb-4 text-[12px] text-graphite md:text-[13px]">
-                Have an account?{" "}
-                <Link href="/account?next=/checkout" className="text-ink underline underline-offset-4">
-                  Log in
-                </Link>{" "}
-                for faster checkout.
-              </p>
-            )}
             <div className="grid grid-cols-2 gap-x-3 gap-y-4">
-              <FieldShell id="email" label="Email Address" error={errors.email} span>
+              <FieldShell id="phone" label="Mobile Number" error={errors.phone || otpError || undefined} span>
+                {verified && !editPhone ? (
+                  // Verified (signed in): shown as text until "Edit".
+                  <SavedValue
+                    value={`+91 ${account!.phone}`}
+                    badge="Verified"
+                    onEdit={() => {
+                      setEditPhone(true);
+                      window.setTimeout(() => formRef.current?.querySelector<HTMLInputElement>('[name="phone"]')?.focus(), 0);
+                    }}
+                  />
+                ) : (
+                  <div className="flex gap-2">
+                    <div
+                      className={cx(
+                        "flex h-10 min-w-0 flex-1 items-center overflow-hidden rounded-md border focus-within:border-ink md:h-11",
+                        errors.phone || otpError ? "border-rust focus-within:border-rust" : "border-graphite/20"
+                      )}
+                    >
+                      <span className="border-r border-graphite/15 px-3 text-sm text-ash">+91</span>
+                      <input
+                        {...fieldProps("phone")}
+                        onChange={(e) => {
+                          set("phone", e.target.value);
+                          setOtpError(null);
+                          setOtpSent(false);
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" && !verified) {
+                            e.preventDefault();
+                            sendCode();
+                          }
+                        }}
+                        type="tel"
+                        autoComplete="tel-national"
+                        inputMode="numeric"
+                        maxLength={14}
+                        placeholder="10-digit mobile number"
+                        className="h-full w-full bg-transparent px-3 text-sm text-ink placeholder:text-ash/60 focus:outline-none"
+                      />
+                      {verified && (
+                        <span className="flex shrink-0 items-center gap-1 pr-3 text-[10px] uppercase tracking-widest2 text-ink">
+                          <Check size={13} strokeWidth={2} /> Verified
+                        </span>
+                      )}
+                    </div>
+                    {!verified && !otpSent && (
+                      <button
+                        type="button"
+                        onClick={sendCode}
+                        disabled={otpBusy || !phoneCheck.success}
+                        className="flex h-10 shrink-0 items-center gap-1.5 rounded-md bg-ink px-4 text-[11px] uppercase tracking-widest2 text-paper transition-colors hover:bg-graphite disabled:cursor-not-allowed disabled:bg-ash/50 md:h-11"
+                      >
+                        {otpBusy && <Loader2 size={14} className="animate-spin" />}
+                        Get code
+                      </button>
+                    )}
+                  </div>
+                )}
+              </FieldShell>
+
+              {/* The one-time code, right under the number. */}
+              {otpSent && !verified && (
+                <div className="col-span-2 rounded-md border border-graphite/10 bg-bone/40 p-3 md:p-4">
+                  <p className="mb-3 text-[12px] text-graphite md:text-[13px]">
+                    {screenCode ? "Your" : "We sent a"} {OTP_LENGTH}-digit code {screenCode ? "for" : "to"}{" "}
+                    <span className="text-ink">+91 {phoneCheck.success ? phoneCheck.data : values.phone}</span>
+                    {screenCode ? " is shown below." : "."}
+                  </p>
+                  {screenCode && (
+                    <div className="mb-3 flex items-center justify-between gap-3 rounded-md bg-ink/10 px-3 py-2.5">
+                      <div>
+                        <p className="text-[10px] uppercase tracking-widest2 text-ink">Your code</p>
+                        <p className="mt-0.5 text-lg font-medium tracking-[0.3em] text-ink">{screenCode}</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setOtpCode(screenCode);
+                          verifyCode(screenCode);
+                        }}
+                        disabled={otpBusy}
+                        className="shrink-0 rounded-md bg-ink px-3 py-2 text-[10px] uppercase tracking-widest2 text-paper transition-colors hover:bg-graphite disabled:bg-ash/50"
+                      >
+                        Use this code
+                      </button>
+                    </div>
+                  )}
+                  <div className="flex gap-2">
+                    <input
+                      ref={codeRef}
+                      aria-label={`${OTP_LENGTH}-digit code`}
+                      type="text"
+                      inputMode="numeric"
+                      autoComplete="one-time-code"
+                      maxLength={OTP_LENGTH}
+                      value={otpCode}
+                      placeholder={"•".repeat(OTP_LENGTH)}
+                      onChange={(e) => {
+                        const v = e.target.value.replace(/\D/g, "").slice(0, OTP_LENGTH);
+                        setOtpCode(v);
+                        setOtpError(null);
+                        if (v.length === OTP_LENGTH) verifyCode(v);
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          verifyCode();
+                        }
+                      }}
+                      className={cx(
+                        "h-10 min-w-0 flex-1 rounded-md border bg-paper px-3 text-center text-base tracking-[0.5em] text-ink placeholder:text-ash/50 focus:border-ink focus:outline-none md:h-11",
+                        otpError ? "border-rust" : "border-graphite/20"
+                      )}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => verifyCode()}
+                      disabled={otpBusy || otpCode.length !== OTP_LENGTH}
+                      className="flex h-10 shrink-0 items-center gap-1.5 rounded-md bg-ink px-4 text-[11px] uppercase tracking-widest2 text-paper transition-colors hover:bg-graphite disabled:cursor-not-allowed disabled:bg-ash/50 md:h-11"
+                    >
+                      {otpBusy && <Loader2 size={14} className="animate-spin" />}
+                      Verify
+                    </button>
+                  </div>
+                  <p className="mt-2.5 text-[11px] text-ash">
+                    {resendIn > 0 ? (
+                      `Resend code in ${resendIn}s`
+                    ) : (
+                      <button type="button" onClick={sendCode} className="text-ink underline underline-offset-4">
+                        Resend code
+                      </button>
+                    )}
+                  </p>
+                </div>
+              )}
+
+              <FieldShell id="email" label="Email Address" optional error={errors.email} span>
                 {account?.email && !editEmail && values.email === account.email ? (
                   // Signed in with a saved email: no need to retype it.
                   <SavedValue
@@ -1043,38 +1267,9 @@ export function CheckoutView({ razorpayEnabled }: { razorpayEnabled: boolean }) 
                     type="email"
                     autoComplete="email"
                     inputMode="email"
+                    placeholder="For order updates"
                     className={inputClass(Boolean(errors.email))}
                   />
-                )}
-              </FieldShell>
-              <FieldShell id="phone" label="Mobile Number" error={errors.phone} span>
-                {account && !editPhone && values.phone === account.phone ? (
-                  // Signed in: the number they logged in with, no need to retype it.
-                  <SavedValue
-                    value={`+91 ${account.phone}`}
-                    onEdit={() => {
-                      setEditPhone(true);
-                      window.setTimeout(() => formRef.current?.querySelector<HTMLInputElement>('[name="phone"]')?.focus(), 0);
-                    }}
-                  />
-                ) : (
-                  <div
-                    className={cx(
-                      "flex h-10 items-center overflow-hidden rounded-md border focus-within:border-ink md:h-11",
-                      errors.phone ? "border-rust focus-within:border-rust" : "border-graphite/20"
-                    )}
-                  >
-                    <span className="border-r border-graphite/15 px-3 text-sm text-ash">+91</span>
-                    <input
-                      {...fieldProps("phone")}
-                      type="tel"
-                      autoComplete="tel-national"
-                      inputMode="numeric"
-                      maxLength={14}
-                      placeholder="10-digit mobile number"
-                      className="h-full w-full bg-transparent px-3 text-sm text-ink placeholder:text-ash/60 focus:outline-none"
-                    />
-                  </div>
                 )}
               </FieldShell>
             </div>

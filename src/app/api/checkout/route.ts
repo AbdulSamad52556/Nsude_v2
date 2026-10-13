@@ -41,6 +41,17 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Online payment isn't available right now" }, { status: 400 });
   }
 
+  // The mobile number is verified by a one-time code at checkout, which signs
+  // the customer in; orders come only from a verified number.
+  const customer = await getCustomer();
+  if (!customer) {
+    return NextResponse.json(
+      { error: "Verify your mobile number to place the order.", fields: { phone: "Verify your mobile number" } },
+      { status: 401 }
+    );
+  }
+  input.phone = customer.phone;
+
   // Put stock from abandoned payments back on sale before checking stock.
   await releaseExpiredOrders().catch((err) => console.error("Releasing expired orders failed", err));
 
@@ -60,8 +71,6 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // Signed-in customers get the order on their account (guests are fine too).
-  const customer = await getCustomer();
 
   const cod = input.paymentMethod === "cod";
   // If the order can't be saved, the stock just taken goes straight back.
@@ -89,7 +98,7 @@ export async function POST(request: NextRequest) {
           country: "India",
         },
         stockHeld: true,
-        customerId: customer?.id ?? null,
+        customerId: customer.id,
       },
     })
   ).catch(async (err) => {
@@ -104,13 +113,13 @@ export async function POST(request: NextRequest) {
   await logStockMovements(quote.lines, -1, {
     reason: "sale",
     ref: order.number,
-    actor: customer ? customerActor(customer.phone) : { type: "customer", label: `Guest · +91 ${input.phone}` },
+    actor: customerActor(customer.phone),
   });
   await refreshCatalog(quote.lines.map((l) => l.productId));
 
   // History: the order as placed (its prices and address never change after).
   await recordAudit({
-    actor: customer ? customerActor(customer.phone) : { type: "customer", label: `Guest · +91 ${input.phone}` },
+    actor: customerActor(customer.phone),
     entity: "order",
     entityId: order.id,
     entityLabel: order.number,
@@ -135,11 +144,11 @@ export async function POST(request: NextRequest) {
       items: quote.lines.reduce((n, l) => n + l.quantity, 0),
       payment: cod ? "cod" : "online",
     },
-    { customerId: customer?.id }
+    { customerId: customer.id }
   );
 
   // "Save this address" (signed in): add it unless it's already saved.
-  if (customer && input.saveAddress && customer.addresses.length < MAX_SAVED_ADDRESSES) {
+  if (input.saveAddress && customer.addresses.length < MAX_SAVED_ADDRESSES) {
     const address = {
       firstName: input.firstName,
       lastName: input.lastName,

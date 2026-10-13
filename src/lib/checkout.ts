@@ -67,11 +67,20 @@ export const cartItemSchema = z.object({
 });
 export const cartItemsSchema = z.array(cartItemSchema).min(1, "Your bag is empty").max(30);
 
+/** An email address, or "" when the customer leaves it out. */
+export const optionalEmail = z
+  .string()
+  .trim()
+  .toLowerCase()
+  .max(120)
+  .refine((v) => v === "" || z.string().email().safeParse(v).success, "Enter a valid email address");
+
 const text = (label: string, max = 80) =>
   z.string().trim().min(1, `Enter your ${label}`).max(max, `${label[0].toUpperCase()}${label.slice(1)} is too long`);
 
 export const checkoutSchema = z.object({
-  email: z.string().trim().toLowerCase().max(120).email("Enter a valid email address"),
+  /** Optional: "" when not given. */
+  email: optionalEmail,
   // 10-digit Indian mobile number; spaces, dashes and a +91 / 0 prefix are
   // tolerated and stripped.
   phone: z

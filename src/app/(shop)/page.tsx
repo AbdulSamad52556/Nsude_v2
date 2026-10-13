@@ -37,9 +37,9 @@ export default async function HomePage() {
       <BrandStatement />
       <FeaturedCollection cards={featured} />
       <ShopByCategory tiles={categories} />
-      {customize && <CustomizeTeaser {...customize} />}
       <CollectionCampaign />
       <ShopTheFit cardsByFit={fitCards} />
+      {customize && <CustomizeTeaser {...customize} />}
       <Philosophy />
       <ServiceStrip />
     </>
